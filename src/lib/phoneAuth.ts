@@ -31,12 +31,7 @@ export type PhoneAuthErrorData = { code: PhoneAuthErrorCode; message: string; re
 /** Seconds before the UI offers "Resend code". */
 export const RESEND_SECONDS = 30;
 
-/** Join a country calling code ("+1", "1", "+44") and a national number into "+<digits>". */
-export function phoneFromParts(countryCode: string, number: string) {
-  const cc = countryCode.replace(/\D/g, "");
-  const national = number.replace(/\D/g, "");
-  return `+${cc}${national}`;
-}
+export { phoneFromParts } from "@/lib/phoneNumber";
 
 export function phoneAuthErrorData(e: unknown): PhoneAuthErrorData | null {
   if (e instanceof ConvexError && typeof e.data === "object" && e.data !== null && "code" in e.data) {
