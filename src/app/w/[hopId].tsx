@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ContactPickButton } from "@/components/ContactPickButton";
+import { ContactSuggestions } from "@/components/ContactSuggestions";
 import { ShareLink } from "@/components/ShareLink";
 import { WellHint } from "@/components/WellHint";
 import { errorMessage } from "@/components/ui";
@@ -71,6 +72,7 @@ export default function PassOn() {
   const [nextName, setNextName] = useState("");
   // Picked from Contacts, kept on this device only: pre-fills the SMS recipient for that boat.
   const [nextPhone, setNextPhone] = useState<string | null>(null);
+  const [nextNameFocused, setNextNameFocused] = useState(false);
   const [phones, setPhones] = useState<Record<string, string>>({});
   const [nextReason, setNextReason] = useState("");
   const [nextTags, setNextTags] = useState<string[]>([]);
@@ -444,8 +446,21 @@ export default function PassOn() {
                 testID="pass-next-name"
                 value={nextName}
                 onChangeText={setNextName}
+                onFocus={() => setNextNameFocused(true)}
+                onBlur={() => setNextNameFocused(false)}
                 placeholder={action === "group" ? "Climbing crew" : `Friend ${data.children.length + 1}`}
               />
+              {action !== "group" ? (
+                <ContactSuggestions
+                  testID="contact-suggest-pass"
+                  query={nextName}
+                  focused={nextNameFocused}
+                  onPick={({ name: picked, phone }) => {
+                    setNextName(picked);
+                    setNextPhone(phone);
+                  }}
+                />
+              ) : null}
               {action !== "group" ? (
                 <ContactPickButton
                   testID="contact-pick-pass"

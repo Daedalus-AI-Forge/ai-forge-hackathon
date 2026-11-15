@@ -1,4 +1,4 @@
-import { Contact, requestPermissionsAsync } from "expo-contacts";
+import { Contact, ContactField, getPermissionsAsync, requestPermissionsAsync } from "expo-contacts";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
@@ -12,6 +12,23 @@ async function readPicked(c: Contact): Promise<PickedContact> {
   const [name, phones] = await Promise.all([c.getFullName(), c.getPhones()]);
   const raw = choosePhone(phones);
   return { name: name.trim(), phone: raw ? toE164(raw) : null };
+}
+
+/**
+ * The SDK 58 picker hands back only the contact id; name and phones are re-read from the store.
+ * If that read comes back without a phone, make sure we may read Contacts (ask in context), then
+ * re-read the phones by id once. Returns null when there is still no usable number.
+ */
+async function rereadPhone(c: Contact): Promise<string | null> {
+  const perm = await getPermissionsAsync();
+  if (!perm.granted) {
+    if (!perm.canAskAgain) return null;
+    const { granted } = await requestPermissionsAsync();
+    if (!granted) return null;
+  }
+  const details = await c.getDetails([ContactField.PHONES]);
+  const raw = choosePhone(details.phones);
+  return raw ? toE164(raw) : null;
 }
 
 /**
@@ -42,6 +59,7 @@ export function ContactPickButton({ onPick, testID = "contact-pick" }: { onPick:
         }
         picked = await readPicked(c);
       }
+      if (!picked.phone) picked = { ...picked, phone: await rereadPhone(c).catch(() => null) };
       onPick(picked);
       if (!picked.phone) setNote("No phone number on that contact — you can pick the recipient in Messages.");
     } catch {
