@@ -85,7 +85,7 @@ export function Shell({
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: lv.bg },
   content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40, alignItems: "center" },
-  column: { width: "100%", maxWidth: 480, gap: 14 },
+  column: { width: "100%", maxWidth: 480, gap: 18 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
   back: { fontSize: 22, color: lv.fg },
   dots: { flexDirection: "row", gap: 6 },

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { DButton, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { DButton, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { withTimeout } from "@/lib/linkDraft";
 import { lv } from "@/theme/tokens";
 import { KEYBOARD_DONE_ID } from "@/components/keyboard";
@@ -43,7 +43,7 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
   }
 
   return (
-    <View style={{ gap: 14 }} testID="link-wish-step">
+    <View style={{ gap: 18 }} testID="link-wish-step">
       <View style={{ gap: 8 }}>
         <Eyebrow>Your free wish</Eyebrow>
         <Text style={styles.h1}>What kind of person do you wish you knew?</Text>
@@ -89,6 +89,7 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
         disabled={!trimmed || polishing}
         testID="link-wish-continue"
       />
+      {!trimmed && !polishing ? <DHint>Write one line to continue, or skip it below.</DHint> : null}
       <Pressable onPress={onSkip} accessibilityRole="button" hitSlop={8} testID="link-skip-wish" style={{ alignSelf: "center" }}>
         <Text style={styles.skip}>Not now, just help</Text>
       </Pressable>
@@ -99,12 +100,12 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
 const styles = StyleSheet.create({
   h1: { fontSize: 26, lineHeight: 32, fontWeight: "700", color: lv.fg },
   input: {
-    minHeight: 52,
+    minHeight: 56,
     borderRadius: 14,
     backgroundColor: lv.card,
-    borderWidth: 1,
-    borderColor: lv.border,
-    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: lv.fieldBorder,
+    paddingHorizontal: 16,
     fontSize: 17,
     color: lv.fg,
   },
