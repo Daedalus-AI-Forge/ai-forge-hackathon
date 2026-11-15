@@ -1,19 +1,16 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { GetTheApp } from "@/components/GetTheApp";
-import { Pool } from "@/components/Pool";
 import { ShareLink } from "@/components/ShareLink";
-import { errorMessage } from "@/components/ui";
 import { WellHint } from "@/components/WellHint";
-import { WhyItWorks } from "@/components/WhyItWorks";
-import { DAvatar, DButton, DCard, DChips, DError, DField, Eyebrow, Glass, Progress, Sub } from "@/components/lv/passon/kit";
-import { useDeviceId } from "@/lib/device";
-import { countdown, ordinal, useNow } from "@/lib/time";
+import { errorMessage } from "@/components/ui";
+import { DAvatar, DButton, DCard, DChips, DError, DField, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
+import { useDeviceId, useMe } from "@/lib/device";
+import { countdown, useNow } from "@/lib/time";
 import { lv } from "@/theme/tokens";
 
 const HOW = ["friend", "coworker", "family", "roommate", "classmate", "neighbor"] as const;
@@ -23,7 +20,7 @@ const TAGS = ["music", "travel", "food", "sports", "tech", "outdoors", "art", "k
 
 type Mode = "view" | "its_me" | "me" | "vouch" | "pass" | "done";
 
-function Header({ title, sub, onBack }: { title: string; sub?: string; onBack?: () => void }) {
+function Header({ eyebrow, title, sub, onBack }: { eyebrow?: string; title: string; sub?: string; onBack?: () => void }) {
   return (
     <View style={{ paddingTop: 4, gap: 8 }}>
       {onBack ? (
@@ -31,16 +28,19 @@ function Header({ title, sub, onBack }: { title: string; sub?: string; onBack?: 
           <Text style={styles.back}>←</Text>
         </Pressable>
       ) : null}
+      {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
       <Text style={styles.h1}>{title}</Text>
       {sub ? <Sub>{sub}</Sub> : null}
     </View>
   );
 }
 
+/** The boat screen: one paper boat that drifted to you, and the two ways to act on it. */
 export default function PassOn() {
   const { hopId, start } = useLocalSearchParams<{ hopId: string; start?: string }>();
   const data = useQuery(api.hops.page, { hopId });
   const deviceId = useDeviceId();
+  const { user } = useMe();
   const claim = useMutation(api.hops.claim);
   const ensure = useMutation(api.users.ensure);
   const act = useMutation(api.hops.act);
@@ -53,6 +53,7 @@ export default function PassOn() {
 
   const [mode, setMode] = useState<Mode>("view");
   const [action, setAction] = useState<"pass" | "group">("pass");
+  const [actedAs, setActedAs] = useState<"push" | "its_me" | null>(null);
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [how, setHow] = useState<string | null>(null);
@@ -62,9 +63,11 @@ export default function PassOn() {
   const [intro, setIntro] = useState("");
   const [contact, setContact] = useState("");
   const [contactSaved, setContactSaved] = useState(false);
+  const [showNameAndCity, setShowNameAndCity] = useState(true);
   const [nextName, setNextName] = useState("");
   const [nextReason, setNextReason] = useState("");
   const [nextTags, setNextTags] = useState<string[]>([]);
+  const [lastTags, setLastTags] = useState<string[]>([]);
   const [messages, setMessages] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +87,7 @@ export default function PassOn() {
       setAction(data.hop.action);
       setMode("pass");
     } else if (data.hop.action === "its_me") {
+      setActedAs("its_me");
       setMode("done");
     } else if (start === "its_me") {
       setMode("its_me");
@@ -134,6 +138,9 @@ export default function PassOn() {
   const fromTheWell = !!wish.daily && data.chain.length === 0;
   // Older backends may not send `mode`; treat missing as "fun" (no reason required).
   const serious = (wish as { mode?: string }).mode === "serious";
+  const progress = user?.boatProgress ?? 0;
+  const firstTag = lastTags[0] ?? "someone unexpected";
+  const doneKind = actedAs ?? (hop.action === "its_me" ? "its_me" : null);
 
   return (
     <ScrollView
@@ -142,25 +149,29 @@ export default function PassOn() {
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: `${wish.creatorName} made a wish` }} />
+      <Stack.Screen options={{ title: "A paper boat for you" }} />
 
       {mode === "view" || (!open && mode !== "done") ? (
         <>
-          <View style={styles.pill}>
-            <Text style={styles.pillText}>🪙 Wishwell</Text>
-          </View>
-          <Text style={styles.hero}>A wish is{"\n"}passing through you.</Text>
+          <Text style={styles.hero}>
+            A paper boat{"\n"}drifted to you.
+          </Text>
           <Sub>
             {data.chain.length > 0
-              ? `${data.senderName} passed it to you.`
+              ? `${data.senderName} pushed it to you.`
               : fromTheWell
-                ? "Today's wish, straight from the well."
+                ? "Today's boat, straight from the well."
                 : `${data.senderName} sent this straight to you.`}
           </Sub>
 
           <Glass testID="pass-on-wish">
-            <View style={styles.between}>
-              <Eyebrow>Passing through you</Eyebrow>
+            <Text style={styles.wishText}>{wish.text}</Text>
+            <View style={styles.sourceRow}>
+              <View style={[styles.sourcePill, wish.daily ? styles.sourceGold : styles.sourceThread]}>
+                <Text style={[styles.sourceText, !wish.daily && { color: lv.threadFg }]}>
+                  {wish.daily ? "Today's boat" : `${wish.creatorName}'s real wish`}
+                </Text>
+              </View>
               <View style={styles.row}>
                 <View style={[styles.dot, !open && { backgroundColor: lv.mutedFg }]} />
                 <Text testID="pass-on-countdown" style={styles.mono}>
@@ -168,59 +179,53 @@ export default function PassOn() {
                 </Text>
               </View>
             </View>
-            <View style={styles.row}>
-              <DAvatar name={wish.creatorName} color={wish.creatorAvatar} size={28} />
-              <Text style={styles.who}>
-                {wish.creatorName}
-                {wish.creatorCity ? ` · ${wish.creatorCity}` : ""} made a wish
+
+            {wish.daily ? (
+              <Text testID="pass-on-clue" style={styles.clueLine}>
+                Clue {Math.min(wish.daily.step, wish.daily.of)}/{wish.daily.of}: {wish.daily.hint}
               </Text>
-            </View>
-            <Text style={styles.wishText}>{wish.text}</Text>
-            <Text testID="pass-on-ripples" style={styles.rippleLine}>
-              {data.ripples === 1 ? "1 ripple in" : `${data.ripples} ripples in`} · Ripple {hop.depth}
-              {data.chain.length > 0 ? ` · from ${data.senderName}` : ""}
-            </Text>
-            <View style={styles.poolWrap}>
-              <Pool size={110} testID="pass-on-pool" />
-            </View>
+            ) : null}
 
             {data.chain.length > 0 ? (
-              <View testID="pass-on-chain" style={{ gap: 12, marginTop: 4 }}>
-                <Eyebrow>The trust chain</Eyebrow>
-                {data.chain.map((c) => (
-                  <View key={c.depth} style={styles.vouch}>
-                    <DAvatar name={c.name} color={c.avatar} size={28} />
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={styles.vouchBy}>
-                        <Text style={{ color: lv.fg, fontWeight: "600" }}>{c.name}</Text>
-                        {c.city ? ` · ${c.city}` : ""}
-                        {c.viaGroup ? " · via group chat" : ""} · Ripple {c.depth}
-                      </Text>
-                      {c.vouch ? <Text style={styles.vouchText}>“{c.vouch}”</Text> : null}
-                    </View>
-                  </View>
-                ))}
+              <View style={styles.chainWrap}>
+                <Eyebrow>How it got here</Eyebrow>
+                <View testID="pass-on-chain">
+                  {data.chain.map((c, i) => {
+                    const next = data.chain[i + 1]?.name ?? "you";
+                    const last = i === data.chain.length - 1;
+                    return (
+                      <View key={c.depth} style={styles.chainRow}>
+                        <View style={styles.avatarCol}>
+                          <DAvatar name={c.name} color={c.avatar} size={28} />
+                          {last ? null : <View style={styles.avatarStem} />}
+                        </View>
+                        <View style={styles.chainText}>
+                          <Text style={styles.vouchBy}>
+                            <Text style={styles.vouchName}>{c.name}</Text>
+                            {c.city ? ` · ${c.city}` : ""} → {next}
+                          </Text>
+                          {c.vouch ? <Text style={styles.vouchText}>“{c.vouch}”</Text> : null}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
             ) : null}
 
             {!open ? (
-              <View style={styles.closed}>
+              <View style={styles.closed} testID="pass-on-closed">
                 <Text style={styles.closedText}>
-                  {wish.status === "granted"
-                    ? "Wish granted ✨"
-                    : wish.status === "found"
-                      ? "This wish found its person. 🎉"
-                      : "This wish faded before it found its person."}{" "}
-                  Thanks for being part of the ripple.
+                  {wish.status === "faded" ? "This boat faded before it found anyone." : "This boat landed"}
                 </Text>
               </View>
             ) : (
               <View style={{ gap: 8, marginTop: 6 }}>
                 <View style={styles.grid}>
-                  <DButton testID="pass-its-me" title="It's me!" variant="ink" style={{ flex: 1 }} onPress={() => go("its_me")} />
+                  <DButton testID="pass-its-me" title="That's me" variant="ink" style={{ flex: 1 }} onPress={() => go("its_me")} />
                   <DButton
                     testID="pass-know-someone"
-                    title="I know someone"
+                    title="Push to someone"
                     variant="thread"
                     style={{ flex: 1 }}
                     onPress={() => {
@@ -231,7 +236,7 @@ export default function PassOn() {
                 </View>
                 <DButton
                   testID="pass-group"
-                  title="👥  Share to a group chat"
+                  title="👥  Push to a group chat"
                   variant="ghost"
                   size="sm"
                   onPress={() => {
@@ -244,57 +249,101 @@ export default function PassOn() {
           </Glass>
 
           {wish.daily ? <WellHint daily={wish.daily} /> : null}
-          {open ? <WhyItWorks /> : null}
         </>
       ) : null}
 
       {open && mode === "its_me" ? (
         <>
-          <Header title={`Are you who ${wish.creatorName} is looking for?`} sub={wish.text} onBack={() => go("view")} />
+          <Header
+            eyebrow="That's me"
+            title={wish.daily ? "You're the one?" : `Are you who ${wish.creatorName} is looking for?`}
+            sub={wish.text}
+            onBack={() => go("view")}
+          />
           <DCard>
-            <View style={styles.pair}>
-              <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" />
-              <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" />
-            </View>
-            <DField
-              placeholder="One line about you — I've drummed in a band for 8 years…"
-              value={intro}
-              onChangeText={setIntro}
-              multiline
-              testID="its-me-intro"
-            />
-            <DField
-              placeholder="One contact (phone, WeChat or Instagram)"
-              value={contact}
-              onChangeText={setContact}
-              testID="its-me-contact"
-            />
-            <DError error={error} />
-            <DButton
-              testID="its-me-submit"
-              title={`Send to ${wish.creatorName}`}
-              size="lg"
-              busy={busy}
-              disabled={!intro.trim()}
-              onPress={() =>
-                run(async () => {
-                  await itsMe({ hopId: id, name, city, intro, contact });
-                  setContactSaved(!!contact.trim());
-                  setMode("done");
-                })
-              }
-            />
+            {wish.daily ? (
+              <>
+                <DField
+                  placeholder="Tell us the proof in one line — e.g. 12 of my own oil paintings hang at home"
+                  value={intro}
+                  onChangeText={setIntro}
+                  multiline
+                  testID="its-me-intro"
+                />
+                <View style={styles.pair}>
+                  <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" />
+                  <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" />
+                </View>
+                <View style={styles.toggleRow}>
+                  <Switch
+                    testID="its-me-show"
+                    value={showNameAndCity}
+                    onValueChange={setShowNameAndCity}
+                    trackColor={{ true: lv.thread, false: lv.mutedFg }}
+                  />
+                  <Text style={styles.toggleLabel}>Show my name and city in their voyage log</Text>
+                </View>
+                <DError error={error} />
+                <DButton
+                  testID="its-me-submit"
+                  title="Land this boat"
+                  size="lg"
+                  busy={busy}
+                  disabled={!intro.trim() || !name.trim() || !city.trim()}
+                  onPress={() =>
+                    run(async () => {
+                      await itsMe({ hopId: id, name, city, intro, contact: "", showNameAndCity });
+                      setContactSaved(!!contact.trim());
+                      setActedAs("its_me");
+                      setMode("done");
+                    })
+                  }
+                />
+              </>
+            ) : (
+              <>
+                <DField
+                  placeholder="One line about you — I've drummed in a band for 8 years…"
+                  value={intro}
+                  onChangeText={setIntro}
+                  multiline
+                  testID="its-me-intro"
+                />
+                <DField
+                  placeholder="One contact (phone, WeChat or Instagram)"
+                  value={contact}
+                  onChangeText={setContact}
+                  testID="its-me-contact"
+                />
+                <View style={styles.pair}>
+                  <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" />
+                  <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" />
+                </View>
+                <DError error={error} />
+                <DButton
+                  testID="its-me-submit"
+                  title={`Send to ${wish.creatorName}`}
+                  size="lg"
+                  busy={busy}
+                  disabled={!intro.trim()}
+                  onPress={() =>
+                    run(async () => {
+                      await itsMe({ hopId: id, name, city, intro, contact });
+                      setContactSaved(!!contact.trim());
+                      setActedAs("its_me");
+                      setMode("done");
+                    })
+                  }
+                />
+              </>
+            )}
           </DCard>
         </>
       ) : null}
 
       {open && mode === "me" ? (
         <>
-          <Header
-            title={action === "group" ? "Share to a group chat" : "Pass it on"}
-            sub="First, who are you?"
-            onBack={() => go("view")}
-          />
+          <Header eyebrow="Step 1 of 3" title="Who are you?" onBack={() => go("view")} />
           <DCard>
             <View style={styles.pair}>
               <DField placeholder="Your name" value={name} onChangeText={setName} testID="pass-name" />
@@ -322,7 +371,12 @@ export default function PassOn() {
 
       {open && mode === "vouch" ? (
         <>
-          <Header title={`Vouch for ${data.senderName}`} sub="Three taps, then the AI drafts a line you can edit." onBack={() => go("me")} />
+          <Header
+            eyebrow="Step 2 of 3"
+            title={`Vouch for ${data.senderName}`}
+            sub="Three taps, then the AI drafts a line you can edit."
+            onBack={() => go("me")}
+          />
           <DCard testID="vouch-card">
             <Text style={styles.cardTitle}>Vouch for {data.senderName}, who sent you this</Text>
             <DChips label="How you met" options={HOW} value={how} onChange={setHow} testIDPrefix="vouch-how" />
@@ -362,19 +416,18 @@ export default function PassOn() {
       ) : null}
 
       {mode === "pass" ? (
-        <>
-          <Header title={action === "group" ? "Share to a group chat" : "Pass it on"} />
-          <Progress done={data.children.length} of={limit} />
+        <View style={{ gap: 16 }}>
+          <Header eyebrow="Step 3 of 3" title={action === "group" ? "Share to a group chat" : "Push it to someone"} />
 
           <View style={styles.clue}>
-            <Text style={styles.clueEyebrow}>{wish.creatorName}'s wish</Text>
+            <Text style={styles.clueEyebrow}>{wish.daily ? "Today's boat" : `${wish.creatorName}'s real wish`}</Text>
             <Text style={styles.clueText}>{wish.text}</Text>
             <Text style={styles.clueJog}>· Who do you know who'd light up at this?</Text>
             <Text style={styles.clueJog}>· Or who knows everyone who might?</Text>
           </View>
 
           {data.children.map((c) => (
-            <ShareLink key={c.hopId} hopId={c.hopId} name={c.name} message={messages[c.hopId] ?? c.passMessage} />
+            <ShareLink key={c.hopId} hopId={c.hopId} name={c.name} message={messages[c.hopId] ?? c.passMessage} label={`Send ${c.name} their boat`} />
           ))}
 
           {canAddMore ? (
@@ -411,7 +464,7 @@ export default function PassOn() {
               <DError error={error} />
               <DButton
                 testID="pass-create-link"
-                title={nextName.trim() ? `Create ${nextName.trim()}'s link` : "Create their link"}
+                title={nextName.trim() ? `Create ${nextName.trim()}'s boat link` : "Create their boat link"}
                 variant="thread"
                 busy={busy}
                 disabled={(action !== "group" && !nextName.trim()) || (serious && !nextReason.trim())}
@@ -423,6 +476,7 @@ export default function PassOn() {
                       tags: nextTags,
                       ...(serious ? { reason: nextReason.trim() } : {}),
                     });
+                    setLastTags(nextTags);
                     setNextName("");
                     setNextReason("");
                     setNextTags([]);
@@ -436,50 +490,84 @@ export default function PassOn() {
           ) : null}
 
           {data.children.length > 0 ? (
-            <DButton testID="pass-done" title="I'm done" variant="ink" size="lg" onPress={() => go("done")} />
+            <DButton
+              testID="pass-done"
+              title="I'm done"
+              variant="ink"
+              size="lg"
+              onPress={() => {
+                setActedAs("push");
+                go("done");
+              }}
+            />
           ) : (
             <Text style={styles.hint}>Create a link for someone to start sending.</Text>
           )}
-        </>
-      ) : null}
-
-      {mode === "done" ? (
-        <View style={{ gap: 14, paddingTop: 8 }}>
-          <Eyebrow>The ripple</Eyebrow>
-          <View testID="pass-on-done" style={styles.prophecy}>
-            <View style={styles.orb} />
-            <Text style={styles.prophecyText}>🔮 You're ripple #{hop.depth} on this wish!</Text>
-            <Text style={styles.prophecySub}>We'll show you how it ends.</Text>
-          </View>
-          <DCard>
-            <Text style={styles.cardTitle}>Where should we send the ending?</Text>
-            {contactSaved ? (
-              <Text style={styles.saved}>✓ Got it. We'll send the ending to {contact}.</Text>
-            ) : (
-              <View style={styles.pair}>
-                <DField value={contact} onChangeText={setContact} placeholder="Phone, WeChat or Instagram" testID="done-contact" />
-                <DButton
-                  testID="done-save-contact"
-                  title="Tell me"
-                  variant="ink"
-                  busy={busy}
-                  disabled={!contact.trim()}
-                  onPress={() =>
-                    run(async () => {
-                      await saveContact({ hopId: id, contact });
-                      setContactSaved(true);
-                    })
-                  }
-                />
-              </View>
-            )}
-            <DError error={error} />
-          </DCard>
-          <GetTheApp />
         </View>
       ) : null}
 
-      <Text style={styles.footer}>{ordinal(hop.depth)} ripple · up to 6 ripples, 48 hours</Text>
+      {mode === "done" ? (
+        doneKind === "its_me" ? (
+          <View style={{ gap: 14, paddingTop: 8 }}>
+            <Eyebrow>{wish.daily ? "That's me" : "Sent"}</Eyebrow>
+            <DCard testID="pass-on-done">
+              <Text style={styles.cardTitle}>
+                {wish.daily ? "⛵︎ Landed." : `Waiting for ${wish.creatorName} to confirm.`}
+              </Text>
+              <Sub>
+                {wish.daily
+                  ? "Whoever pushed it will see you in tomorrow's voyage log."
+                  : "If it's you, you'll swap contacts and we'll remind you to share a photo together."}
+              </Sub>
+            </DCard>
+          </View>
+        ) : (
+          <View style={{ gap: 14, paddingTop: 8 }}>
+            <Eyebrow>Done for today</Eyebrow>
+            <View testID="pass-on-done" style={styles.prophecy}>
+              <View style={styles.orb} />
+              <Text style={styles.prophecyText}>🔮 It might drift toward {firstTag}.</Text>
+              <Text style={styles.prophecySub}>Tomorrow morning your voyage log shows where it went.</Text>
+            </View>
+            {user ? (
+              <DCard>
+                <View style={styles.progressRow} testID="pass-progress">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <View key={i} style={[styles.progDot, i < progress && styles.progDotOn]} />
+                  ))}
+                  <Text style={styles.mono}>{progress}/5 boats toward your next coin</Text>
+                </View>
+              </DCard>
+            ) : null}
+            {!user ? (
+              <DCard>
+                <Text style={styles.cardTitle}>Where should we send the ending?</Text>
+                {contactSaved ? (
+                  <Text style={styles.saved}>✓ Got it. We'll send the ending to {contact}.</Text>
+                ) : (
+                  <View style={styles.pair}>
+                    <DField value={contact} onChangeText={setContact} placeholder="Phone, WeChat or Instagram" testID="done-contact" />
+                    <DButton
+                      testID="done-save-contact"
+                      title="Tell me"
+                      variant="ink"
+                      busy={busy}
+                      disabled={!contact.trim()}
+                      onPress={() =>
+                        run(async () => {
+                          await saveContact({ hopId: id, contact });
+                          setContactSaved(true);
+                        })
+                      }
+                    />
+                  </View>
+                )}
+                <DError error={error} />
+              </DCard>
+            ) : null}
+          </View>
+        )
+      ) : null}
     </ScrollView>
   );
 }
@@ -487,35 +575,34 @@ export default function PassOn() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24, backgroundColor: lv.bg },
   container: { paddingHorizontal: 20, paddingTop: 24, gap: 16, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 56 },
-  pill: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: "rgba(254,253,251,0.72)",
-    borderWidth: 1,
-    borderColor: lv.border,
-  },
-  pillText: { fontSize: 12, fontWeight: "500", color: lv.fg },
-  hero: { fontSize: 40, fontWeight: "700", lineHeight: 42, letterSpacing: -1, color: lv.fg, marginTop: 12 },
-  h1: { fontSize: 30, fontWeight: "700", lineHeight: 33, letterSpacing: -0.6, color: lv.fg },
+  hero: { fontSize: 34, fontWeight: "700", lineHeight: 40, letterSpacing: -0.5, color: lv.fg, marginTop: 12 },
+  h1: { fontSize: 30, fontWeight: "700", lineHeight: 33, letterSpacing: -0.5, color: lv.fg },
   back: { fontSize: 22, color: lv.mutedFg },
-  between: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: lv.thread },
   mono: { fontFamily: lv.font.mono, fontSize: 12, color: lv.fg },
-  who: { fontSize: 13, color: lv.mutedFg, flex: 1 },
   wishText: { fontSize: 22, fontWeight: "700", lineHeight: 27, color: lv.fg },
-  rippleLine: { fontSize: 12, fontWeight: "500", color: lv.fg },
-  poolWrap: { alignItems: "center", borderRadius: lv.radius, backgroundColor: "rgba(249,246,241,0.5)", paddingVertical: 6 },
-  vouch: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  sourceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  sourcePill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, alignSelf: "flex-start" },
+  sourceGold: { backgroundColor: lv.gold },
+  sourceThread: { backgroundColor: lv.thread },
+  sourceText: { fontSize: 12, fontWeight: "600", color: lv.fg },
+  clueLine: { fontSize: 13, lineHeight: 19, color: lv.mutedFg },
+  chainWrap: { gap: 10 },
+  chainRow: { flexDirection: "row", alignItems: "stretch", marginBottom: 10 },
+  avatarCol: { width: 28, alignItems: "center" },
+  avatarStem: { width: 1, flex: 1, backgroundColor: lv.thread, marginTop: 3 },
+  chainText: { flex: 1, gap: 2, paddingTop: 4 },
   vouchBy: { fontSize: 12, color: lv.mutedFg },
+  vouchName: { color: lv.fg, fontWeight: "600" },
   vouchText: { fontSize: 13.5, lineHeight: 18, color: lv.fg },
-  closed: { borderRadius: 12, backgroundColor: lv.muted, padding: 12, marginTop: 6 },
+  closed: { borderRadius: 12, backgroundColor: lv.muted, padding: 12 },
   closedText: { fontSize: 14, color: lv.fg, lineHeight: 20 },
   grid: { flexDirection: "row", gap: 8 },
   pair: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
   cardTitle: { fontSize: 14, fontWeight: "500", color: lv.fg },
+  toggleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  toggleLabel: { flex: 1, fontSize: 14, color: lv.fg, lineHeight: 19 },
   clue: { borderRadius: 24, backgroundColor: lv.fg, padding: 16, gap: 4 },
   clueEyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase", color: lv.bg, opacity: 0.6 },
   clueText: { fontSize: 18, fontWeight: "700", lineHeight: 24, color: lv.bg, marginBottom: 6 },
@@ -525,6 +612,8 @@ const styles = StyleSheet.create({
   orb: { position: "absolute", right: -48, top: -48, width: 160, height: 160, borderRadius: 80, backgroundColor: lv.gold, opacity: 0.35 },
   prophecyText: { fontSize: 24, fontWeight: "700", lineHeight: 28, letterSpacing: -0.4, color: lv.bg },
   prophecySub: { fontSize: 15, color: lv.bg, opacity: 0.75 },
+  progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  progDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "rgba(28,25,21,0.12)" },
+  progDotOn: { backgroundColor: lv.thread },
   saved: { fontSize: 14, color: lv.thread },
-  footer: { fontSize: 12, color: lv.mutedFg, textAlign: "center" },
 });
