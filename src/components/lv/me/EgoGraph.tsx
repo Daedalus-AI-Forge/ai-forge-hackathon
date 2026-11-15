@@ -2,12 +2,15 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PanResponder, Platform, Pressable, StyleSheet, Text, View, type PointerEvent, type ViewStyle } from "react-native";
 import Svg, { Circle, G, Path, Text as SvgText } from "react-native-svg";
 
+import { Glass, Icon } from "@/components/ios";
 import type { CommunityNetwork } from "@/lib/graphApi.types";
 import { lv, type } from "@/theme/tokens";
 import { connectionAppearance, GRAPH_CENTER, GRAPH_HEIGHT, GRAPH_WIDTH, layoutCommunity, pathToViewer } from "./communityLayout";
 
 const TONES = [lv.gold, lv.silver, lv.bronze, lv.accent, lv.secondary];
 const webGestureStyle: ViewStyle & { touchAction: "none" } = { touchAction: "none" };
+// SVG text doesn't inherit the page font on web (it falls back to serif); native already uses the system font.
+const SVG_FONT = Platform.OS === "web" ? "-apple-system, BlinkMacSystemFont, system-ui, sans-serif" : undefined;
 
 /** Deterministic soft background per name, so a person keeps their color everywhere. */
 export function toneFor(name: string) {
@@ -25,7 +28,7 @@ export function LvAvatar({ name, size = 34, ring = false }: { name: string; size
         alignItems: "center",
         justifyContent: "center",
         borderWidth: ring ? 2 : 0,
-        borderColor: lv.bg,
+        borderColor: "rgba(255,255,255,0.92)",
       }}
     >
       <Text style={{ fontSize: size * 0.4, fontWeight: "600", color: lv.fg }}>{name.slice(0, 1).toUpperCase() || "?"}</Text>
@@ -81,10 +84,11 @@ export function EgoGraph({ graph, selectedKey, onSelect }: {
     <View style={{ gap: 12 }}>
       <View style={styles.topline}>
         <View style={styles.liveLabel}><View style={styles.liveDot} /><Text style={styles.caption}>One network. Your perspective.</Text></View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Recenter network" testID="network-recenter"
+        <Glass variant="thin" radius={999} testID="network-recenter" accessibilityLabel="Recenter network" hitSlop={6}
           style={styles.recenter} onPress={() => { setCamera({ ...GRAPH_CENTER, zoom: 1 }); onSelect(null); }}>
-          <Text style={styles.recenterText}>◎ You</Text>
-        </Pressable>
+          <Icon name="recenter" size={14} color={lv.thread} />
+          <Text style={styles.recenterText}>You</Text>
+        </Glass>
       </View>
       <View testID="ego-graph" style={[styles.canvas, Platform.OS === "web" && webGestureStyle]} onLayout={e => setWidth(e.nativeEvent.layout.width)}
         {...(Platform.OS === "web" ? {
@@ -128,14 +132,14 @@ export function EgoGraph({ graph, selectedKey, onSelect }: {
               <Circle cx={node.x} cy={node.y} r={radius} fill={me || close ? toneFor(node.name) : node.distance === null ? lv.silver : lv.accent}
                 stroke={me || selected ? lv.card : node.distance === null ? lv.border : lv.thread}
                 strokeOpacity={me || selected ? 1 : close ? 0.3 : 0.5} strokeWidth={me || close ? 3 : 1.5} />
-              {me || close && radius >= 18 ? <SvgText x={node.x} y={node.y + (me ? 10 : 7)} textAnchor="middle" fill={lv.fg} fontSize={me ? 29 : 21} fontWeight="600">
+              {me || close && radius >= 18 ? <SvgText fontFamily={SVG_FONT} x={node.x} y={node.y + (me ? 10 : 7)} textAnchor="middle" fill={lv.fg} fontSize={me ? 29 : 21} fontWeight="600">
                 {node.name.slice(0, 1).toUpperCase() || "?"}
               </SvgText> : null}
-              {showName ? <SvgText x={node.x} y={node.y + radius + 24} textAnchor="middle" fill={selected ? lv.thread : lv.fg}
+              {showName ? <SvgText fontFamily={SVG_FONT} x={node.x} y={node.y + radius + 24} textAnchor="middle" fill={selected ? lv.thread : lv.fg}
                 fontSize={me ? 23 : 20} fontWeight={me || selected ? "700" : "500"}>
                 {me ? "You" : node.name.length > 13 ? `${node.name.slice(0, 12)}…` : node.name}
               </SvgText> : null}
-              {me ? <SvgText x={node.x} y={node.y + radius + 44} textAnchor="middle" fill={lv.mutedFg} fontSize={15}>your starting point</SvgText> : null}
+              {me ? <SvgText fontFamily={SVG_FONT} x={node.x} y={node.y + radius + 44} textAnchor="middle" fill={lv.mutedFg} fontSize={15}>your starting point</SvgText> : null}
             </G>;
           })}
         </Svg>
@@ -152,14 +156,14 @@ export function EgoGraph({ graph, selectedKey, onSelect }: {
               top: width * GRAPH_HEIGHT / GRAPH_WIDTH / 2 + (node.y - camera.y) * scale - hitSize / 2,
             }} />;
         })}
-        <View style={styles.zoomControls}>
+        <Glass variant="chrome" radius={22} style={styles.zoomControls}>
           <Pressable testID="network-zoom-in" accessibilityRole="button" accessibilityLabel="Zoom in" disabled={camera.zoom >= 3}
-            onPress={() => zoom(0.35)} style={[styles.zoomButton, camera.zoom >= 3 && styles.disabled]}><Text style={styles.zoomText}>+</Text></Pressable>
+            onPress={() => zoom(0.35)} style={[styles.zoomButton, camera.zoom >= 3 && styles.disabled]}><Icon name="plus" size={16} color={lv.fg} /></Pressable>
           <View style={styles.controlDivider} />
           <Pressable testID="network-zoom-out" accessibilityRole="button" accessibilityLabel="Zoom out" disabled={camera.zoom <= 0.75}
-            onPress={() => zoom(-0.35)} style={[styles.zoomButton, camera.zoom <= 0.75 && styles.disabled]}><Text style={styles.zoomText}>−</Text></Pressable>
-        </View>
-        <View pointerEvents="none" style={styles.mapHint}><Text style={styles.caption}>Drag to explore · tap a person</Text></View>
+            onPress={() => zoom(-0.35)} style={[styles.zoomButton, camera.zoom <= 0.75 && styles.disabled]}><Icon name="minus" size={16} color={lv.fg} /></Pressable>
+        </Glass>
+        <Glass variant="thin" radius={999} style={styles.mapHint}><Text style={styles.caption}>Drag to explore · tap a person</Text></Glass>
       </View>
       <View style={styles.legend}>
         {[{ label: "1 step", distance: 1 }, { label: "2 steps", distance: 2 }, { label: "3+ steps", distance: 3 }, { label: "Wider network", distance: null }].map(item => {
@@ -180,18 +184,28 @@ export function EgoGraph({ graph, selectedKey, onSelect }: {
 const styles = StyleSheet.create({
   topline: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   liveLabel: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 },
-  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: lv.thread },
-  caption: { ...type.caption2, color: lv.mutedFg, flexShrink: 1 },
-  recenter: { minHeight: 44, paddingHorizontal: 10, justifyContent: "center", borderRadius: 22, backgroundColor: lv.bg },
-  recenterText: { ...type.caption1, fontWeight: "600", color: lv.fg },
-  canvas: { width: "100%", aspectRatio: GRAPH_WIDTH / GRAPH_HEIGHT, overflow: "hidden", borderRadius: lv.radiusSm, backgroundColor: lv.bg },
-  zoomControls: { position: "absolute", right: 8, bottom: 34, borderRadius: 22, backgroundColor: lv.card, borderWidth: StyleSheet.hairlineWidth, borderColor: lv.border },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: lv.thread },
+  caption: { ...type.caption1, color: lv.mutedFg, flexShrink: 1 },
+  recenter: { flexDirection: "row", alignItems: "center", gap: 5, height: 32, paddingHorizontal: 12, boxShadow: "none" },
+  recenterText: { ...type.footnote, fontWeight: "600", color: lv.fg },
+  // An inset well inside the card: translucent paper with a white edge, corners concentric with the card.
+  canvas: {
+    width: "100%",
+    aspectRatio: GRAPH_WIDTH / GRAPH_HEIGHT,
+    overflow: "hidden",
+    borderRadius: lv.radiusXl - 12,
+    borderCurve: "continuous",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.85)",
+    backgroundColor: "rgba(255,255,255,0.42)",
+    backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%)",
+  },
+  zoomControls: { position: "absolute", right: 10, bottom: 44 },
   zoomButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  zoomText: { ...type.title2, fontWeight: "400", color: lv.fg },
-  controlDivider: { height: StyleSheet.hairlineWidth, backgroundColor: lv.border, marginHorizontal: 10 },
-  mapHint: { position: "absolute", left: 10, bottom: 10 },
+  controlDivider: { height: StyleSheet.hairlineWidth, backgroundColor: lv.separator, marginHorizontal: 10 },
+  mapHint: { position: "absolute", left: 10, bottom: 10, paddingHorizontal: 10, height: 26, justifyContent: "center", boxShadow: "none", pointerEvents: "none" },
   legend: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  explainer: { ...type.caption1, color: lv.mutedFg },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  explainer: { ...type.footnote, color: lv.mutedFg },
   disabled: { opacity: 0.3 },
 });
