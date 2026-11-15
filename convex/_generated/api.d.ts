@@ -8,7 +8,13 @@
  * @module
  */
 
+import type * as ai from "../ai.js";
+import type * as hops from "../hops.js";
+import type * as lib from "../lib.js";
 import type * as openai from "../openai.js";
+import type * as seed from "../seed.js";
+import type * as users from "../users.js";
+import type * as wishes from "../wishes.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +23,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  ai: typeof ai;
+  hops: typeof hops;
+  lib: typeof lib;
   openai: typeof openai;
+  seed: typeof seed;
+  users: typeof users;
+  wishes: typeof wishes;
 }>;
 
 /**
