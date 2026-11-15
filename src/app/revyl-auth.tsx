@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -44,6 +45,7 @@ export default function RevylAuth() {
     (async () => {
       await signIn(deviceId);
       if (request.role === "demo") await claimDemo({ deviceId });
+      await AsyncStorage.setItem("wishwell.onboarded", "1");
       router.replace(request.route);
     })().catch((e: unknown) => setError(errorMessage(e)));
   }, [deviceId]);
