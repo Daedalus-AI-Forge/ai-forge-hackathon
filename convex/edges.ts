@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
 import { LIMITS, avatarFor, clampText, requireUser, userByDevice } from "./lib";
@@ -47,8 +48,25 @@ export const forget = mutation({
       .withIndex("by_ownerUserId", (q) => q.eq("ownerUserId", user._id))
       .take(500);
     for (const e of edges) {
-      if (e.personName.trim().toLowerCase() === key) await ctx.db.delete("edges", e._id);
+      if (e.personName.trim().toLowerCase() === key) {
+        await ctx.db.delete("edges", e._id);
+        await ctx.scheduler.runAfter(0, internal.memory.forget, { edgeId: e._id, ownerUserId: user._id });
+      }
     }
+    return null;
+  },
+});
+
+/** Delete one tag/reason the well remembers. Only the edge's owner may do this. */
+export const forgetEdge = mutation({
+  args: { deviceId: v.string(), edgeId: v.id("edges") },
+  returns: v.null(),
+  handler: async (ctx, { deviceId, edgeId }) => {
+    const user = await requireUser(ctx, deviceId);
+    const edge = await ctx.db.get("edges", edgeId);
+    if (!edge || edge.ownerUserId !== user._id) throw new Error("Not your connection");
+    await ctx.db.delete("edges", edgeId);
+    await ctx.scheduler.runAfter(0, internal.memory.forget, { edgeId, ownerUserId: user._id });
     return null;
   },
 });
