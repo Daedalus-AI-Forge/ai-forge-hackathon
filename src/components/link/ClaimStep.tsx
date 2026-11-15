@@ -15,8 +15,6 @@ import { cleanError, isSixDigitCode } from "./claim/errors";
 import { canPickPhoto, pickPhotoWeb, uploadPhoto } from "./claim/photo";
 
 // Lands in convex/linkAi.ts at merge; typed here so this file compiles before then.
-type VerifyClaimCode = FunctionReference<"action", "public", { hopId: Id<"hops">; phone: string; code: string }, { verified: boolean }>;
-const verifyClaimCodeRef = (api.linkAi as unknown as { verifyClaimCode: VerifyClaimCode }).verifyClaimCode;
 
 export type ClaimStepProps = { hopId: string; deviceId: string; kind: "daily" | "real"; onDone: () => void };
 
@@ -27,7 +25,7 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
   const track = useMutation(api.linkMetrics.track);
   const claimQuestions = useAction(api.linkAi.claimQuestions);
   const sendClaimCode = useAction(api.linkAi.sendClaimCode);
-  const verifyClaimCode = useAction(verifyClaimCodeRef);
+  const verifyClaimCode = useAction(api.linkAi.verifyClaimCode);
 
   const [intro, setIntro] = useState("");
   const [error, setError] = useState<string | null>(null);
