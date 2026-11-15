@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { DButton, DCard, DField } from "@/components/lv/passon/kit";
+import { phoneTail } from "@/lib/contactPick";
 import { copyLink, hopUrl, shareLink, smsLink } from "@/lib/links";
 import { lv } from "@/theme/tokens";
 
@@ -29,6 +30,11 @@ export function ShareLink({
   return (
     <DCard testID={`share-card-${hopId}`}>
       <Text style={styles.to}>{label ?? `For ${name}`}</Text>
+      {to ? (
+        <Text style={styles.muted} testID={`share-sms-to-${hopId}`}>
+          SMS goes to the number ending {phoneTail(to)}
+        </Text>
+      ) : null}
       {message === null && !text ? (
         <View style={styles.drafting}>
           <ActivityIndicator color={lv.thread} />

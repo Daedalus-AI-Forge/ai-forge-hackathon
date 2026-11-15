@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ContactPickButton } from "@/components/ContactPickButton";
+import { ContactSuggestions } from "@/components/ContactSuggestions";
 import { lv } from "@/theme/tokens";
 
 import { LvAvatar, LvCard, LvField } from "./parts";
@@ -27,6 +29,7 @@ export function RecipientCard({
   onRemove?: () => void;
   reasonError: string | null;
 }) {
+  const [nameFocused, setNameFocused] = useState(false);
   const toggle = (tag: string) =>
     onChange({
       ...person,
@@ -42,6 +45,8 @@ export function RecipientCard({
             value={person.name}
             placeholder="Their name"
             onChangeText={(name) => onChange({ ...person, name })}
+            onFocus={() => setNameFocused(true)}
+            onBlur={() => setNameFocused(false)}
           />
         </View>
         {onRemove ? (
@@ -50,6 +55,12 @@ export function RecipientCard({
           </Pressable>
         ) : null}
       </View>
+      <ContactSuggestions
+        testID={`contact-suggest-toss-${index}`}
+        query={person.name}
+        focused={nameFocused}
+        onPick={({ name, phone }) => onChange({ ...person, name, phone: phone ?? undefined })}
+      />
       <ContactPickButton
         testID={`contact-pick-toss-${index}`}
         onPick={({ name, phone }) => onChange({ ...person, name: name || person.name, phone: phone ?? undefined })}

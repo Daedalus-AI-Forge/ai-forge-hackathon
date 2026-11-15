@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DButton, DCard, DChips, DError, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { ContactPickButton } from "@/components/ContactPickButton";
+import { ContactSuggestions } from "@/components/ContactSuggestions";
 import { smsHref } from "@/lib/contactPick";
 import { copyLink } from "@/lib/links";
 import type { FirstScreen } from "@/lib/linkApi.types";
@@ -34,6 +35,7 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
   const [name, setName] = useState("");
   // Picked from Contacts (native only), kept in state: pre-fills the Messages recipient.
   const [phone, setPhone] = useState<string | null>(null);
+  const [nameFocused, setNameFocused] = useState(false);
   const [relation, setRelation] = useState<string | null>("friend");
   const [reason, setReason] = useState("");
   const [vouch, setVouch] = useState<string | null>(null);
@@ -208,7 +210,16 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
     <DCard testID="push-step">
       <Eyebrow>Push it to one person</Eyebrow>
       {hint ? <Text style={styles.hint}>{hint}</Text> : <ActivityIndicator color={lv.thread} />}
-      <DField label="Their name" value={name} onChangeText={setName} placeholder="Ben" maxLength={60} testID="push-name" />
+      <DField label="Their name" value={name} onChangeText={setName} placeholder="Ben" maxLength={60} testID="push-name" onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)} />
+      <ContactSuggestions
+        testID="contact-suggest-push"
+        query={name}
+        focused={nameFocused}
+        onPick={({ name: picked, phone: p }) => {
+          setName(picked);
+          setPhone(p);
+        }}
+      />
       <ContactPickButton
         testID="contact-pick-push"
         onPick={({ name: picked, phone: p }) => {
