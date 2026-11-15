@@ -1,12 +1,13 @@
 import { useAction, useMutation } from "convex/react";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Pool } from "@/components/Pool";
 import { ShareLink } from "@/components/ShareLink";
+import { TextAll } from "@/components/TextAll";
 import { errorMessage } from "@/components/ui";
 import { CoachPanel, type CoachPick } from "@/components/lv/toss/CoachPanel";
 import { Eyebrow, LvButton, LvCard, LvField } from "@/components/lv/toss/parts";
@@ -17,6 +18,7 @@ import { LV_WISH_TYPES, fromApiType, type ApiWishType } from "@/lib/lvWishTypes"
 import { lv } from "@/theme/tokens";
 import { formScrollProps } from "@/components/keyboard";
 import { toE164 } from "@/lib/contactPick";
+import { prefillPeople } from "@/lib/tossPeople";
 
 const MAX_PEOPLE = 3;
 // The contact field holds a phone (picked or typed) or an @handle; only a phone pre-fills SMS.
@@ -42,6 +44,9 @@ export default function Toss() {
   const [error, setError] = useState<string | null>(null);
   const [reasonMissing, setReasonMissing] = useState(false);
   const [links, setLinks] = useState<{ hopId: Id<"hops">; name: string; message: string | null; phone?: string }[]>([]);
+  // Edited share text per hop, so "Text all" sends what the user sees in each card.
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const prefilled = useRef(false);
 
   const needsProfile = !user?.name;
   const typeInfo = LV_WISH_TYPES.find((t) => t.id === fromApiType[type])!;
@@ -71,6 +76,13 @@ export default function Toss() {
       if (blank >= 0) return prev.map((x, i) => (i === blank ? { ...x, name: p.name, reason: x.reason || p.why } : x));
       return [...prev, next].slice(0, MAX_PEOPLE);
     });
+  }
+
+  // First coach answer only: drop its top picks into the slots (up to 3). Later answers are tap-to-add.
+  function onCoachSuggestions(picks: CoachPick[]) {
+    if (prefilled.current || !picks.length) return;
+    prefilled.current = true;
+    setPeople((prev) => prefillPeople(prev, picks, MAX_PEOPLE, emptyPerson));
   }
 
   async function onToss() {
@@ -172,7 +184,7 @@ export default function Toss() {
             <Eyebrow>Your coin</Eyebrow>
             <Text style={styles.wish}>{text}</Text>
           </LvCard>
-          <CoachPanel deviceId={deviceId} wishText={text} onPick={onCoachPick} pickedNames={people.map((p) => p.name)} />
+          <CoachPanel deviceId={deviceId} wishText={text} onPick={onCoachPick} onSuggestions={onCoachSuggestions} pickedNames={people.map((p) => p.name)} />
           <Text style={styles.small}>Pick up to {MAX_PEOPLE} people most likely to know someone — say why in one line.</Text>
           {people.map((p, i) => (
             <RecipientCard
@@ -224,8 +236,23 @@ export default function Toss() {
             <Text style={styles.prophecyText}>It might ripple toward {typeInfo.label}.</Text>
             <Text style={styles.prophecySub}>Send each person their own link. Every link carries the trust chain forward.</Text>
           </View>
+          <TextAll
+            targets={links.map((l) => ({
+              hopId: l.hopId,
+              name: l.name,
+              message: l.message === null ? null : (edits[l.hopId] || l.message),
+              to: l.phone,
+            }))}
+          />
           {links.map((l) => (
-            <ShareLink key={l.hopId} hopId={l.hopId} name={l.name} message={l.message} to={l.phone} />
+            <ShareLink
+              key={l.hopId}
+              hopId={l.hopId}
+              name={l.name}
+              message={l.message}
+              to={l.phone}
+              onTextChange={(t) => setEdits((prev) => (prev[l.hopId] === t ? prev : { ...prev, [l.hopId]: t }))}
+            />
           ))}
           <LvButton title="Back to the pool" testID="toss-done" variant="ink" onPress={() => router.replace("/")} />
         </>
