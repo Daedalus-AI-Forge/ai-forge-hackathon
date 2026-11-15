@@ -50,6 +50,10 @@ const firstScreenValidator = v.object({
       action: v.union(v.literal("claim"), v.literal("push")),
       nowRipples: v.number(),
       lastCity: v.union(v.string(), v.null()),
+      // Push only, and only to the device that pushed: lets it resend a message it never sent.
+      childHopId: v.optional(v.string()),
+      childName: v.optional(v.string()),
+      vouch: v.optional(v.string()),
     }),
   ),
 });
@@ -151,6 +155,18 @@ export const firstScreen = query({
         nowRipples: ripples,
         lastCity: deepestWithCity?.city ?? null,
       };
+      if (handled.action === "push") {
+        // isMine guarantees this is the pushing device; other viewers never get the child link.
+        const child = await ctx.db
+          .query("hops")
+          .withIndex("by_parentHopId", (q) => q.eq("parentHopId", hop._id))
+          .first();
+        if (child) {
+          handled.childHopId = child._id;
+          handled.childName = child.holderName;
+          if (child.introVouch) handled.vouch = child.introVouch;
+        }
+      }
     } else if (wish.status === "found" || wish.status === "granted" || all.some((h) => h.action === "its_me")) {
       state = "claimed";
     } else if (wish.status === "faded" || wish.expiresAt < Date.now()) {
