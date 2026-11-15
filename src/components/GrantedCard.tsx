@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
-import { Avatar, Button } from "@/components/ui";
+import { DAvatar, DButton } from "@/components/lv/passon/kit";
 import { cardUrl, shareLink } from "@/lib/links";
-import { colors, mono } from "@/lib/theme";
+import { lv } from "@/theme/tokens";
 
 type Stop = { name: string; city: string | null; avatar: string };
 
@@ -18,10 +18,10 @@ export type Ending = {
 };
 
 const TIER = {
-  gold: { label: "Gold wish", color: "#D4A017" },
-  silver: { label: "Silver wish", color: "#8E9AAF" },
-  bronze: { label: "Bronze wish", color: "#B87333" },
-  red: { label: "Red wish", color: colors.red },
+  gold: { label: "Gold wish", color: lv.gold },
+  silver: { label: "Silver wish", color: lv.silver },
+  bronze: { label: "Bronze wish", color: lv.bronze },
+  red: { label: "Red wish", color: lv.accent },
 } as const;
 
 /** The Wish Granted polaroid: photo, tier, mini ripple chain and the 2-sentence story. */
@@ -50,7 +50,7 @@ export function GrantedCard({ wishId, ending, showThankYou = true }: { wishId: s
           <View key={i} style={styles.stopRow}>
             {i > 0 ? <View style={styles.line} /> : null}
             <View style={styles.stop}>
-              <Avatar name={s.name} color={s.avatar} size={26} />
+              <DAvatar name={s.name} color={s.avatar} size={26} />
               <Text style={styles.stopName} numberOfLines={1}>
                 {s.name}
               </Text>
@@ -76,10 +76,10 @@ export function GrantedCard({ wishId, ending, showThankYou = true }: { wishId: s
           <Text style={styles.thanksText}>“{ending.thankYou}”</Text>
         </View>
       ) : null}
-      <Button
+      <DButton
         testID="granted-share"
         title="Share the card"
-        variant="secondary"
+        variant="ghost"
         onPress={async () => {
           const result = await shareLink(`Wish granted ✨ ${ending.story}`, cardUrl(wishId));
           if (result === "copied") setNote("Copied! Paste it anywhere.");
@@ -104,22 +104,22 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
-  photo: { width: "100%", aspectRatio: 1, borderRadius: 2, backgroundColor: colors.water },
+  photo: { width: "100%", aspectRatio: 1, borderRadius: 2, backgroundColor: lv.muted },
   noPhoto: { alignItems: "center", justifyContent: "center" },
   badgeRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  granted: { fontSize: 20, fontWeight: "800", color: colors.red },
-  tier: { color: "#fff", fontWeight: "800", fontSize: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: "hidden" },
-  wish: { fontSize: 15, fontWeight: "700", color: colors.ink },
+  granted: { fontSize: 20, fontWeight: "800", color: lv.thread },
+  tier: { color: lv.fg, fontWeight: "800", fontSize: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: "hidden" },
+  wish: { fontSize: 15, fontWeight: "700", color: lv.fg },
   chain: { flexDirection: "row", alignItems: "flex-start", flexWrap: "wrap", rowGap: 8 },
   stopRow: { flexDirection: "row", alignItems: "center" },
-  line: { width: 18, height: 2, backgroundColor: colors.red, marginTop: -26, opacity: 0.6 },
+  line: { width: 18, height: 2, backgroundColor: lv.thread, marginTop: -26, opacity: 0.6 },
   stop: { alignItems: "center", width: 70, gap: 2 },
-  stopName: { fontSize: 12, fontWeight: "700", color: colors.ink },
-  stopCity: { fontSize: 11, color: colors.muted },
-  meta: { fontFamily: mono, fontSize: 12, color: colors.red, fontWeight: "700" },
-  story: { fontSize: 16, lineHeight: 23, color: colors.ink, fontStyle: "italic" },
-  thanks: { backgroundColor: colors.cream, borderRadius: 12, padding: 12, gap: 4 },
-  thanksLabel: { fontSize: 12, fontWeight: "700", color: colors.muted },
-  thanksText: { fontSize: 15, color: colors.ink, lineHeight: 21 },
-  note: { color: colors.muted, fontSize: 14, textAlign: "center" },
+  stopName: { fontSize: 12, fontWeight: "700", color: lv.fg },
+  stopCity: { fontSize: 11, color: lv.mutedFg },
+  meta: { fontFamily: lv.font.mono, fontSize: 12, color: lv.thread, fontWeight: "700" },
+  story: { fontSize: 16, lineHeight: 23, color: lv.fg, fontStyle: "italic" },
+  thanks: { backgroundColor: lv.bg, borderRadius: 12, padding: 12, gap: 4 },
+  thanksLabel: { fontSize: 12, fontWeight: "700", color: lv.mutedFg },
+  thanksText: { fontSize: 15, color: lv.fg, lineHeight: 21 },
+  note: { color: lv.mutedFg, fontSize: 14, textAlign: "center" },
 });

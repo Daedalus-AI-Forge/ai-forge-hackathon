@@ -5,8 +5,9 @@ import { Image, StyleSheet, Switch, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { Button, Card, ErrorText, Muted, errorMessage } from "@/components/ui";
-import { colors } from "@/lib/theme";
+import { errorMessage } from "@/components/ui";
+import { DButton, DCard, DError, Sub } from "@/components/lv/passon/kit";
+import { lv } from "@/theme/tokens";
 
 type Party = { deviceId: string } | { hopId: Id<"hops"> };
 type Photo = { url: string | null; by: "wisher" | "match"; metInPerson: boolean } | null;
@@ -66,51 +67,51 @@ export function PhotoPanel({
 
   const theirs = photo && photo.by !== me;
   return (
-    <Card testID="photo-panel">
+    <DCard testID="photo-panel">
       <Text style={styles.title}>{theirs ? `${otherName} added your photo` : "Add a photo together"}</Text>
       {!photo ? (
-        <Muted>
+        <Sub>
           Meet {otherName} online or in person, then add a selfie or a video-call screenshot.
           {days !== null ? ` ${days === 1 ? "1 day" : `${days} days`} left to meet.` : ""}
-        </Muted>
+        </Sub>
       ) : null}
       {photo?.url ? <Image testID="photo-preview" source={{ uri: photo.url }} style={styles.preview} resizeMode="cover" /> : null}
       {theirs ? (
         <>
-          <Muted>{photo.metInPerson ? "You met in person." : "You met online."} Is this you two?</Muted>
-          <ErrorText error={error} />
-          <Button testID="photo-confirm" title="Yes, that's us!" busy={busy} onPress={() => run(() => confirmPhoto({ wishId, ...party }))} />
+          <Sub>{photo.metInPerson ? "You met in person." : "You met online."} Is this you two?</Sub>
+          <DError error={error} />
+          <DButton testID="photo-confirm" title="Yes, that's us!" busy={busy} onPress={() => run(() => confirmPhoto({ wishId, ...party }))} />
         </>
       ) : (
         <>
-          {photo ? <Muted>Waiting for {otherName} to confirm. Then everyone gets the ending.</Muted> : null}
+          {photo ? <Sub>Waiting for {otherName} to confirm. Then everyone gets the ending.</Sub> : null}
           <View style={styles.toggle}>
             <Text style={styles.toggleText}>We met in person</Text>
             <Switch
               testID="photo-met-in-person"
               value={metInPerson}
               onValueChange={setMetInPerson}
-              trackColor={{ true: colors.red, false: colors.line }}
+              trackColor={{ true: lv.thread, false: lv.border }}
               thumbColor="#fff"
             />
           </View>
-          <ErrorText error={error} />
-          <Button
+          <DError error={error} />
+          <DButton
             testID="photo-upload"
             title={photo ? "Use a different photo" : "Pick a photo"}
-            variant={photo ? "secondary" : "primary"}
+            variant={photo ? "ghost" : "thread"}
             busy={busy}
             onPress={() => run(pickAndUpload)}
           />
         </>
       )}
-    </Card>
+    </DCard>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 18, fontWeight: "800", color: colors.ink },
-  preview: { width: "100%", aspectRatio: 1, borderRadius: 14, backgroundColor: colors.water },
+  title: { fontSize: 18, fontWeight: "800", color: lv.fg },
+  preview: { width: "100%", aspectRatio: 1, borderRadius: 14, backgroundColor: lv.muted },
   toggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  toggleText: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  toggleText: { fontSize: 15, fontWeight: "600", color: lv.fg },
 });

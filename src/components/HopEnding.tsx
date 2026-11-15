@@ -6,8 +6,9 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { GrantedCard } from "@/components/GrantedCard";
 import { PhotoPanel } from "@/components/PhotoPanel";
-import { Button, Card, ErrorText, Field, Muted, errorMessage } from "@/components/ui";
-import { colors } from "@/lib/theme";
+import { errorMessage } from "@/components/ui";
+import { DButton, DCard, DError, DField, Sub } from "@/components/lv/passon/kit";
+import { lv } from "@/theme/tokens";
 
 /** The ending as one link holder sees it: their verdict, the locked "waiting" state, or the reveal. */
 export function HopEnding({ hopId }: { hopId: Id<"hops"> }) {
@@ -21,28 +22,28 @@ export function HopEnding({ hopId }: { hopId: Id<"hops"> }) {
 
   if (data.role === "pending") {
     return (
-      <Card testID="ending-pending">
+      <DCard testID="ending-pending">
         <Text style={styles.title}>Sent to {data.wisherName}</Text>
-        <Muted>They'll see your intro and the vouches above you. Fingers crossed!</Muted>
-      </Card>
+        <Sub>They'll see your intro and the vouches above you. Fingers crossed!</Sub>
+      </DCard>
     );
   }
 
   if (data.role === "rejected" && data.status === "traveling") {
     return (
-      <Card testID="ending-not-quite">
+      <DCard testID="ending-not-quite">
         <Text style={styles.title}>Not quite this time</Text>
-        <Muted>{data.wisherName} is still looking, and the wish keeps traveling. Thanks for raising your hand!</Muted>
-      </Card>
+        <Sub>{data.wisherName} is still looking, and the wish keeps traveling. Thanks for raising your hand!</Sub>
+      </DCard>
     );
   }
 
   if (data.status === "faded") {
     return (
-      <Card testID="ending-faded">
+      <DCard testID="ending-faded">
         <Text style={styles.title}>This wish has faded</Text>
-        <Muted>Thanks for being part of the ripple.</Muted>
-      </Card>
+        <Sub>Thanks for being part of the ripple.</Sub>
+      </DCard>
     );
   }
 
@@ -50,25 +51,25 @@ export function HopEnding({ hopId }: { hopId: Id<"hops"> }) {
 
   if (data.meetMissed) {
     return (
-      <Card testID="ending-missed">
+      <DCard testID="ending-missed">
         <Text style={styles.title}>The ending stays locked</Text>
-        <Muted>They didn't add a photo within 7 days. Thanks for being part of the ripple.</Muted>
-      </Card>
+        <Sub>They didn't add a photo within 7 days. Thanks for being part of the ripple.</Sub>
+      </DCard>
     );
   }
 
   if (data.role !== "match") {
     return (
-      <Card testID="ending-locked">
+      <DCard testID="ending-locked">
         <Text style={styles.title}>Found! Waiting for them to meet…</Text>
-        <Muted>The ending unlocks for everyone on the wish once they add a photo together.</Muted>
-      </Card>
+        <Sub>The ending unlocks for everyone on the wish once they add a photo together.</Sub>
+      </DCard>
     );
   }
 
   return (
     <>
-      <Card testID="ending-match">
+      <DCard testID="ending-match">
         <Text style={styles.title}>{data.wisherName} said yes, it's you! 🎉</Text>
         {data.wisherContact ? (
           <Text testID="ending-wisher-contact" style={styles.contact} selectable>
@@ -76,18 +77,18 @@ export function HopEnding({ hopId }: { hopId: Id<"hops"> }) {
           </Text>
         ) : null}
         {data.hasOwnContact ? (
-          <Muted>{data.wisherName} has your contact too.</Muted>
+          <Sub>{data.wisherName} has your contact too.</Sub>
         ) : (
           <>
-            <Field
+            <DField
               label={`Leave one contact for ${data.wisherName}`}
               value={contact}
               onChangeText={setContact}
               placeholder="Phone, WeChat or Instagram"
               testID="ending-match-contact"
             />
-            <ErrorText error={error} />
-            <Button
+            <DError error={error} />
+            <DButton
               testID="ending-match-contact-save"
               title="Share my contact"
               disabled={!contact.trim()}
@@ -95,7 +96,7 @@ export function HopEnding({ hopId }: { hopId: Id<"hops"> }) {
             />
           </>
         )}
-      </Card>
+      </DCard>
       <PhotoPanel
         wishId={data.wishId}
         party={{ hopId }}
@@ -109,6 +110,6 @@ export function HopEnding({ hopId }: { hopId: Id<"hops"> }) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 18, fontWeight: "800", color: colors.ink },
-  contact: { fontSize: 16, fontWeight: "700", color: colors.red },
+  title: { fontSize: 18, fontWeight: "800", color: lv.fg },
+  contact: { fontSize: 16, fontWeight: "700", color: lv.thread },
 });

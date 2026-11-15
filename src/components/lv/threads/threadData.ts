@@ -96,9 +96,9 @@ export function badgesFor(w: WishCard) {
 }
 
 export const STATUS_LABEL: Record<WishCard["status"], string> = {
-  traveling: "Live",
-  found: "Waiting to meet",
-  granted: "Completed",
+  traveling: "Drifting",
+  found: "Landed",
+  granted: "Granted",
   faded: "Faded",
 };
 
@@ -110,8 +110,8 @@ export const TIER_LABEL: Record<NonNullable<WishCard["tier"]>, string> = {
 };
 
 export function actionLabel(h: Holder) {
-  if (h.depth === 0) return "Wish";
-  if (h.acted === "its_me") return "It's me";
-  if (h.acted === "group") return `Ripple ${h.depth} · via group chat`;
-  return `Ripple ${h.depth}`;
+  if (h.depth === 0) return "Coin";
+  if (h.acted === "its_me") return "That's me";
+  if (h.acted === "group") return `Hop ${h.depth} · via group chat`;
+  return `Hop ${h.depth}`;
 }

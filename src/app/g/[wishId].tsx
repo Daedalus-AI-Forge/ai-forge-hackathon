@@ -3,10 +3,9 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { GetTheApp } from "@/components/GetTheApp";
 import { GrantedCard } from "@/components/GrantedCard";
-import { Muted } from "@/components/ui";
-import { colors } from "@/lib/theme";
+import { Sub } from "@/components/lv/passon/kit";
+import { lv } from "@/theme/tokens";
 
 /** Shareable, read-only Wish Granted card (no login, no contacts). */
 export default function SharedCard() {
@@ -15,12 +14,12 @@ export default function SharedCard() {
   if (ending === undefined) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.red} />
+        <ActivityIndicator color={lv.thread} />
       </View>
     );
   }
   return (
-    <ScrollView testID="shared-card-screen" style={{ backgroundColor: colors.cream }} contentContainerStyle={styles.container}>
+    <ScrollView testID="shared-card-screen" style={{ backgroundColor: lv.bg }} contentContainerStyle={styles.container}>
       <Stack.Screen options={{ title: "Wish granted" }} />
       <Text style={styles.brand}>Wishwell</Text>
       {ending ? (
@@ -28,17 +27,16 @@ export default function SharedCard() {
       ) : (
         <View style={styles.center}>
           <Text style={styles.title}>Not granted yet</Text>
-          <Muted>This card appears once the wish comes true.</Muted>
+          <Sub>This card appears once the wish comes true.</Sub>
         </View>
       )}
-      <GetTheApp />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24, backgroundColor: colors.cream },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24, backgroundColor: lv.bg },
   container: { padding: 20, gap: 18, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 48 },
-  brand: { fontSize: 20, fontWeight: "800", color: colors.red, textAlign: "center", marginTop: 8 },
-  title: { fontSize: 22, fontWeight: "800", color: colors.ink },
+  brand: { fontSize: 20, fontWeight: "800", color: lv.thread, textAlign: "center", marginTop: 8 },
+  title: { fontSize: 22, fontWeight: "800", color: lv.fg },
 });
