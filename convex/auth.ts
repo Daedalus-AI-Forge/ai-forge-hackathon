@@ -6,6 +6,7 @@ import type { DataModel } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { AppleNative } from "./appleProvider";
 import { allowedRedirect } from "./authRedirect";
+import { PhoneOtp } from "./phoneProvider";
 import { cleanDeviceId, createOrUpdateUser, newUserFields } from "./authUsers";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
@@ -13,6 +14,8 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
     // Reads AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET from the deployment env.
     Google,
     AppleNative,
+    // `phoneAuth.sendCode({ phone })`, then `signIn("phone", { phone, code })`.
+    PhoneOtp,
     // `signIn("anonymous", { deviceId })` gives the current no-login device
     // identity a real auth session (see createOrUpdateUser).
     Anonymous<DataModel>({
