@@ -1,10 +1,9 @@
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { glass } from "@/components/lv/home/glass";
-import { DButton } from "@/components/lv/passon/kit";
 import { errorMessage } from "@/components/ui";
 import { lv } from "@/theme/tokens";
 
@@ -16,7 +15,7 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
   const join = useMutation(api.daily.join);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const glow = useRef(new Animated.Value(0)).current;
+  const [glow] = useState(() => new Animated.Value(0));
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -66,24 +65,17 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
         style={({ pressed }) => [styles.card, glass.light, pushed && styles.cardPushed, pressed && { opacity: 0.85 }]}
       >
         {pushed ? (
-          <Text style={styles.pushed}>Pushed ✓ — it's drifting</Text>
+          <Text style={styles.pushed}>Pushed ✓ — it’s drifting</Text>
         ) : (
           <>
             <View style={styles.pill}>
-              <Text style={styles.pillText}>Today's boat</Text>
+              <Text style={styles.pillText}>Today’s boat</Text>
             </View>
             <Text style={styles.title}>{today.title}</Text>
             <Text style={styles.hint}>Clue: {today.hint}</Text>
-            <Text style={styles.players}>{today.players} pushing today</Text>
-            <DButton
-              title={busy ? "Opening…" : "Open"}
-              variant="thread"
-              size="lg"
-              busy={busy}
-              disabled={!today.open}
-              testID="today-boat-open"
-              onPress={() => void play()}
-            />
+            <Text style={styles.players}>
+              {busy ? "Opening…" : `${today.players} pushing today · Tap to open ›`}
+            </Text>
           </>
         )}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -99,7 +91,7 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.fg },
   title: { fontSize: 22, fontWeight: "700", color: lv.fg, lineHeight: 28, marginTop: 4 },
   hint: { fontSize: 15, color: lv.mutedFg, marginTop: 2 },
-  players: { fontSize: 12, color: lv.mutedFg, marginBottom: 10 },
+  players: { fontSize: 12, color: lv.mutedFg, marginTop: 4 },
   pushed: { fontSize: 15, fontWeight: "600", color: lv.mutedFg, paddingVertical: 6 },
   error: { color: lv.destructive, fontSize: 13 },
 });
