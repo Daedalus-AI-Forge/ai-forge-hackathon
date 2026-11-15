@@ -58,6 +58,7 @@ test("a normal wish still needs a vouch, and the next daily wish targets the lea
   await player(t, "dev_mia", "Mia");
   const { hopIds } = await t.mutation(api.wishes.toss, {
     deviceId: "dev_mia",
+    mode: "fun",
     type: "local",
     text: "A local in Tokyo",
     name: "Mia",
@@ -91,6 +92,7 @@ test("stats count real hops", async () => {
   await player(t, "dev_mia", "Mia");
   await t.mutation(api.wishes.toss, {
     deviceId: "dev_mia",
+    mode: "fun",
     type: "local",
     text: "A local in Tokyo",
     name: "Mia",

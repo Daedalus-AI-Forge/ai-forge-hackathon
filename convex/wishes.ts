@@ -9,12 +9,15 @@ import {
   avatarFor,
   clampText,
   cleanTags,
+  passDetails,
   recordEdges,
   requireUser,
   rippleSummary,
   userByDevice,
   wishHops,
+  wishModeOf,
 } from "./lib";
+import { wishMode } from "./graphShared";
 import { wishType } from "./schema";
 
 async function wishCard(ctx: QueryCtx, wish: Doc<"wishes">) {
@@ -24,6 +27,7 @@ async function wishCard(ctx: QueryCtx, wish: Doc<"wishes">) {
     _id: wish._id,
     text: wish.text,
     type: wish.type,
+    mode: wishModeOf(wish),
     status: wish.status,
     expiresAt: wish.expiresAt,
     tier: wish.tier ?? null,
@@ -96,19 +100,33 @@ export const toss = mutation({
     text: v.string(),
     name: v.string(),
     city: v.string(),
-    recipients: v.array(v.object({ name: v.string(), tags: v.array(v.string()) })),
+    mode: v.optional(wishMode),
+    recipients: v.array(
+      v.object({
+        name: v.string(),
+        reason: v.optional(v.string()),
+        contact: v.optional(v.string()),
+        tags: v.array(v.string()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx, args.deviceId);
     const text = clampText(args.text, LIMITS.wish);
-    const recipients = args.recipients
+    const mode = args.mode ?? "serious";
+    const picked = args.recipients
       .slice(0, MAX_PASSES + 1)
-      .map((r) => ({ name: clampText(r.name, LIMITS.name), tags: cleanTags(r.tags) }))
+      .map((r) => ({ ...r, name: clampText(r.name, LIMITS.name) }))
       .filter((r) => r.name);
     if (!text) throw new Error("Write your wish first");
-    if (recipients.length === 0 || recipients.length > MAX_PASSES) {
+    if (picked.length === 0 || picked.length > MAX_PASSES) {
       throw new Error("Pick 1 to 3 people");
     }
+    const recipients = picked.map((r) => ({
+      name: r.name,
+      tags: cleanTags(r.tags),
+      ...passDetails(mode, r),
+    }));
     if (user.wishesLeft < 1) throw new Error("You're out of wishes. Help a friend to earn one!");
     await ctx.db.patch("users", user._id, {
       wishesLeft: user.wishesLeft - 1,
@@ -119,6 +137,7 @@ export const toss = mutation({
     const wishId = await ctx.db.insert("wishes", {
       creatorId: user._id,
       type: args.type,
+      mode,
       text,
       status: "traveling",
       expiresAt: now + WISH_LIFETIME_MS,
@@ -145,6 +164,8 @@ export const toss = mutation({
         owner: { userId: user._id, name: clampText(args.name, LIMITS.name) || user.name },
         personName: r.name,
         tags: r.tags,
+        reason: r.reason,
+        contact: r.contact,
         wishId,
         hopId,
       });

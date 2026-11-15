@@ -150,6 +150,7 @@ describe("input limits", () => {
     const tags = Array.from({ length: 9 }, (_, i) => `tag${i}`.padEnd(50, "x"));
     const { hopIds } = await t.mutation(api.wishes.toss, {
       deviceId: "dev_mia",
+      mode: "fun",
       type: "local",
       text: "w".repeat(5000),
       name: "Mia",
@@ -158,6 +159,7 @@ describe("input limits", () => {
     });
     await t.mutation(api.wishes.toss, {
       deviceId: "dev_mia",
+      mode: "fun",
       type: "local",
       text: "again",
       name: "Mia",
@@ -242,6 +244,7 @@ describe("daily-wish API hardening", () => {
     const tags = Array.from({ length: 8 }, (_, i) => `${i}${"t".repeat(50)}`);
     const { hopIds } = await t.mutation(api.wishes.toss, {
       deviceId: "dev_mia",
+      mode: "fun",
       type: "local",
       text: "A local in Tokyo",
       name: "Mia",
@@ -263,6 +266,7 @@ describe("daily-wish API hardening", () => {
     await mia(t);
     await t.mutation(api.wishes.toss, {
       deviceId: "dev_mia",
+      mode: "fun",
       type: "local",
       text: "A local in Tokyo",
       name: "Mia",
@@ -297,6 +301,7 @@ describe("daily-wish API hardening", () => {
     await mia(t);
     await t.mutation(api.wishes.toss, {
       deviceId: "dev_mia",
+      mode: "fun",
       type: "local",
       text: "A local in Tokyo",
       name: "Mia",

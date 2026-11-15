@@ -1,7 +1,9 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { CONTACT_MAX, REASON_MAX, type WishMode } from "./graphShared";
 
 export const MAX_PASSES = 3;
 export const MAX_RIPPLES = 6;
@@ -76,6 +78,29 @@ export async function wishHops(ctx: QueryCtx, wishId: Id<"wishes">) {
     .take(200);
 }
 
+export const REASON_REQUIRED = "Add one line on why you picked them";
+
+/** A wish's effective mode: daily wishes are always fun; missing = serious. */
+export function wishModeOf(wish: Pick<Doc<"wishes">, "mode" | "daily">): WishMode {
+  if (wish.daily) return "fun";
+  return wish.mode ?? "serious";
+}
+
+/**
+ * Clamp a recipient's reason/contact; a serious wish needs a non-empty reason.
+ * Empty strings become undefined so edge rows never store "".
+ */
+export function passDetails(mode: WishMode, r: { reason?: string; contact?: string }) {
+  const reason = clampText(r.reason ?? "", REASON_MAX) || undefined;
+  const contact = clampText(r.contact ?? "", CONTACT_MAX) || undefined;
+  if (mode === "serious" && !reason) throw new Error(REASON_REQUIRED);
+  return { reason, contact };
+}
+
+/**
+ * Write one edge row per tag (plus the daily tag) and schedule its async
+ * Supermemory ingest. Returns the inserted edge ids.
+ */
 export async function recordEdges(
   ctx: MutationCtx,
   args: {
@@ -83,17 +108,22 @@ export async function recordEdges(
     personName: string;
     tags: string[];
     dailyTag?: string;
+    reason?: string;
+    contact?: string;
     wishId: Id<"wishes">;
     hopId: Id<"hops">;
   },
-) {
+): Promise<Id<"edges">[]> {
   // Callers clamp too; this is the last line so no edge row is ever unbounded.
   const personName = clampText(args.personName, LIMITS.name);
-  if (!personName) return;
+  if (!personName) return [];
+  const reason = clampText(args.reason ?? "", REASON_MAX) || undefined;
+  const contact = clampText(args.contact ?? "", CONTACT_MAX) || undefined;
   const tags = new Map<string, "daily" | "pick">(cleanTags(args.tags).map((t) => [t, "pick"]));
   if (args.dailyTag) tags.set(clampText(args.dailyTag, 30), "daily");
+  const edgeIds: Id<"edges">[] = [];
   for (const [tag, source] of tags) {
-    await ctx.db.insert("edges", {
+    const edgeId = await ctx.db.insert("edges", {
       ownerUserId: args.owner.userId,
       ownerName: clampText(args.owner.name, LIMITS.name),
       personName,
@@ -101,8 +131,13 @@ export async function recordEdges(
       source,
       wishId: args.wishId,
       hopId: args.hopId,
+      reason,
+      contact,
     });
+    edgeIds.push(edgeId);
+    await ctx.scheduler.runAfter(0, internal.memory.ingest, { edgeId });
   }
+  return edgeIds;
 }
 
 export function rippleSummary(hops: Doc<"hops">[]) {

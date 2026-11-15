@@ -9,11 +9,14 @@ import {
   avatarFor,
   clampText,
   cleanTags,
+  passDetails,
   recordEdges,
   rippleSummary,
   userByDevice,
   wishHops,
+  wishModeOf,
 } from "./lib";
+import { wishMode } from "./graphShared";
 import { wishType } from "./schema";
 
 async function chainAbove(ctx: QueryCtx, hop: Doc<"hops">) {
@@ -70,6 +73,7 @@ const pageValidator = v.union(
       _id: v.id("wishes"),
       text: v.string(),
       type: wishType,
+      mode: wishMode,
       status: v.union(v.literal("traveling"), v.literal("found"), v.literal("granted"), v.literal("faded")),
       expiresAt: v.number(),
       creatorName: v.string(),
@@ -149,6 +153,7 @@ export const page = query({
         _id: wish._id,
         text: wish.text,
         type: wish.type,
+        mode: wishModeOf(wish),
         status: wish.status,
         expiresAt: wish.expiresAt,
         creatorName: creator?.name ?? "Someone",
@@ -242,6 +247,8 @@ export const passTo = mutation({
   args: {
     parentHopId: v.id("hops"),
     name: v.string(),
+    reason: v.optional(v.string()),
+    contact: v.optional(v.string()),
     tags: v.array(v.string()),
   },
   handler: async (ctx, args) => {
@@ -258,6 +265,8 @@ export const passTo = mutation({
     if (existing.length >= limit) throw new Error("You've passed this wish to " + limit + " already");
     const name = clampText(args.name, LIMITS.name);
     if (!viaGroup && !name) throw new Error("Who are you passing it to?");
+    // A group-chat pass names no one, so there is no pick to explain.
+    const details = viaGroup ? {} : passDetails(wishModeOf(wish), args);
     const childId = await ctx.db.insert("hops", {
       wishId: wish._id,
       parentHopId: hop._id,
@@ -272,6 +281,7 @@ export const passTo = mutation({
         personName: name,
         tags: cleanTags(args.tags),
         dailyTag: wish.daily && stepAt(wish.daily, hop.depth).tag,
+        ...details,
         wishId: wish._id,
         hopId: childId,
       });
