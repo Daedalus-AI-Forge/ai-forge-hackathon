@@ -4,7 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { hasAccountLogin, mergeUserInto } from "./authUsers";
 import { avatarFor, deviceUser, userByDevice } from "./lib";
 
-/** Auth status for the client: is this user backed by a Google/Apple account? */
+/** Auth status for the client: is this user backed by a Google/Apple/phone account? */
 export const account = query({
   args: {},
   handler: async (ctx) => {
@@ -16,6 +16,7 @@ export const account = query({
       signedIn: true as const,
       hasAccount: await hasAccountLogin(ctx, userId),
       email: user.email ?? null,
+      phone: user.phone ?? null,
     };
   },
 });
@@ -25,7 +26,7 @@ export const account = query({
  * if this device's identity is a different (device/anonymous) user, its
  * wishes, hops, vouches, network, stars and wishes left move onto the
  * signed-in user and the old row is deleted. Never merges another real
- * Google/Apple account.
+ * Google/Apple/phone account.
  */
 export const linkDevice = mutation({
   args: { deviceId: v.string() },
