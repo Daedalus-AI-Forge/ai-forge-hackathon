@@ -29,6 +29,7 @@ import type * as openai from "../openai.js";
 import type * as phoneAuth from "../phoneAuth.js";
 import type * as phoneLimits from "../phoneLimits.js";
 import type * as phoneProvider from "../phoneProvider.js";
+import type * as pool from "../pool.js";
 import type * as rewards from "../rewards.js";
 import type * as seed from "../seed.js";
 import type * as sms from "../sms.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   phoneAuth: typeof phoneAuth;
   phoneLimits: typeof phoneLimits;
   phoneProvider: typeof phoneProvider;
+  pool: typeof pool;
   rewards: typeof rewards;
   seed: typeof seed;
   sms: typeof sms;

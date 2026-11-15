@@ -22,8 +22,8 @@ export default function ThreadDetail() {
   const w = wishes?.find((x) => x._id === id);
 
   const back = (
-    <Pressable testID="thread-back" accessibilityRole="button" onPress={() => (router.canGoBack() ? router.back() : router.replace("/wishes"))} hitSlop={12}>
-      <Text style={styles.back}>‹ My wishes</Text>
+    <Pressable testID="thread-back" accessibilityRole="button" onPress={() => (router.canGoBack() ? router.back() : router.replace("/voyages"))} hitSlop={12}>
+      <Text style={styles.back}>‹ Voyages</Text>
     </Pressable>
   );
 
@@ -49,13 +49,13 @@ export default function ThreadDetail() {
       <ScrollView testID="thread-screen" contentContainerStyle={styles.container}>
         {back}
         <Text style={styles.headline}>
-          {w.creatorName} wants to <Text style={{ color: lv.thread }}>{w.text}</Text>
+          Your coin: <Text style={{ color: lv.thread }}>{w.text}</Text>
         </Text>
 
         <View style={[styles.card, { padding: 12 }]}>
           <ThreadMap testID="thread-map" holders={w.holders} highlightName={w.creatorName} />
           <View style={styles.stats}>
-            <Stat value={String(w.ripples)} label="Ripples" />
+            <Stat value={String(w.ripples)} label="Hops" />
             <Stat value={Math.round(totalKm(w.holders)).toLocaleString()} label="Km" />
             <Stat value={w.status === "traveling" && left > 0 ? countdown(w.expiresAt, now) : "—"} label="Left" />
           </View>
@@ -63,9 +63,9 @@ export default function ThreadDetail() {
 
         {w.status === "found" ? (
           <View style={[styles.card, styles.center, { borderColor: lv.thread }]}>
-            <Text style={styles.cardTitle}>Waiting for them to meet…</Text>
+            <Text style={styles.cardTitle}>Someone says they're who you're looking for</Text>
             <Text style={[styles.muted, { textAlign: "center" }]}>
-              Someone said "It's me". The ending stays locked until a photo together is shared.
+              Confirming them comes next — you'll see their intro and the vouch chain here.
             </Text>
           </View>
         ) : null}
