@@ -13,6 +13,27 @@
   `npx expo install <pkg>`. Native modules need a dev build (`eas build --profile development`), not Expo Go.
   Never hand-edit `ios/` or `android/` (generated). Check with `npm run typecheck` and `npx expo-doctor`.
 
+## Capy workflow (design → plan → subagent-driven build)
+
+Product spec: `docs/wishwell-spec.md`. For every new feature or build-order step:
+
+1. **Design — `$brainstorming`** (`.agents/skills/brainstorming`). Hackathon mode: the spec already answers
+   most questions, so ask only what it doesn't, all in ONE message with a recommended default for each;
+   if nobody answers, proceed with the defaults. Skip the visual companion server. Save the design to
+   `docs/plans/<step>-design.md`.
+2. **Plan — `$writing-plans`** (`.agents/skills/writing-plans`). Save to `docs/plans/<step>-plan.md`,
+   tasks small enough for one subagent each.
+3. **Build — `$subagent-driven-development`** (`.agents/skills/subagent-driven-development`):
+   - Implementer subagents run on **`deepseek/deepseek-v4-flash-0731`** (cheapest model), on **fresh
+     machines**, **stacked** when tasks touch overlapping files. Each subagent prompt must be self-contained
+     (spec excerpt, file paths, Convex guidelines pointer, acceptance check).
+   - The parent thread keeps the default model and does the per-task review; fix or re-brief on failure.
+     If DeepSeek fails the same task twice, redo it on the parent model rather than burning time.
+   - Every task ends with `npx tsc --noEmit` passing.
+- These skills were copied from superpowers (MIT, see `LICENSE-superpowers`). They reference other
+  `superpowers:*` skills that aren't in this repo: skip `using-git-worktrees` (Capy fresh machines already
+  isolate work) and use the PR flow above instead of `finishing-a-development-branch` / `executing-plans`.
+
 <!-- convex-ai-start -->
 
 This project uses [Convex](https://convex.dev) as its backend.
