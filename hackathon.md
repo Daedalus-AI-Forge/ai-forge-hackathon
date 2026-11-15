@@ -99,3 +99,15 @@ with one-line reasons, and a second demo user (device id `dev_demo_fresh`) has
 reason rule on serious wishes, grounded coach suggestions and forgetting an
 edge against the dev deployment, then reseeds (`convex/seed.ts`,
 `convex/seed.test.ts`, `scripts/graph-smoke.mjs`, `docs/api/graph-coach.md`).
+
+### 2026-11-15 - capy/paper-boat-ux
+Reworked the app around one loop: push a paper boat a day, see who it met the
+next morning. Three tabs (Pool, Voyages, Me) replace the old four. The Pool
+shows the voyage log, friends' boats ahead of Today's boat, coins on the pool
+floor, five progress dots and one primary button. Every five boats pushed earn
+a coin. A first-open screen explains the loop. Voyages lists boats and coins
+with a city route and status, and each boat has a detail page with its vouch
+chain and ending. Finders of Today's boat choose whether their name and city
+show, and Me has a privacy switch and "how friends see you" (`convex/pool.ts`,
+`convex/hops.ts`, `convex/pool.test.ts`, `src/app/(tabs)/*`, `src/app/welcome.tsx`,
+`src/app/boat/[hopId].tsx`, `src/app/w/[hopId].tsx`, `docs/plans/paper-boat-ux-*.md`).

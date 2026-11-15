@@ -25,6 +25,10 @@ export default defineSchema({
     city: v.string(),
     wishesLeft: v.number(),
     stars: v.number(),
+    // Boats pushed toward the next coin (convex/pool.ts BOATS_PER_COIN).
+    boatProgress: v.optional(v.number()),
+    // Missing = true: finders may show my name and city in their voyage log.
+    showInLogs: v.optional(v.boolean()),
     deviceId: v.optional(v.string()),
     demoKey: v.optional(v.string()),
     // Convex Auth profile fields (see authTables.users).
@@ -91,6 +95,8 @@ export default defineSchema({
     vouchForParent: v.optional(v.string()),
     passMessage: v.optional(v.string()),
     itsMeIntro: v.optional(v.string()),
+    // Missing = shown: whether voyage logs may show this finder's name and city.
+    itsMePublic: v.optional(v.boolean()),
     action: v.optional(hopAction),
     actedAt: v.optional(v.number()),
   })

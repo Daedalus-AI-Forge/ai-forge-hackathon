@@ -16,10 +16,10 @@ test:
       step_type: navigate
       step_description: "wishwell://revyl-auth?token={{auth_bypass_token}}&role=demo&redirect=%2F"
     - type: validation
-      step_description: "The Well home screen (testID well-screen) is visible with the Wishwell title and no auth bypass error"
+      step_description: "The Pool home screen (testID well-screen) is visible with the Wishwell title and no auth bypass error"
     - type: validation
-      step_description: "The pool (testID well-pool) shows a red coin in the center with dashed rings and holder avatars"
+      step_description: "Today's boat card (testID today-boat) and the boat progress dots (testID boat-progress) are on screen"
     - type: instructions
-      step_description: "Tap the Toss a wish button (testID toss-button)"
+      step_description: "Tap the primary action (testID primary-action)"
     - type: validation
-      step_description: "The Toss a wish screen asks What kind of person? and lists four wish types"
+      step_description: "The boat screen (testID pass-on-screen) opens"
