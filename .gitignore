@@ -11,3 +11,12 @@ android/
 *.mobileprovision
 *.keystore
 .DS_Store
+web-build/
+expo-env.d.ts
+.kotlin/
+*.jks
+*.key
+*.pem
+*.tsbuildinfo
+.metro-health-check*
+npm-debug.*
