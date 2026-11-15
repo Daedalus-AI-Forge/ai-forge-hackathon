@@ -1,12 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { ContactPickButton } from "@/components/ContactPickButton";
 import { lv } from "@/theme/tokens";
 
 import { LvAvatar, LvCard, LvField } from "./parts";
 
 export const TAGS = ["music", "travel", "food", "sports", "tech", "outdoors", "art", "knows everyone"] as const;
 
-export type Person = { name: string; reason: string; contact: string; tags: string[] };
+/**
+ * `phone` is the number picked from Contacts. It stays on this device (state only, never sent to
+ * the backend) and only pre-fills the SMS recipient on the share step.
+ */
+export type Person = { name: string; reason: string; contact: string; tags: string[]; phone?: string };
 export const emptyPerson = (): Person => ({ name: "", reason: "", contact: "", tags: [] });
 
 export function RecipientCard({
@@ -45,6 +50,10 @@ export function RecipientCard({
           </Pressable>
         ) : null}
       </View>
+      <ContactPickButton
+        testID={`contact-pick-toss-${index}`}
+        onPick={({ name, phone }) => onChange({ ...person, name: name || person.name, phone: phone ?? undefined })}
+      />
       <LvField
         testID={`toss-reason-${index}`}
         value={person.reason}

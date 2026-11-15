@@ -16,8 +16,11 @@ import { useMe } from "@/lib/device";
 import { LV_WISH_TYPES, fromApiType, type ApiWishType } from "@/lib/lvWishTypes";
 import { lv } from "@/theme/tokens";
 import { formScrollProps } from "@/components/keyboard";
+import { toE164 } from "@/lib/contactPick";
 
 const MAX_PEOPLE = 3;
+// The contact field holds a phone (picked or typed) or an @handle; only a phone pre-fills SMS.
+const smsRecipient = (contact?: string) => (contact && !contact.trim().startsWith("@") ? (toE164(contact) ?? undefined) : undefined);
 // Server error text (convex/lib.ts REASON_REQUIRED); shown inline under the card missing a reason.
 const REASON_REQUIRED = "Add one line on why you picked them";
 
@@ -38,7 +41,7 @@ export default function Toss() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reasonMissing, setReasonMissing] = useState(false);
-  const [links, setLinks] = useState<{ hopId: Id<"hops">; name: string; message: string | null }[]>([]);
+  const [links, setLinks] = useState<{ hopId: Id<"hops">; name: string; message: string | null; phone?: string }[]>([]);
 
   const needsProfile = !user?.name;
   const typeInfo = LV_WISH_TYPES.find((t) => t.id === fromApiType[type])!;
@@ -83,7 +86,12 @@ export default function Toss() {
         tags: p.tags,
       }));
       const { hopIds } = await toss({ deviceId, type, text, name, city, mode: "serious", recipients });
-      const created = hopIds.map((hopId, i) => ({ hopId, name: recipients[i].name, message: null as string | null }));
+      const created = hopIds.map((hopId, i) => ({
+        hopId,
+        name: recipients[i].name,
+        message: null as string | null,
+        phone: picked[i].phone ?? smsRecipient(picked[i].contact),
+      }));
       setLinks(created);
       setStep("share");
       created.forEach(({ hopId }) => {
@@ -217,7 +225,7 @@ export default function Toss() {
             <Text style={styles.prophecySub}>Send each person their own link. Every link carries the trust chain forward.</Text>
           </View>
           {links.map((l) => (
-            <ShareLink key={l.hopId} hopId={l.hopId} name={l.name} message={l.message} />
+            <ShareLink key={l.hopId} hopId={l.hopId} name={l.name} message={l.message} to={l.phone} />
           ))}
           <LvButton title="Back to the pool" testID="toss-done" variant="ink" onPress={() => router.replace("/")} />
         </>

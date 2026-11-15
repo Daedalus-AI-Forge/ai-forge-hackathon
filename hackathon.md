@@ -134,3 +134,14 @@ Messages app prefilled with it. The wisher taps Send, so no Twilio number is
 needed and the claimer gets the wisher's real number. The automatic notices
 no longer mention numbers (`convex/link.ts`, `convex/linkAi.ts`,
 `src/components/lv/voyages/ClaimCard.tsx`, `src/app/(tabs)/voyages.tsx`).
+
+**Pick the recipient from Contacts.** A "Pick from contacts" button
+(`src/components/ContactPickButton.tsx`, native only; web renders nothing) opens
+the system contact picker via `expo-contacts` `Contact.presentPicker()` and
+returns only the picked name and one phone (mobile/iPhone label first,
+normalized to E.164 in `src/lib/contactPick.ts`). It sits next to the name field
+on Toss, Pass-on and the PushStep. The phone stays in component state and is
+never sent to Convex; it only pre-fills the recipient when "SMS" / "Open in
+Messages" opens the user's own Messages (`sms:<to>&body=` on iOS,
+`sms:<to>?body=` on Android). The user still taps Send. Needs a native rebuild
+(new native module + `NSContactsUsageDescription`).
