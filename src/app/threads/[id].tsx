@@ -99,6 +99,19 @@ export default function ThreadDetail() {
           </View>
         ) : null}
 
+        {w.status !== "faded" ? (
+          <Pressable
+            testID="thread-open-ending"
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: "/wish/[wishId]", params: { wishId: w._id } })}
+            style={({ pressed }) => [styles.card, styles.center, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={styles.cardTitle}>
+              {w.status === "traveling" ? "Who says it's them? ›" : w.status === "found" ? "Photo and contacts ›" : "Open the Wish Granted card ›"}
+            </Text>
+          </Pressable>
+        ) : null}
+
         <Text style={[styles.eyebrow, { paddingHorizontal: 8, paddingTop: 8 }]}>
           The chain · {STATUS_LABEL[w.status]} · {w.holding} holding it
         </Text>

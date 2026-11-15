@@ -62,6 +62,14 @@ export default defineSchema({
     tier: v.optional(
       v.union(v.literal("gold"), v.literal("silver"), v.literal("bronze"), v.literal("red")),
     ),
+    // Found -> granted (convex/endings.ts). Contacts are only shown to the other side.
+    wisherContact: v.optional(v.string()),
+    photoId: v.optional(v.id("_storage")),
+    photoBy: v.optional(v.union(v.literal("wisher"), v.literal("match"))),
+    thankYou: v.optional(v.string()),
+    story: v.optional(v.string()),
+    meetMissed: v.optional(v.boolean()),
+    grantedAt: v.optional(v.number()),
     // Set on the platform's daily wish (convex/daily.ts). One step per pass:
     // `tag` is the kind of friend the well learns about on that pass, `hint` the clue.
     daily: v.optional(
@@ -93,6 +101,8 @@ export default defineSchema({
     itsMeIntro: v.optional(v.string()),
     action: v.optional(hopAction),
     actedAt: v.optional(v.number()),
+    // The wisher answered "Not quite" to this "It's me!".
+    rejected: v.optional(v.boolean()),
   })
     .index("by_wishId", ["wishId"])
     .index("by_wishId_and_holderUserId", ["wishId", "holderUserId"])

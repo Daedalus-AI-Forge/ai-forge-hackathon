@@ -126,6 +126,11 @@ export const run = internalMutation({
       photoUrl: "https://picsum.photos/seed/wishwell-drums/800/800",
       metInPerson: true,
       tier: "silver",
+      wisherContact: "@louise.drums",
+      thankYou: "Ben, you made my shy little drum kit so happy. Amy, thank you for knowing exactly who to ask!",
+      story:
+        "Tossed in San Francisco, passed through Shanghai, granted 2 ripples later right back home. Louise and Ben now jam every Sunday in a garage in the Sunset.",
+      grantedAt: now - 2 * 24 * HOUR,
     });
     const amyHop = await hop(drums, "amy", {
       depth: 1,
@@ -157,6 +162,7 @@ export const run = internalMutation({
     });
     await hop(drums, "hannah", { parent: oliverHop, depth: 2, tags: ["music"] });
     await ctx.db.patch("wishes", drums, { winningHopId: benHop });
+    await ctx.db.patch("hops", benHop, { holderContact: "+1 415 555 0142" });
 
     // 2. Traveling Tokyo izakaya wish: 3 branches, 2 ripples, 20h left, 4 holding it.
     const tokyo = await ctx.db.insert("wishes", {
@@ -185,7 +191,15 @@ export const run = internalMutation({
       tags: ["kind"],
       hoursAgo: 20,
     });
-    await hop(tokyo, "yui", { parent: weiHop, depth: 2, tags: ["Tokyo", "nightlife"] });
+    // Yui said "It's me!": Mia can review her in My wishes (convex/endings.ts).
+    await hop(tokyo, "yui", {
+      parent: weiHop,
+      depth: 2,
+      action: "its_me",
+      tags: ["Tokyo", "nightlife"],
+      intro: "Born and raised in Tokyo, I know a 6-seat izakaya under the Yamanote tracks. Let's go!",
+      hoursAgo: 3,
+    });
     const priyaHop = await hop(tokyo, "priya", { depth: 1, tags: ["travel"] });
     // 3. Two branches racing, 1 hour left.
     const antarctica = await ctx.db.insert("wishes", {

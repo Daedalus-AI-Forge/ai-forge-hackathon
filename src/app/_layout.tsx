@@ -40,6 +40,8 @@ export default function RootLayout() {
         <Stack.Screen name="revyl-auth" options={{ headerShown: false }} />
         <Stack.Screen name="w/[hopId]" options={{ headerShown: false, title: "A wish for you" }} />
         <Stack.Screen name="daily" options={{ headerShown: false, title: "Today's wish" }} />
+        <Stack.Screen name="wish/[wishId]" options={{ title: "Your wish" }} />
+        <Stack.Screen name="g/[wishId]" options={{ headerShown: false, title: "Wish granted" }} />
       </Stack>
       <StatusBar style="dark" />
     </Backend>

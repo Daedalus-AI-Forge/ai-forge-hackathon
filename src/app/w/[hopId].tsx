@@ -6,6 +6,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { GetTheApp } from "@/components/GetTheApp";
+import { HopEnding } from "@/components/HopEnding";
 import { Pool } from "@/components/Pool";
 import { ShareLink } from "@/components/ShareLink";
 import { errorMessage } from "@/components/ui";
@@ -247,6 +248,8 @@ export default function PassOn() {
           {open ? <WhyItWorks /> : null}
         </>
       ) : null}
+
+      {!open || hop.action === "its_me" ? <HopEnding hopId={id} /> : null}
 
       {open && mode === "its_me" ? (
         <>

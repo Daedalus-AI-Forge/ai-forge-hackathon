@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { action, type ActionCtx } from "./_generated/server";
+import { action, internalAction, type ActionCtx } from "./_generated/server";
 import { aiAllowed } from "./aiLimits";
+import { STORY_MAX } from "./endings";
 import { COACH_THRESHOLD, COACH_TURNS_MAX, WISH_TEXT_MAX, type Candidate } from "./graphShared";
 import { isCoachReady } from "./graphRank";
 import { LIMITS, clampText, requireDeviceId } from "./lib";
@@ -338,5 +339,29 @@ export const draftPassMessage = action({
       : fallback;
     await ctx.runMutation(internal.hops.setPassMessage, { hopId, message });
     return message;
+  },
+});
+
+/** Wish Granted card: a 2-sentence story, written once per wish (scheduled by endings.markGranted). */
+export const writeGrantedStory = internalAction({
+  args: { wishId: v.id("wishes") },
+  returns: v.null(),
+  handler: async (ctx, { wishId }): Promise<null> => {
+    const context = await ctx.runQuery(internal.endings.storyContext, { wishId });
+    if (!context || context.story) return null;
+    const story = (await aiAllowed(ctx, `wish:${wishId}`))
+      ? await respond(
+          `Write exactly 2 short sentences (under 40 words total) for a "Wish granted" polaroid card. ` +
+            `The wish: "${context.wishText}". It traveled friend to friend: ` +
+            context.chain.map((s) => (s.city ? `${s.name} (${s.city})` : s.name)).join(" -> ") +
+            `. The first person is the wisher, the last is the person found${context.metInPerson ? "; they met in person" : ""}. ` +
+            `Mention where it was tossed, where it passed through and how many ripples later it was granted, like: ` +
+            `"Tossed in SF, passed through Shanghai, granted 2 ripples later. Louise and Ben have been jamming every Sunday since." ` +
+            `Use only these facts; do not invent places or events.`,
+          context.fallback,
+        )
+      : context.fallback;
+    await ctx.runMutation(internal.endings.setStory, { wishId, story: clampText(story, STORY_MAX) || context.fallback });
+    return null;
   },
 });

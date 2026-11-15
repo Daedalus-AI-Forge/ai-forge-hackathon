@@ -10,6 +10,11 @@ export function hopUrl(hopId: string) {
   return base ? `${base.replace(/\/$/, "")}/w/${hopId}` : Linking.createURL(`/w/${hopId}`);
 }
 
+/** Public, read-only Wish Granted card (src/app/g/[wishId].tsx). */
+export function cardUrl(wishId: string) {
+  return hopUrl(wishId).replace(/\/w\/${wishId}$/, `/g/${wishId}`);
+}
+
 export async function copyLink(text: string) {
   await Clipboard.setStringAsync(text);
 }
