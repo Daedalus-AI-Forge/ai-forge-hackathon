@@ -15,6 +15,7 @@ import { TypeGrid } from "@/components/lv/toss/TypeGrid";
 import { useMe } from "@/lib/device";
 import { LV_WISH_TYPES, fromApiType, type ApiWishType } from "@/lib/lvWishTypes";
 import { lv } from "@/theme/tokens";
+import { formScrollProps } from "@/components/keyboard";
 
 const MAX_PEOPLE = 3;
 // Server error text (convex/lib.ts REASON_REQUIRED); shown inline under the card missing a reason.
@@ -104,7 +105,7 @@ export default function Toss() {
       testID="toss-screen"
       style={{ backgroundColor: lv.bg }}
       contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
+      {...formScrollProps}
     >
       {step === "write" ? (
         <>

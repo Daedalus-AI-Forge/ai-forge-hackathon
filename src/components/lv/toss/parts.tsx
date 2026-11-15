@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
 
 import { lv } from "@/theme/tokens";
+import { keyboardInputProps } from "@/components/keyboard";
 
 const TONES = ["#F1E2D3", "#DCE8DC", "#DCE3EE", "#F3DCD8", "#E6E0D2"];
 
@@ -27,7 +28,7 @@ export function Eyebrow({ children, color = lv.mutedFg }: { children: ReactNode;
 }
 
 export function LvField(props: TextInputProps) {
-  return <TextInput placeholderTextColor={lv.mutedFg} {...props} style={[s.field, props.multiline && s.area, props.style]} />;
+  return <TextInput placeholderTextColor={lv.mutedFg} {...keyboardInputProps(props)} style={[s.field, props.multiline && s.area, props.style]} />;
 }
 
 type Variant = "thread" | "ink" | "ghost";

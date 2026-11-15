@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { LinkStep } from "@/lib/linkDraft";
 import { lv } from "@/theme/tokens";
+import { formScrollProps } from "@/components/keyboard";
 
 export type HandleChoice = "claim" | "push" | null;
 
@@ -55,7 +56,7 @@ export function Shell({
       testID={testID}
       style={styles.page}
       contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
+      {...formScrollProps}
     >
       <View style={styles.column}>
         {step !== "first" ? (

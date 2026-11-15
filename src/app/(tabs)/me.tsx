@@ -13,6 +13,7 @@ import { copyLink } from "@/lib/links";
 import { AUTH_ENABLED } from "@/lib/authFlag";
 import { useMe } from "@/lib/device";
 import { lv } from "@/theme/tokens";
+import { formScrollProps, keyboardInputProps } from "@/components/keyboard";
 
 /** Me: how friends see me, my network map, coins & boat progress, privacy, profile. */
 export default function Me() {
@@ -55,7 +56,7 @@ export default function Me() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: lv.bg }} edges={["top"]}>
-      <ScrollView testID="me-screen" contentContainerStyle={styles.container}>
+      <ScrollView testID="me-screen" {...formScrollProps} contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <LvAvatar name={user?.name || "?"} size={56} />
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -133,9 +134,9 @@ export default function Me() {
 
         <View style={[styles.glass, { padding: 16, gap: 10 }]}>
           <Text style={styles.eyebrow}>Your name</Text>
-          <TextInput value={name} onChangeText={setName} testID="me-name" style={styles.input} placeholderTextColor={lv.mutedFg} />
+          <TextInput value={name} onChangeText={setName} testID="me-name" style={styles.input} placeholderTextColor={lv.mutedFg} {...keyboardInputProps({})} />
           <Text style={styles.eyebrow}>Your city</Text>
-          <TextInput value={city} onChangeText={setCity} testID="me-city" style={styles.input} placeholderTextColor={lv.mutedFg} />
+          <TextInput value={city} onChangeText={setCity} testID="me-city" style={styles.input} placeholderTextColor={lv.mutedFg} {...keyboardInputProps({})} />
           <Pressable
             testID="me-save"
             accessibilityRole="button"

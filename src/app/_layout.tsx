@@ -9,6 +9,7 @@ import { AUTH_ENABLED, AuthBridge, SessionAuth, authStorage } from "@/lib/auth";
 import { convex } from "@/lib/convex";
 import { colors } from "@/lib/theme";
 import { lv } from "@/theme/tokens";
+import { KeyboardDoneBar } from "@/components/keyboard";
 
 function Backend({ client, children }: { client: NonNullable<typeof convex>; children: ReactNode }) {
   if (!AUTH_ENABLED) return <ConvexProvider client={client}>{children}</ConvexProvider>;
@@ -44,6 +45,7 @@ export default function RootLayout() {
         <Stack.Screen name="daily" options={{ headerShown: false, title: "Today's wish" }} />
       </Stack>
       <StatusBar style="dark" />
+      <KeyboardDoneBar />
     </Backend>
   );
 }

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 
 import { lv } from "@/theme/tokens";
+import { keyboardInputProps } from "@/components/keyboard";
 
 type Variant = "thread" | "ink" | "ghost";
 
@@ -95,7 +96,7 @@ export function DField({ label, ...props }: TextInputProps & { label?: string })
       {label ? <Text style={s.label}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={lv.mutedFg}
-        {...props}
+        {...keyboardInputProps(props)}
         style={[s.field, props.multiline && { minHeight: 72, textAlignVertical: "top", paddingTop: 12 }, props.style]}
       />
     </View>

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 
 import { colors, radius } from "@/lib/theme";
+import { keyboardInputProps } from "@/components/keyboard";
 
 export function Button({
   title,
@@ -122,7 +123,7 @@ export function Field({ label, ...props }: TextInputProps & { label?: string }) 
   return (
     <View style={{ gap: 6 }}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <TextInput placeholderTextColor="#B0A796" {...props} style={[styles.input, props.multiline && { minHeight: 84, textAlignVertical: "top" }, props.style]} />
+      <TextInput placeholderTextColor="#B0A796" {...keyboardInputProps(props)} style={[styles.input, props.multiline && { minHeight: 84, textAlignVertical: "top" }, props.style]} />
     </View>
   );
 }
