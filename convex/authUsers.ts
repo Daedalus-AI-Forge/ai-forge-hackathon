@@ -137,6 +137,12 @@ export async function mergeUserInto(ctx: MutationCtx, from: Doc<"users">, into: 
     .take(BATCH)) {
     await ctx.db.patch("network", n._id, { ownerId: into._id });
   }
+  for (const e of await ctx.db
+    .query("edges")
+    .withIndex("by_ownerUserId", (q) => q.eq("ownerUserId", from._id))
+    .take(BATCH)) {
+    await ctx.db.patch("edges", e._id, { ownerUserId: into._id });
+  }
 
   const name = into.name || from.name;
   await ctx.db.patch("users", into._id, {

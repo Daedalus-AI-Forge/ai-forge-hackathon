@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { MAX_PASSES, MAX_RIPPLES, avatarFor, rippleSummary, wishHops } from "./lib";
+import { MAX_PASSES, MAX_RIPPLES, avatarFor, recordEdges, rippleSummary, wishHops } from "./lib";
 
 async function chainAbove(ctx: QueryCtx, hop: Doc<"hops">) {
   const chain: Doc<"hops">[] = [];
@@ -70,6 +70,7 @@ export const page = query({
         creatorName: creator?.name ?? "Someone",
         creatorCity: creator?.city ?? "",
         creatorAvatar: creator?.avatar ?? avatarFor("?"),
+        daily: wish.daily ?? null,
       },
       senderName: sender.name,
       chain: chain.map((h) => ({
@@ -107,15 +108,16 @@ export const act = mutation({
     if (hop.depth >= MAX_RIPPLES) throw new Error("This wish has traveled as far as it can");
     const name = args.name.trim() || hop.holderName;
     const vouch = args.vouch.trim();
-    if (!vouch) throw new Error("Vouch for the person who sent this to you");
+    const fromTheWell = !!wish.daily && !hop.parentHopId;
+    if (!vouch && !fromTheWell) throw new Error("Vouch for the person who sent this to you");
     await ctx.db.patch("hops", hop._id, {
       holderName: name,
       city: args.city.trim() || undefined,
-      vouchForParent: vouch,
+      vouchForParent: vouch || undefined,
       action: args.action,
       actedAt: hop.actedAt ?? Date.now(),
     });
-    if (!hop.vouchForParent) {
+    if (vouch && !hop.vouchForParent) {
       const sender = await senderOf(ctx, hop, wish);
       await ctx.db.insert("vouches", {
         aboutName: sender.name,
@@ -149,7 +151,7 @@ export const passTo = mutation({
     const limit = hop.action === "group" ? 1 : MAX_PASSES;
     if (existing.length >= limit) throw new Error("You've passed this wish to " + limit + " already");
     const viaGroup = hop.action === "group";
-    return await ctx.db.insert("hops", {
+    const childId = await ctx.db.insert("hops", {
       wishId: wish._id,
       parentHopId: hop._id,
       depth: hop.depth + 1,
@@ -157,6 +159,17 @@ export const passTo = mutation({
       recipientTags: args.tags,
       viaGroup,
     });
+    if (!viaGroup) {
+      await recordEdges(ctx, {
+        owner: { userId: hop.holderUserId, name: hop.holderName },
+        personName: args.name.trim(),
+        tags: args.tags,
+        dailyTag: wish.daily?.tag,
+        wishId: wish._id,
+        hopId: childId,
+      });
+    }
+    return childId;
   },
 });
 

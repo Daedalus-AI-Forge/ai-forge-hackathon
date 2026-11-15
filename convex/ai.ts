@@ -55,6 +55,36 @@ export const polishWish = action({
   },
 });
 
+/** Ask the well: from the people in my wish network, who should get this wish first? */
+export const askTheWell = action({
+  args: { deviceId: v.string(), text: v.string() },
+  returns: v.union(v.null(), v.object({ name: v.string(), reason: v.string() })),
+  handler: async (ctx, { deviceId, text }): Promise<{ name: string; reason: string } | null> => {
+    const people: { name: string; tags: { tag: string }[] }[] = await ctx.runQuery(internal.edges.forAsk, { deviceId });
+    if (people.length === 0) return null;
+    const words = new Set(text.toLowerCase().match(/[a-z]{4,}/g) ?? []);
+    const overlap = (p: (typeof people)[number]) =>
+      p.tags.filter(({ tag }) => tag.toLowerCase().split(/\W+/).some((w) => words.has(w))).length;
+    const best = [...people].sort((a, b) => overlap(b) - overlap(a))[0];
+    const fallback = `${best.name} | In your wish network ${best.name} is tagged ${best.tags.map((t) => t.tag).join(", ")}.`;
+    const answer = await respond(
+      `A user is about to send this wish: "${text}". People they have passed wishes to before, with the tags they carry:\n` +
+        people.map((p) => `- ${p.name}: ${p.tags.map((t) => t.tag).join(", ")}`).join("\n") +
+        `\nPick the ONE person most likely to know someone who fits. Use only the tags above; do not invent facts. ` +
+        `Reply exactly as: Name | one short reason written to the user (under 18 words).`,
+      fallback,
+    );
+    const [rawName, ...rest] = answer.split("|");
+    const match = people.find((p) => p.name.toLowerCase() === rawName.trim().toLowerCase());
+    const reason = rest.join("|").trim();
+    if (!match || !reason) {
+      const [name, why] = fallback.split(" | ");
+      return { name, reason: why };
+    }
+    return { name: match.name, reason };
+  },
+});
+
 export const draftVouch = action({
   args: {
     hopId: v.id("hops"),

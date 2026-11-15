@@ -29,6 +29,8 @@ export default function Toss() {
   const toss = useMutation(api.wishes.toss);
   const polish = useAction(api.ai.polishWish);
   const draftMessage = useAction(api.ai.draftPassMessage);
+  const askTheWell = useAction(api.ai.askTheWell);
+  const [advice, setAdvice] = useState<{ name: string; reason: string } | "none" | null>(null);
 
   const [step, setStep] = useState<"type" | "write" | "people" | "share">("type");
   const [type, setType] = useState<WishType | null>(null);
@@ -135,8 +137,48 @@ export default function Toss() {
         <>
           <Title>Who should get it first?</Title>
           <Card testID="ask-the-well">
-            <Text style={styles.typeTitle}>Ask the well · 1 star</Text>
-            <Muted>Soon: the well reads your friends' vouches and suggests who to send this to first.</Muted>
+            <Text style={styles.typeTitle}>Ask the well</Text>
+            {advice === null ? (
+              <>
+                <Muted>The well looks at your wish network and suggests who to send this to first.</Muted>
+                <Button
+                  testID="ask-the-well-button"
+                  title="Who should get it first?"
+                  variant="secondary"
+                  busy={busy}
+                  onPress={async () => {
+                    if (!deviceId) return;
+                    setBusy(true);
+                    setError(null);
+                    try {
+                      setAdvice((await askTheWell({ deviceId, text })) ?? "none");
+                    } catch (e) {
+                      setError(errorMessage(e));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                />
+              </>
+            ) : advice === "none" ? (
+              <Muted>The well doesn't know your friends yet. Pass a few daily wishes and it will.</Muted>
+            ) : (
+              <>
+                <Text testID="ask-the-well-answer" style={styles.advice}>
+                  Start with {advice.name}. {advice.reason}
+                </Text>
+                {people.some((p) => p.name.trim().toLowerCase() === advice.name.toLowerCase()) ? null : (
+                  <Button
+                    testID="ask-the-well-add"
+                    title={`Add ${advice.name}`}
+                    variant="secondary"
+                    onPress={() =>
+                      setPeople((prev) => [{ name: advice.name, tags: [] }, ...prev.filter((p) => p.name.trim())].slice(0, 3))
+                    }
+                  />
+                )}
+              </>
+            )}
           </Card>
           <Muted>Pick up to 3 people most likely to know someone.</Muted>
           {people.map((p, i) => (
@@ -195,4 +237,5 @@ export default function Toss() {
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 14, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 48 },
   typeTitle: { fontSize: 17, fontWeight: "800", color: colors.ink },
+  advice: { fontSize: 16, fontWeight: "700", color: colors.ink, lineHeight: 22 },
 });

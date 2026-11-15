@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
-import { MAX_PASSES, WISH_LIFETIME_MS, avatarFor, requireUser, rippleSummary, userByDevice, wishHops } from "./lib";
+import { MAX_PASSES, WISH_LIFETIME_MS, avatarFor, recordEdges, requireUser, rippleSummary, userByDevice, wishHops } from "./lib";
 import { wishType } from "./schema";
 
 async function wishCard(ctx: QueryCtx, wish: Doc<"wishes">) {
@@ -110,15 +110,21 @@ export const toss = mutation({
     });
     const hopIds = [];
     for (const r of recipients) {
-      hopIds.push(
-        await ctx.db.insert("hops", {
-          wishId,
-          depth: 1,
-          holderName: r.name.trim(),
-          recipientTags: r.tags,
-          viaGroup: false,
-        }),
-      );
+      const hopId = await ctx.db.insert("hops", {
+        wishId,
+        depth: 1,
+        holderName: r.name.trim(),
+        recipientTags: r.tags,
+        viaGroup: false,
+      });
+      hopIds.push(hopId);
+      await recordEdges(ctx, {
+        owner: { userId: user._id, name: args.name.trim() || user.name },
+        personName: r.name.trim(),
+        tags: r.tags,
+        wishId,
+        hopId,
+      });
       await ctx.db.insert("network", {
         ownerId: user._id,
         personName: r.name.trim(),

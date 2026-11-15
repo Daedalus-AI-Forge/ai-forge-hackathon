@@ -31,7 +31,7 @@ async function clear(ctx: MutationCtx, table: TableNames) {
 export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
-    for (const table of ["network", "vouches", "hops", "wishes", "users"] as const) {
+    for (const table of ["edges", "network", "vouches", "hops", "wishes", "users"] as const) {
       await clear(ctx, table);
     }
     const now = Date.now();
@@ -168,7 +168,24 @@ export const run = internalMutation({
       hoursAgo: 20,
     });
     await hop(tokyo, "yui", { parent: weiHop, depth: 2, tags: ["Tokyo", "nightlife"] });
-    await hop(tokyo, "priya", { depth: 1, tags: ["travel"] });
+    const priyaHop = await hop(tokyo, "priya", { depth: 1, tags: ["travel"] });
+    for (const [hopId, personName, tags] of [
+      [samHop, "Sam", ["adventurous", "food"]],
+      [weiHop, "Wei", ["kind"]],
+      [priyaHop, "Priya", ["travel"]],
+    ] as const) {
+      for (const tag of tags) {
+        await ctx.db.insert("edges", {
+          ownerUserId: users.me.id,
+          ownerName: users.me.name,
+          personName,
+          tag,
+          source: "pick",
+          wishId: tokyo,
+          hopId,
+        });
+      }
+    }
 
     // 3. Two branches racing, 1 hour left.
     const antarctica = await ctx.db.insert("wishes", {

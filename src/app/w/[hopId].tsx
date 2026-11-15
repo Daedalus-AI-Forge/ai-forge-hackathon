@@ -5,9 +5,12 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-nat
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { GetTheApp } from "@/components/GetTheApp";
 import { Pool } from "@/components/Pool";
 import { ShareLink } from "@/components/ShareLink";
 import { Avatar, Button, Card, ChipRow, ErrorText, Field, Muted, errorMessage } from "@/components/ui";
+import { WellHint } from "@/components/WellHint";
+import { WhyItWorks } from "@/components/WhyItWorks";
 import { colors, mono } from "@/lib/theme";
 import { countdown, ordinal, useNow } from "@/lib/time";
 
@@ -98,6 +101,7 @@ export default function PassOn() {
   const open = wish.status === "traveling" && wish.expiresAt > now;
   const limit = action === "group" ? 1 : 3;
   const canAddMore = data.children.length < limit && data.canPass && open;
+  const fromTheWell = !!wish.daily && data.chain.length === 0;
 
   return (
     <ScrollView testID="pass-on-screen" style={{ backgroundColor: colors.cream }} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -123,6 +127,8 @@ export default function PassOn() {
         </View>
       </Card>
 
+      {wish.daily ? <WellHint daily={wish.daily} /> : null}
+
       {data.chain.length > 0 ? (
         <Card testID="pass-on-chain">
           <Text style={styles.section}>The trust chain</Text>
@@ -142,7 +148,9 @@ export default function PassOn() {
           <Muted>{data.senderName} passed it to you.</Muted>
         </Card>
       ) : (
-        <Muted style={{ textAlign: "center" }}>{data.senderName} sent this straight to you.</Muted>
+        <Muted style={{ textAlign: "center" }}>
+          {fromTheWell ? "Today's wish, straight from the well." : `${data.senderName} sent this straight to you.`}
+        </Muted>
       )}
 
       {!open && mode !== "done" ? (
@@ -174,6 +182,7 @@ export default function PassOn() {
               setMode("me");
             }}
           />
+          <WhyItWorks />
         </View>
       ) : null}
 
@@ -207,7 +216,20 @@ export default function PassOn() {
           <Text style={styles.section}>{action === "group" ? "Share to a group chat" : "Pass it on"}</Text>
           <Field label="Your name" value={name} onChangeText={setName} testID="pass-name" />
           <Field label="Your city" value={city} onChangeText={setCity} testID="pass-city" placeholder="Where are you?" />
-          <Button testID="pass-me-next" title="Next" disabled={!name.trim() || !city.trim()} onPress={() => setMode("vouch")} />
+          <ErrorText error={fromTheWell ? error : null} />
+          <Button
+            testID="pass-me-next"
+            title="Next"
+            busy={busy}
+            disabled={!name.trim() || !city.trim()}
+            onPress={() => {
+              if (!fromTheWell) return setMode("vouch");
+              void run(async () => {
+                await act({ hopId: id, action, name, city, vouch: "", tags: [] });
+                setMode("pass");
+              });
+            }}
+          />
           <Button title="Back" variant="ghost" onPress={() => setMode("view")} />
         </Card>
       ) : null}
@@ -323,9 +345,9 @@ export default function PassOn() {
               />
             </>
           )}
-          <Muted style={{ marginTop: 8 }}>Got a wish of your own? Get the Wishwell app and toss it into the well.</Muted>
         </Card>
       ) : null}
+      {mode === "done" ? <GetTheApp /> : null}
       <Text style={styles.footer}>{ordinal(hop.depth)} ripple · up to 6 ripples, 48 hours</Text>
     </ScrollView>
   );

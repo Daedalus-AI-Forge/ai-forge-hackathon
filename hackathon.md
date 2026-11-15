@@ -8,11 +8,11 @@
 - **Frontend:** not deployed
 - **Convex deployment:** not deployed
 - **Components:** none
-- **Convex features:** schema, indexes, queries, mutations, actions, scheduler, realtime useQuery, Convex Auth, HTTP actions
+- **Convex features:** schema, indexes, queries, mutations, actions, scheduler, crons, realtime useQuery, Convex Auth, HTTP actions
 - **Auth:** Convex Auth (Google, native Apple, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-15T19:52:00Z
+- **Last updated:** 2026-11-15T20:17:00Z
 
 ## Log
 
@@ -57,3 +57,14 @@ sign-in smoke script. Google and Apple haven't been tested yet because the
 credentials don't exist (`convex/auth.ts`, `convex/authUsers.ts`,
 `convex/appleProvider.ts`, `src/app/sign-in.tsx`, `src/lib/auth.tsx`,
 `docs/auth-setup.md`).
+
+### 2026-11-15 - working tree
+Added the well's daily wish and the wish network. The well picks the kind of
+friend it has mapped least, writes an absurd wish only that friend would answer,
+and each pass records a tagged link the owner can see and delete under Me. The
+pass-on page explains what is remembered, shows how it works with live counts,
+and invites helpers to install and toss their own wish. Ask the well now reads
+the network to suggest who to send a wish to first. Convex features: crons,
+internal action, nested-field index (`convex/daily.ts`, `convex/edges.ts`,
+`convex/stats.ts`, `convex/crons.ts`, `src/components/NetworkMap.tsx`,
+`docs/daily-wish-design.md`).

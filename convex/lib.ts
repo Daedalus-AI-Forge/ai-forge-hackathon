@@ -50,6 +50,32 @@ export async function wishHops(ctx: QueryCtx, wishId: Id<"wishes">) {
     .take(200);
 }
 
+export async function recordEdges(
+  ctx: MutationCtx,
+  args: {
+    owner: { userId?: Id<"users">; name: string };
+    personName: string;
+    tags: string[];
+    dailyTag?: string;
+    wishId: Id<"wishes">;
+    hopId: Id<"hops">;
+  },
+) {
+  const tags = new Map<string, "daily" | "pick">(args.tags.map((t) => [t, "pick"]));
+  if (args.dailyTag) tags.set(args.dailyTag, "daily");
+  for (const [tag, source] of tags) {
+    await ctx.db.insert("edges", {
+      ownerUserId: args.owner.userId,
+      ownerName: args.owner.name,
+      personName: args.personName,
+      tag,
+      source,
+      wishId: args.wishId,
+      hopId: args.hopId,
+    });
+  }
+}
+
 export function rippleSummary(hops: Doc<"hops">[]) {
   return {
     ripples: hops.reduce((max, h) => Math.max(max, h.depth), 0),

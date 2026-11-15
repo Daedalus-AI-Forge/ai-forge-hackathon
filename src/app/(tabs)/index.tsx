@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-nat
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
+import { DailyWishCard } from "@/components/DailyWishCard";
 import { Pool } from "@/components/Pool";
 import { Button, Muted } from "@/components/ui";
 import { HelpCard } from "@/components/WishCard";
@@ -59,6 +60,7 @@ export default function TheWell() {
             onPress={() => void claimDemo({ deviceId })}
           />
         ) : null}
+        {deviceId ? <DailyWishCard deviceId={deviceId} /> : null}
         {home.helpCards.length > 0 ? (
           <View style={{ gap: 12 }}>
             <Text style={styles.section}>Friends' wishes you can help</Text>
