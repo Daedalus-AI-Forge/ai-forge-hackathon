@@ -2,6 +2,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -50,6 +51,7 @@ export default function PassOn() {
   const draftVouch = useAction(api.ai.draftVouch);
   const draftMessage = useAction(api.ai.draftPassMessage);
   const now = useNow();
+  const insets = useSafeAreaInsets();
 
   const [mode, setMode] = useState<Mode>("view");
   const [action, setAction] = useState<"pass" | "group">("pass");
@@ -146,7 +148,7 @@ export default function PassOn() {
     <ScrollView
       testID="pass-on-screen"
       style={{ backgroundColor: lv.bg }}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + 16 }]}
       keyboardShouldPersistTaps="handled"
     >
       <Stack.Screen options={{ title: "A paper boat for you" }} />
@@ -179,12 +181,6 @@ export default function PassOn() {
                 </Text>
               </View>
             </View>
-
-            {wish.daily ? (
-              <Text testID="pass-on-clue" style={styles.clueLine}>
-                Clue {Math.min(wish.daily.step, wish.daily.of)}/{wish.daily.of}: {wish.daily.hint}
-              </Text>
-            ) : null}
 
             {data.chain.length > 0 ? (
               <View style={styles.chainWrap}>
@@ -587,7 +583,6 @@ const styles = StyleSheet.create({
   sourceGold: { backgroundColor: lv.gold },
   sourceThread: { backgroundColor: lv.thread },
   sourceText: { fontSize: 12, fontWeight: "600", color: lv.fg },
-  clueLine: { fontSize: 13, lineHeight: 19, color: lv.mutedFg },
   chainWrap: { gap: 10 },
   chainRow: { flexDirection: "row", alignItems: "stretch", marginBottom: 10 },
   avatarCol: { width: 28, alignItems: "center" },
