@@ -99,3 +99,15 @@ with one-line reasons, and a second demo user (device id `dev_demo_fresh`) has
 reason rule on serious wishes, grounded coach suggestions and forgetting an
 edge against the dev deployment, then reseeds (`convex/seed.ts`,
 `convex/seed.test.ts`, `scripts/graph-smoke.mjs`, `docs/api/graph-coach.md`).
+
+### 2026-11-15 - working tree
+Restyled The Well home hero as a warm, realistic fountain. The bundled square
+pool photo is now the generated ivory-travertine artwork: teal water, a
+restrained statue relief, bronze coin glints, and golden side light, kept as a
+locally bundled 1024px JPEG (189 KB) at the existing `lvImages.wellPool` module
+path, so the screen never needs the network (`assets/design/well-pool.jpg`). The
+pool now animates five staggered water waves that start at the red wish coin and spread to the
+stone rim, replacing the static dashed guide rings, while holder avatars keep
+their virtual ring placement and the caption stays legible. "Toss a wish" gains
+a small gold coin mark beside the unchanged copy, same test ID, button role, and
+navigation (`src/components/lv/home/Well.tsx`, `src/app/(tabs)/index.tsx`).

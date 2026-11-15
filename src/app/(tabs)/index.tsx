@@ -74,7 +74,12 @@ export default function TheWell() {
           onPress={() => router.push("/toss")}
           style={({ pressed }) => [styles.toss, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
         >
-          <Text style={styles.tossText}>Toss a wish</Text>
+          <View style={styles.tossInner}>
+            <View style={styles.tossCoin}>
+              <View style={styles.tossCoinFace} />
+            </View>
+            <Text style={styles.tossText}>Toss a wish</Text>
+          </View>
         </Pressable>
         {demoEnabled && !wish && home.helpCards.length === 0 && deviceId ? (
           <Pressable
@@ -152,6 +157,18 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   tossText: { color: lv.threadFg, fontSize: 17, fontWeight: "600" },
+  tossInner: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tossCoin: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: lv.gold,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tossCoinFace: { width: 10, height: 10, borderRadius: 5, borderWidth: 1, borderColor: "rgba(28,25,21,0.3)" },
   demo: { alignItems: "center", paddingVertical: 8 },
   demoText: { color: lv.mutedFg, fontSize: 15, fontWeight: "600" },
   group: { borderRadius: 24, overflow: "hidden" },

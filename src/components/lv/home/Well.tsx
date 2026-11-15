@@ -28,8 +28,8 @@ function Ripple({ size, delay, color }: { size: number; delay: number; color: st
         borderRadius: size / 2,
         borderWidth: 1.5,
         borderColor: color,
-        opacity: t.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.8, 0] }),
-        transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.12, 1] }) }],
+        opacity: t.interpolate({ inputRange: [0, 0.08, 0.5, 1], outputRange: [0, 0.85, 0.45, 0] }),
+        transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.11, 1] }) }],
       }}
     />
   );
@@ -89,16 +89,12 @@ export function Well({ holders = [], size = 320, testID }: { holders?: WellHolde
     <View testID={testID} style={[styles.wrap, { width: size, height: size }]}>
       <View style={[styles.rim, { width: size, height: size, borderRadius: size / 2 }]} />
       <View style={[styles.pool, { width: pool, height: pool, borderRadius: pool / 2 }]}>
-        <Image source={lvImages.wellPool} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={lvImages.wellPool} style={[StyleSheet.absoluteFill, { width: pool, height: pool }]} resizeMode="cover" />
         <View style={[StyleSheet.absoluteFill, styles.depth, { borderRadius: pool / 2 }]} />
-        {ringR.map((r) => (
-          <View key={r} pointerEvents="none" style={[styles.ring, { width: r * 2, height: r * 2, borderRadius: r }]} />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Ripple key={i} size={pool} delay={i * 880} color="rgba(255,250,236,0.55)" />
         ))}
-        {[0, 1, 2, 3].map((i) => (
-          <Ripple key={i} size={pool} delay={i * 1100} color="rgba(255,255,255,0.6)" />
-        ))}
-        <Ripple size={pool} delay={400} color={lv.thread} />
-        <View pointerEvents="none" style={[styles.sheen, { width: pool * 0.9, height: pool * 0.42, top: pool * 0.04, left: -pool * 0.05 }]} />
+        <Ripple size={pool} delay={440} color={lv.thread} />
       </View>
       <Bob>
         <View testID="pool-coin" style={styles.coin}>
@@ -122,8 +118,6 @@ const styles = StyleSheet.create({
   rim: { position: "absolute", backgroundColor: "#EDE6DA", borderWidth: 1, borderColor: "#D9D0C2", ...lv.shadow },
   pool: { overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: "#3F6B78" },
   depth: { borderWidth: 14, borderColor: "rgba(12,30,40,0.28)" },
-  ring: { position: "absolute", borderWidth: 1, borderStyle: "dashed", borderColor: "rgba(255,255,255,0.22)" },
-  sheen: { position: "absolute", borderRadius: 999, backgroundColor: "rgba(255,255,255,0.12)", transform: [{ rotate: "-25deg" }] },
   coin: {
     width: 40,
     height: 40,
