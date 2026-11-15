@@ -2,7 +2,7 @@
 // AI vouch (editable) → link.pushOne → AI-drafted share message (editable) → share sheet.
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Share, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -128,6 +128,26 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
     onDone(childHopId);
   }
 
+  // Open the visitor's own Messages app with the AI draft prefilled. We never send anything:
+  // the person reviews it, picks the recipient and taps Send themselves.
+  async function onOpenMessages() {
+    if (!childHopId || message === null) return;
+    const webOrigin = Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : null;
+    const url = ogShareUrl(childHopId, process.env.EXPO_PUBLIC_CONVEX_SITE_URL, webOrigin);
+    const body = encodeURIComponent(`${message.trim()}\n${url}`);
+    // iOS expects `sms:&body=`, Android `sms:?body=`.
+    const isAndroid = Platform.OS === "android" || (typeof navigator !== "undefined" && /android/i.test(navigator.userAgent ?? ""));
+    const smsUrl = isAndroid ? `sms:?body=${body}` : `sms:&body=${body}`;
+    setError(null);
+    try {
+      await Linking.openURL(smsUrl);
+      setNote(`Your message to ${name.trim()} is ready in Messages — review it and tap Send yourself.`);
+      void track({ hopId: hop, deviceId, event: "push" }).catch(() => {});
+    } catch {
+      setError("Couldn't open Messages here. Use Share instead.");
+    }
+  }
+
   if (childHopId) {
     return (
       <DCard testID="push-share">
@@ -148,7 +168,22 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
             <DButton title="Next" onPress={() => onDone(childHopId)} testID="push-next" />
           </>
         ) : (
-          <DButton title="Share" onPress={onShare} disabled={message === null || !message.trim()} testID="push-share-btn" />
+          <>
+            <DButton
+              title="Open in Messages"
+              onPress={onOpenMessages}
+              disabled={message === null || !message.trim()}
+              testID="push-open-messages"
+            />
+            <DButton
+              title="Share another way"
+              variant="ghost"
+              onPress={onShare}
+              disabled={message === null || !message.trim()}
+              testID="push-share-btn"
+            />
+            <Sub>We only prepare the draft. You choose who gets it and tap Send.</Sub>
+          </>
         )}
       </DCard>
     );
