@@ -1,6 +1,7 @@
+import { registerStaticRoutes } from "@convex-dev/static-hosting";
 import { httpRouter } from "convex/server";
 
-import { internal } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 import { ogHtml, ogNotFoundHtml } from "./linkMetrics";
@@ -23,5 +24,9 @@ http.route({
     return new Response(ogHtml(hop, process.env.APP_WEB_URL), { status: 200, headers });
   }),
 });
+
+// Keep last: static web app catch-all (SPA fallback to index.html). Exact
+// routes registered above win over it.
+registerStaticRoutes(http, components.staticHosting);
 
 export default http;

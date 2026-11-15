@@ -6,6 +6,7 @@
     "@auth/core": "^0.41.3",
     "@convex-dev/auth": "0.0.98",
     "@convex-dev/rate-limiter": "^0.4.3",
+    "@convex-dev/static-hosting": "0.2.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "convex": "^1.50.0",
     "expo": "~58.0.25",
