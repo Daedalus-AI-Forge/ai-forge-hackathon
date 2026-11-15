@@ -84,7 +84,15 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
       setVerified(false);
       setCode("");
     } catch (e) {
-      setError(cleanError(e));
+      // Rate limited = a code was sent moments ago: let them enter it instead of blocking.
+      const data = (e as { data?: { code?: string } }).data;
+      if (data?.code === "RATE_LIMITED") {
+        setCodeSent(true);
+        setVerified(false);
+        setError(null);
+      } else {
+        setError(cleanError(e));
+      }
     } finally {
       setSending(false);
     }

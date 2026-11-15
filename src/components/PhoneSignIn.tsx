@@ -46,8 +46,17 @@ export function PhoneSignIn({ onDone, disabled }: { onDone: () => void; disabled
       setCode("");
       setResendIn(RESEND_SECONDS);
     } catch (e) {
+      const data = phoneAuthErrorData(e);
+      if (data?.code === "RATE_LIMITED") {
+        // A code was sent moments ago: go straight to code entry and count down live
+        // instead of leaving a frozen "try again in 53s" on the number screen.
+        setPhone(phoneFromParts(countryCode, number));
+        setResendIn(Math.max(1, Math.ceil((data.retryAfterMs ?? RESEND_SECONDS * 1000) / 1000)));
+        setError(null);
+        return;
+      }
       // No SMS provider for real numbers on a demo deployment: point at the demo number.
-      const notConfigured = phoneAuthErrorData(e)?.code === "NOT_CONFIGURED";
+      const notConfigured = data?.code === "NOT_CONFIGURED";
       setError(notConfigured && demo ? `${phoneAuthErrorMessage(e)}. ${DEMO_HINT}` : phoneAuthErrorMessage(e));
     } finally {
       setBusy(null);
