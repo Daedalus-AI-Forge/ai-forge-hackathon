@@ -9,7 +9,13 @@
  */
 
 import type * as ai from "../ai.js";
+import type * as appleProvider from "../appleProvider.js";
+import type * as auth from "../auth.js";
+import type * as authAdmin from "../authAdmin.js";
+import type * as authRedirect from "../authRedirect.js";
+import type * as authUsers from "../authUsers.js";
 import type * as hops from "../hops.js";
+import type * as http from "../http.js";
 import type * as lib from "../lib.js";
 import type * as openai from "../openai.js";
 import type * as seed from "../seed.js";
@@ -24,7 +30,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
+  appleProvider: typeof appleProvider;
+  auth: typeof auth;
+  authAdmin: typeof authAdmin;
+  authRedirect: typeof authRedirect;
+  authUsers: typeof authUsers;
   hops: typeof hops;
+  http: typeof http;
   lib: typeof lib;
   openai: typeof openai;
   seed: typeof seed;

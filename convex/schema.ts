@@ -1,3 +1,4 @@
+import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -11,6 +12,13 @@ export const wishType = v.union(
 export const hopAction = v.union(v.literal("pass"), v.literal("group"), v.literal("its_me"));
 
 export default defineSchema({
+  // Convex Auth tables (authSessions, authAccounts, authRefreshTokens, ...).
+  ...authTables,
+
+  // One row per person. Doubles as the Convex Auth `users` table: the app
+  // fields come first, then the optional profile fields Convex Auth writes.
+  // Rows are created by `users.ensure` (device identity) or by the auth
+  // `createOrUpdateUser` callback in convex/authUsers.ts.
   users: defineTable({
     name: v.string(),
     avatar: v.string(),
@@ -19,9 +27,19 @@ export default defineSchema({
     stars: v.number(),
     deviceId: v.optional(v.string()),
     demoKey: v.optional(v.string()),
+    // Convex Auth profile fields (see authTables.users).
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
   })
     .index("by_deviceId", ["deviceId"])
-    .index("by_demoKey", ["demoKey"]),
+    .index("by_demoKey", ["demoKey"])
+    // Index names required by Convex Auth.
+    .index("email", ["email"])
+    .index("phone", ["phone"]),
 
   wishes: defineTable({
     creatorId: v.id("users"),
