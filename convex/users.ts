@@ -1,6 +1,46 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { avatarFor, userByDevice } from "./lib";
+import { hasAccountLogin, mergeUserInto } from "./authUsers";
+import { avatarFor, deviceUser, userByDevice } from "./lib";
+
+/** Auth status for the client: is this user backed by a Google/Apple account? */
+export const account = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return { signedIn: false as const };
+    const user = await ctx.db.get("users", userId);
+    if (!user) return { signedIn: false as const };
+    return {
+      signedIn: true as const,
+      hasAccount: await hasAccountLogin(ctx, userId),
+      email: user.email ?? null,
+    };
+  },
+});
+
+/**
+ * Anonymous -> account upgrade. Called by the app right after any sign-in:
+ * if this device's identity is a different (device/anonymous) user, its
+ * wishes, hops, vouches, network, stars and wishes left move onto the
+ * signed-in user and the old row is deleted. Never merges another real
+ * Google/Apple account.
+ */
+export const linkDevice = mutation({
+  args: { deviceId: v.string() },
+  handler: async (ctx, { deviceId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Sign in first");
+    const me = await ctx.db.get("users", userId);
+    if (!me) throw new Error("Unknown user");
+    const device = await deviceUser(ctx, deviceId);
+    if (!device || device._id === me._id) return { merged: false };
+    if (await hasAccountLogin(ctx, device._id)) return { merged: false };
+    await mergeUserInto(ctx, device, me);
+    return { merged: true };
+  },
+});
 
 export const me = query({
   args: { deviceId: v.string() },

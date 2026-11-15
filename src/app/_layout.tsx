@@ -1,10 +1,23 @@
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexProvider } from "convex/react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { AUTH_ENABLED, AuthBridge, authStorage } from "@/lib/auth";
 import { convex } from "@/lib/convex";
 import { colors } from "@/lib/theme";
+
+function Backend({ client, children }: { client: NonNullable<typeof convex>; children: ReactNode }) {
+  if (!AUTH_ENABLED) return <ConvexProvider client={client}>{children}</ConvexProvider>;
+  return (
+    <ConvexAuthProvider client={client} storage={authStorage}>
+      <AuthBridge />
+      {children}
+    </ConvexAuthProvider>
+  );
+}
 
 export default function RootLayout() {
   if (!convex) {
@@ -16,14 +29,15 @@ export default function RootLayout() {
     );
   }
   return (
-    <ConvexProvider client={convex}>
+    <Backend client={convex}>
       <Stack screenOptions={{ contentStyle: { backgroundColor: colors.cream }, headerShadowVisible: false, headerStyle: { backgroundColor: colors.cream }, headerTintColor: colors.red }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Wishwell" }} />
         <Stack.Screen name="toss" options={{ presentation: "modal", title: "Toss a wish" }} />
+        <Stack.Screen name="sign-in" options={{ presentation: "modal", title: "Sign in" }} />
         <Stack.Screen name="w/[hopId]" options={{ headerShown: false, title: "A wish for you" }} />
       </Stack>
       <StatusBar style="dark" />
-    </ConvexProvider>
+    </Backend>
   );
 }
 

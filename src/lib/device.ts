@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 
 import { api } from "@/convex/_generated/api";
+import { AUTH_ENABLED } from "@/lib/authFlag";
 
 const KEY = "wishwell.deviceId";
 
@@ -35,7 +36,8 @@ export function useMe() {
   const ensure = useMutation(api.users.ensure);
   const user = useQuery(api.users.me, deviceId ? { deviceId } : "skip");
   useEffect(() => {
-    if (deviceId && user === null) void ensure({ deviceId });
+    // With auth on, AuthBridge creates/adopts the row via anonymous sign-in.
+    if (!AUTH_ENABLED && deviceId && user === null) void ensure({ deviceId });
   }, [deviceId, user, ensure]);
   return { deviceId, user: user ?? null, loading: !deviceId || user === undefined };
 }

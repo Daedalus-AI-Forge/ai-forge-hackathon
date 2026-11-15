@@ -9,7 +9,8 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.theaiforge.wishwell"
+      "bundleIdentifier": "com.theaiforge.wishwell",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.theaiforge.wishwell",
@@ -27,7 +28,10 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true
