@@ -8,11 +8,11 @@
 - **Frontend:** not deployed
 - **Convex deployment:** not deployed
 - **Components:** none
-- **Convex features:** schema, indexes, queries, mutations, actions, scheduler, realtime useQuery
-- **Auth:** anonymous device id (no login); pass-on links work without an account
+- **Convex features:** schema, indexes, queries, mutations, actions, scheduler, realtime useQuery, Convex Auth, HTTP actions
+- **Auth:** Convex Auth (Google, native Apple, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-15T19:45:00Z
+- **Last updated:** 2026-11-15T19:52:00Z
 
 ## Log
 
@@ -43,3 +43,17 @@ Built the app: The Well home (animated pool with live holder avatars per ripple 
 the no-login pass-on page `/w/[hopId]` with trust chain, 3-tap vouch, per-person links and share
 sheet/SMS/copy, and placeholder My wishes and Me tabs (`src/`). Verified end to end on web against a
 local Convex backend.
+
+### 2026-11-15 - capy/wishwell-auth
+Added sign-in with Convex Auth behind `EXPO_PUBLIC_AUTH_ENABLED`, which is off by
+default. It supports Google OAuth, native Sign in with Apple (the identity token
+is verified with `jose` against Apple's JWKS, with a nonce check), and anonymous
+sessions that adopt the existing device user. When someone signs in,
+`users.linkDevice` moves their device data (wishes, hops, vouches, network,
+stars) onto the account. The auth tables are merged into the schema, and the
+users table is extended with the Convex Auth profile fields. Auth routes are
+served over HTTP actions. Covered by convex-test unit tests and a live anonymous
+sign-in smoke script. Google and Apple haven't been tested yet because the
+credentials don't exist (`convex/auth.ts`, `convex/authUsers.ts`,
+`convex/appleProvider.ts`, `src/app/sign-in.tsx`, `src/lib/auth.tsx`,
+`docs/auth-setup.md`).
