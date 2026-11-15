@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, type ActionCtx } from "./_generated/server";
 import { aiAllowed } from "./aiLimits";
+import { FACTS_RULES, checkDraft, firstName, wishGist } from "./greetings";
 import { LIMITS, clampText } from "./lib";
 import { limitSend, limitVerify } from "./phoneLimits";
 import { checkCode, maskPhone, normalizePhone, sendCode } from "./sms";
@@ -20,7 +21,12 @@ const STYLE =
   "Warm, light, friendly, never needy. Sentence case. No hashtags, no quotes around the answer, at most one emoji. Reply with the text only.";
 
 /** One OpenAI call within AI_BUDGET_MS; `fallback` on any failure. */
-export async function respondFast(prompt: string, fallback: string, maxOutputTokens = 200): Promise<string> {
+export async function respondFast(
+  prompt: string,
+  fallback: string,
+  maxOutputTokens = 200,
+  instructions = STYLE,
+): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return fallback;
   const controller = new AbortController();
@@ -31,7 +37,7 @@ export async function respondFast(prompt: string, fallback: string, maxOutputTok
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gpt-5-mini",
-        instructions: STYLE,
+        instructions,
         input: prompt,
         reasoning: { effort: "minimal" },
         max_output_tokens: maxOutputTokens,
@@ -123,11 +129,15 @@ export const vouchFor = action({
     return await safe(fallback, async () => {
       if (!name || !(await aiAllowed(ctx, `link:${a.hopId}`))) return fallback;
       const out = await respondFast(
-        `Write one warm line (under 25 words) vouching for ${name}, the sender's ${relation}, to the person receiving this paper boat. ` +
-          `Why them: "${reason || "(no reason given)"}". Use only these facts; do not invent anything.`,
-        fallback,
+        `FACTS: name=${name}; relation=${relation}; reason="${reason}". ` +
+          `Write one warm line vouching for ${name}, the sender's ${relation}, to the person receiving this paper boat. ` +
+          `Keep the reason's concrete detail (instrument, place, group). First person from the sender. Max ${VOUCH_MAX} chars. ` +
+          `Don't add praise words (amazing, best, legend). If reason is empty, stay generic.`,
+        "",
+        200,
+        `${STYLE} ${FACTS_RULES}`,
       );
-      return clampText(stripQuotes(out), LIMITS.vouch) || fallback;
+      return checkDraft(out, [name, relation, reason], VOUCH_MAX) ?? fallback;
     });
   },
 });
@@ -212,12 +222,23 @@ export const verifyClaimCode = action({
   },
 });
 
-const INTRO_MAX = 320;
+const INTRO_MAX = 220;
+const VOUCH_MAX = 120;
 
-export function introFallback(claimerName: string, makerName: string, wishText: string): string {
+/** "Louise and Katie" from the middle of a chain (wisher and claimer excluded). */
+function joinNames(names: string[]) {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+export function introFallback(claimerName: string, makerName: string, wishText: string, chainMiddle: string[] = []): string {
   const hi = claimerName ? `Hi ${claimerName}` : "Hi";
-  const wish = wishText ? ` for my wish "${short(wishText, 60)}"` : "";
-  return `${hi}, it's ${makerName || "me"} from Wishwell — you're the one${wish}. Want to grab a coffee or hop on a call this week?`;
+  const me = makerName ? `, it's ${makerName}!` : "!";
+  const gist = wishText ? ` about "${wishGist(wishText, 60)}"` : "";
+  const via = chainMiddle.length
+    ? ` ${joinNames(chainMiddle)} connected us${gist}.`
+    : ` Thanks for saying you're the one${gist}.`;
+  return `${hi}${me}${via} Want to set something up?`;
 }
 
 /**
@@ -232,18 +253,26 @@ export const introMessage = action({
     return await safe(generic, async () => {
       const c = await ctx.runQuery(internal.hops.aiContext, { hopId });
       if (!c) return generic;
-      const claimer = clampText(c.holderName, LIMITS.name);
-      const maker = clampText(c.wisherName, LIMITS.name);
+      const claimer = firstName(clampText(c.holderName, LIMITS.name));
+      const maker = firstName(clampText(c.wisherName, LIMITS.name));
       const wishText = clampText(c.wishText, LIMITS.wish);
-      const fallback = introFallback(claimer, maker, wishText);
+      const chain = c.chain.map((n) => clampText(n, LIMITS.name));
+      const vouch = clampText(c.introVouch ?? "", LIMITS.vouch);
+      const youSaid = clampText(c.itsMeIntro ?? "", LIMITS.intro);
+      const fallback = introFallback(claimer, maker, wishText, chain.slice(1, -1));
       if (!(await aiAllowed(ctx, `link:${hopId}`))) return fallback;
       const out = await respondFast(
-        `Write a 1–2 sentence text message from ${maker || "the wisher"} to ${claimer || "the person"}, who said they are the one ` +
-          `for this wish: "${wishText}". Start with "Hi ${claimer || "there"}, it's ${maker || "me"} from Wishwell". ` +
-          `Say they're the one for the wish and suggest meeting up or a quick call. Use only these facts.`,
-        fallback,
+        `FACTS: me=${maker}; you=${claimer}; wish="${wishText}"; chain=${chain.join(" → ")}; ` +
+          `vouch="${vouch}"; you_said="${youSaid}". Write a first text from me to you, max ${INTRO_MAX} chars. ` +
+          `Thank them by name for the chain (who connected us), mention one fact from vouch or you_said, ` +
+          `and propose one easy next step as a question. End with a question mark. No dates unless in FACTS.`,
+        "",
+        200,
+        `${STYLE} ${FACTS_RULES}`,
       );
-      return clampText(stripQuotes(out), INTRO_MAX) || fallback;
+      const ok = checkDraft(out, [maker, claimer, wishText, vouch, youSaid, ...chain], INTRO_MAX);
+      if (!ok && out) console.warn(JSON.stringify({ event: "link_ai.intro_rejected" }));
+      return ok ?? fallback;
     });
   },
 });

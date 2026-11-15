@@ -131,10 +131,19 @@ function trimSlash(url: string | undefined) {
   return (url ?? "").trim().replace(/\/+$/, "");
 }
 
+const OG_VOUCH_MAX = 50;
+
+function clip(text: string, max: number) {
+  const t = text.trim().replace(/\s+/g, " ");
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+}
+
 /** The share-preview page: OG/Twitter tags + an instant redirect to the web link page. */
 export function ogHtml(hop: OgHop, appWebUrl: string | undefined) {
   const base = trimSlash(appWebUrl);
-  const title = `${hop.senderName}: ${hop.introVouch ?? "thought of you for this"}`;
+  // Short, specific, no brand (Apple TN3156); see docs/superpowers/specs/2026-11-15-ai-greetings-design.md #4.
+  const vouch = hop.introVouch ? clip(hop.introVouch, OG_VOUCH_MAX) : null;
+  const title = vouch ? `${hop.senderName}: ${vouch}` : `${hop.senderName} thought of you for a wish`;
   const description = `…and sent you a free wish 🪙 — ${hop.wishText}`;
   const target = `${base}/l/${encodeURIComponent(hop.hopId)}`;
   const t = escapeHtml(title);
