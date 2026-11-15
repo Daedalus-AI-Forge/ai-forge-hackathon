@@ -219,7 +219,44 @@ describe("linkAi.introMessage", () => {
     const t = setup();
     const { hopId } = await seed(t);
     const text = await t.action(api.linkAi.introMessage, { hopId });
-    expect(text).toContain("Hi Vee, it's Darren from Wishwell");
-    expect(text).toContain("Someone to jam on drums");
+    expect(text).toBe(`Hi Vee, it's Darren! Thanks for saying you're the one about "someone to jam on drums with in a band". Want to set something up?`);
+  });
+
+  async function chainSeed(t: ReturnType<typeof setup>) {
+    const { hopId, wishId } = await seed(t);
+    return await t.run(async (ctx) => {
+      const katie = await ctx.db.insert("hops", {
+        wishId, parentHopId: hopId, depth: 2, holderName: "Katie", recipientTags: [], viaGroup: false,
+      });
+      const dazi = await ctx.db.insert("hops", {
+        wishId, parentHopId: katie, depth: 3, holderName: "Dazi Lee", recipientTags: ["privateTagQ"], viaGroup: false,
+        introVouch: "you drum with a Berkeley collective every week", itsMeIntro: "I play drums every Tuesday",
+      });
+      return dazi;
+    });
+  }
+
+  test("AI draft uses FACTS (chain, vouch, you_said) and passes the check", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    const t = setup();
+    const dazi = await chainSeed(t);
+    const reply = "Hi Dazi, it's Darren! Vee and Katie got my boat to you. Katie says you drum with a Berkeley collective. Up for a jam sometime?";
+    const fetchMock = vi.fn(async () => openAiReply(reply));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await t.action(api.linkAi.introMessage, { hopId: dazi })).toBe(reply);
+    const body = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string;
+    expect(body).toContain("chain=Darren → Vee → Katie → Dazi");
+    expect(body).toContain('you_said=\\"I play drums every Tuesday\\"');
+    expect(body).not.toContain("privateTagQ");
+  });
+
+  test("an invented fact falls back to the template naming the chain", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    const t = setup();
+    const dazi = await chainSeed(t);
+    vi.stubGlobal("fetch", vi.fn(async () => openAiReply("Hi Dazi! Meet me at Blue Bottle on Friday at 5?")));
+    expect(await t.action(api.linkAi.introMessage, { hopId: dazi })).toBe(
+      `Hi Dazi, it's Darren! Vee and Katie connected us about "someone to jam on drums with in a band". Want to set something up?`,
+    );
   });
 });
