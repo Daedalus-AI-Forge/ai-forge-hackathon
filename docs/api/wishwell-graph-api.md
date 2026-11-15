@@ -2,10 +2,13 @@
 
 Frozen for UI work. Build against `src/lib/graphApi.types.ts` + the mock data at the bottom; the real Convex functions land on branch `capy/wishwell-graph-api` (target 15:00). Spec: `docs/superpowers/specs/2026-11-15-wishwell-agent-graph-design.md`.
 
+Quick reference with real responses and demo logins (Mia vs fresh): [`graph-coach.md`](graph-coach.md).
+
 Conventions (same as today): every app call passes `deviceId` (from `src/lib/device.ts`); the server resolves the user from the auth session first, then deviceId. Pass-on page calls stay login-free and keyed by `hopId`. Errors are thrown as `Error(message)` with a user-readable message; show it inline.
 
 ## 1. `wishes.mode` (new field)
 - `wishes.toss` gains `mode?: "serious" | "fun"` (default `"serious"`). Daily wish = `"fun"`.
+  - As built: omitting `mode` keeps the legacy behavior (`"fun"`, reason optional) so today's UI keeps working; new UI sends `mode` explicitly. See [`graph-coach.md`](graph-coach.md).
 - Every wish/hop page payload gains `wish.mode`.
 - **Rule:** serious → each recipient needs a `reason`; fun → `reason` optional.
 

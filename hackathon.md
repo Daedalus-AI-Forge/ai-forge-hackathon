@@ -92,3 +92,10 @@ limit is hit. Edges clamp names and tags on write, forgetting a person needs a
 name, and the daily wish looks up a player's hop with a (wish, holder) index
 (`convex/ai.ts`, `convex/daily.ts`, `convex/edges.ts`, `convex/lib.ts`,
 `convex/security.test.ts`).
+
+Seeded a demo ego graph for the coach: Mia has 12 people and 23 tagged edges
+with one-line reasons, and a second demo user (device id `dev_demo_fresh`) has
+2 edges, below the coach threshold. A live smoke script checks the graph, the
+reason rule on serious wishes, grounded coach suggestions and forgetting an
+edge against the dev deployment, then reseeds (`convex/seed.ts`,
+`convex/seed.test.ts`, `scripts/graph-smoke.mjs`, `docs/api/graph-coach.md`).
