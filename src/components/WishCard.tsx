@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { Button, Card } from "@/components/ui";
 import { colors, mono } from "@/lib/theme";
-import { hoursLeft, ordinal, useNow } from "@/lib/time";
+import { ordinal, timeLeft, useNow } from "@/lib/time";
 
 export function HelpCard({
   hopId,
@@ -26,7 +26,7 @@ export function HelpCard({
       <Text style={styles.who}>{creatorName} made a wish</Text>
       <Text style={styles.text}>{text}</Text>
       <Text style={styles.meta}>
-        {ordinal(depth)} ripple · <Text style={{ fontFamily: mono, fontWeight: "800" }}>{hoursLeft(expiresAt, now)}h</Text> left
+        {ordinal(depth)} ripple · <Text style={{ fontFamily: mono, fontWeight: "800" }}>{timeLeft(expiresAt, now)}</Text>
       </Text>
       <View style={styles.row}>
         <Button title="It's me!" variant="secondary" style={styles.small} onPress={() => go("its_me")} testID={`help-its-me-${hopId}`} />

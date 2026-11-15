@@ -13,6 +13,13 @@ export function hoursLeft(expiresAt: number, now: number) {
   return Math.max(0, Math.floor((expiresAt - now) / 3600000));
 }
 
+export function timeLeft(expiresAt: number, now: number) {
+  const ms = expiresAt - now;
+  if (ms <= 0) return "time's up";
+  if (ms < 3600000) return `${Math.max(1, Math.floor(ms / 60000))}m left`;
+  return `${hoursLeft(expiresAt, now)}h left`;
+}
+
 export function countdown(expiresAt: number, now: number) {
   const total = Math.max(0, Math.floor((expiresAt - now) / 1000));
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -25,7 +32,7 @@ export function ordinal(n: number) {
 }
 
 export function rippleLine(ripples: number, holding: number, expiresAt: number, now: number) {
-  const left = expiresAt > now ? `${hoursLeft(expiresAt, now)}h left` : "time's up";
+  const left = timeLeft(expiresAt, now);
   const first = ripples === 0 ? "In the well" : `${ordinal(ripples)} ripple`;
   return `${first} · ${holding} holding it · ${left}`;
 }

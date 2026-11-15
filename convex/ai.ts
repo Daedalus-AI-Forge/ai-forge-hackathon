@@ -84,9 +84,11 @@ export const draftPassMessage = action({
     const context = await ctx.runQuery(internal.hops.aiContext, { hopId });
     if (!context) return "A wish just landed with you. Know anyone?";
     const hoursLeft = Math.max(0, Math.round((context.expiresAt - Date.now()) / 3600000));
+    const wishGist = context.wishText.split(/(?<=[.!?])\s/)[0].replace(/[.!?]$/, "");
+    const gist = wishGist.charAt(0).toLowerCase() + wishGist.slice(1);
     const rippleText = context.depth === 1 ? "1st ripple" : `${context.depth} ripples in`;
     const fallback =
-      `A wish just landed with you, ${context.holderName}: ${context.wisherName} wants ${context.wishText.replace(/\.$/, "")}. ` +
+      `A wish just landed with you, ${context.holderName}: ${context.wisherName} wants ${gist}. ` +
       `Know anyone? It's ${rippleText}, ${hoursLeft}h left.`;
     const message = await respond(
       `Write a playful 1-2 sentence message from ${context.senderName} passing a wish to ${context.holderName}` +

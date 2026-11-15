@@ -21,7 +21,7 @@ export function ShareLink({ hopId, name, message }: { hopId: string; name: strin
           <Text style={styles.muted}>AI is drafting your message…</Text>
         </View>
       ) : (
-        <Field value={text} onChangeText={setText} multiline testID={`share-message-${hopId}`} />
+        <Field value={text} onChangeText={setText} multiline style={{ minHeight: 120 }} testID={`share-message-${hopId}`} />
       )}
       <Text testID={`share-link-${hopId}`} selectable style={styles.link}>
         {url}
