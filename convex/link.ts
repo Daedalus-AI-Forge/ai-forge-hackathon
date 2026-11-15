@@ -521,48 +521,95 @@ export const draftReminder = t3InternalMutation({
 });
 
 /**
- * The wisher confirms a verified "it's me" claim: the wish is found and both sides get
- * each other's number. Idempotent: confirming the same hop again sends nothing new.
+ * The wisher confirms a verified "it's me" claim: the wish is found and the claimer's
+ * verified phone is returned to the wisher only, so the app can open the wisher's OWN
+ * Messages app prefilled to them. We never text anyone's number on their behalf; the
+ * scheduled notices below carry no phone numbers. Idempotent for the same hop.
  */
 export const confirmClaim = mutation({
   args: { hopId: v.id("hops"), deviceId: v.string() },
-  handler: async (ctx, a) => {
+  returns: v.object({ claimerName: v.string(), claimerPhone: v.string() }),
+  handler: async (ctx, a): Promise<{ claimerName: string; claimerPhone: string }> => {
     const user = await t3UserByDevice(ctx, a.deviceId);
     const hop = await ctx.db.get("hops", a.hopId);
     if (!hop) throw new Error("Boat not found");
     const wish = await ctx.db.get("wishes", hop.wishId);
     if (!wish) throw new Error("Boat not found");
     if (!user || wish.creatorId !== user._id) throw new Error("Only the wisher can confirm this claim");
-    if (hop.action !== "its_me" || !hop.claimVerified) throw new Error("This claim isn't verified yet");
-    if (wish.status === "found" && wish.winningHopId === hop._id) return null;
+    if (hop.action !== "its_me" || !hop.claimVerified || !hop.claimPhone) throw new Error("This claim isn't verified yet");
+    const claimerName = t3DisplayName(hop.holderName, "your match");
+    const result = { claimerName, claimerPhone: hop.claimPhone };
+    if (wish.status === "found" && wish.winningHopId === hop._id) return result;
     if (wish.status !== "traveling") throw new Error("This wish isn't open anymore");
 
     await ctx.db.patch("wishes", wish._id, { status: "found", winningHopId: hop._id });
 
     const creatorName = t3DisplayName(user.name, "The wisher");
-    const claimerName = t3DisplayName(hop.holderName, "your match");
     const creatorContact = await t3ContactOf(ctx, user);
-    const claimPhone = hop.claimPhone;
-
-    if (claimPhone) {
-      const theirs = creatorContact ? ` Reach them at ${creatorContact}.` : "";
-      await ctx.scheduler.runAfter(0, t3Internal.notify.send, {
-        to: claimPhone,
-        kind: "claimConfirmed",
-        text: `${creatorName} confirmed — it's you! We sent you their number, and yours to them.${theirs}`,
-      });
-    }
+    await ctx.scheduler.runAfter(0, t3Internal.notify.send, {
+      to: hop.claimPhone,
+      kind: "claimConfirmed",
+      text: `${creatorName} confirmed — it's you! Watch for a text from them.`,
+    });
     if (creatorContact) {
-      const theirs = claimPhone ? ` Reach them at ${claimPhone}.` : "";
       await ctx.scheduler.runAfter(0, t3Internal.notify.send, {
         to: creatorContact,
         kind: "claimConfirmed",
-        text: `You confirmed ${claimerName} — it's them! We sent you their number, and yours to them.${theirs}`,
+        text: `You confirmed ${claimerName}. Text them from your phone to say hi.`,
       });
     } else {
       console.log(JSON.stringify({ event: "notify_skipped", kind: "claimConfirmed", reason: "creator_no_contact", wishId: wish._id }));
     }
-    return null;
+    return result;
+  },
+});
+
+/**
+ * Verified "it's me" claims on the caller's traveling wishes, newest first, for the
+ * app's confirm card. Never includes the claimer's phone (confirmClaim returns it).
+ */
+export const pendingClaims = query({
+  args: { deviceId: v.string() },
+  returns: v.array(
+    v.object({
+      hopId: v.id("hops"),
+      wishId: v.id("wishes"),
+      wishText: v.string(),
+      claimerName: v.string(),
+      intro: v.string(),
+      answers: v.array(v.string()),
+      claimedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, a) => {
+    const user = await t3UserByDevice(ctx, a.deviceId);
+    if (!user) return [];
+    const wishes = await ctx.db
+      .query("wishes")
+      .withIndex("by_creatorId", (q) => q.eq("creatorId", user._id))
+      .order("desc")
+      .take(20);
+    const out = [];
+    for (const wish of wishes) {
+      if (wish.status !== "traveling") continue;
+      const hops = await ctx.db
+        .query("hops")
+        .withIndex("by_wishId", (q) => q.eq("wishId", wish._id))
+        .take(200);
+      for (const h of hops) {
+        if (h.action !== "its_me" || !h.claimVerified) continue;
+        out.push({
+          hopId: h._id,
+          wishId: wish._id,
+          wishText: wish.text,
+          claimerName: t3DisplayName(h.holderName, "Someone"),
+          intro: h.itsMeIntro ?? "",
+          answers: h.claimAnswers ?? [],
+          claimedAt: h.actedAt ?? h._creationTime,
+        });
+      }
+    }
+    return out.sort((x, y) => y.claimedAt - x.claimedAt);
   },
 });
 

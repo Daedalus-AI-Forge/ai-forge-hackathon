@@ -103,26 +103,75 @@ describe("link.confirmClaim", () => {
     );
   });
 
-  test("marks the wish found and texts both sides the other's number, once", async () => {
+  test("marks the wish found, returns the claimer's phone to the creator, and texts no numbers", async () => {
     vi.useFakeTimers();
     const { sent } = mockTwilio();
     const t = convexTest(schema, modules);
     const { hopId, wishId } = await setup(t);
-    await t.mutation(api.link.confirmClaim, { hopId, deviceId: "dev_mia" });
+    const r = await t.mutation(api.link.confirmClaim, { hopId, deviceId: "dev_mia" });
+    expect(r).toEqual({ claimerName: "Bob", claimerPhone: "+14155550199" });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     const wish = await t.run(async (ctx) => ctx.db.get("wishes", wishId));
     expect(wish).toMatchObject({ status: "found", winningHopId: hopId });
 
     const toBob = sent.find((s) => s.To === "+14155550199")!;
-    const toMia = sent.find((s) => s.To === "+14155550100")!;
     expect(toBob.Body).toContain("Mia confirmed — it's you!");
-    expect(toBob.Body).toContain("+14155550100");
-    expect(toMia.Body).toContain("Bob");
-    expect(toMia.Body).toContain("+14155550199");
+    for (const s of sent) {
+      expect(s.Body).not.toContain("+14155550100");
+      expect(s.Body).not.toContain("+14155550199");
+      expect(s.Body).not.toMatch(/number/i);
+    }
 
-    await t.mutation(api.link.confirmClaim, { hopId, deviceId: "dev_mia" });
+    const again = await t.mutation(api.link.confirmClaim, { hopId, deviceId: "dev_mia" });
+    expect(again.claimerPhone).toBe("+14155550199");
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(sent).toHaveLength(2);
+  });
+
+  test("a stranger device is rejected and gets no phone", async () => {
+    const t = convexTest(schema, modules);
+    const { hopId } = await setup(t);
+    await t.mutation(api.users.ensure, { deviceId: "dev_eve" });
+    await expect(t.mutation(api.link.confirmClaim, { hopId, deviceId: "dev_eve" })).rejects.toThrow(
+      "Only the wisher can confirm this claim",
+    );
+    await expect(t.mutation(api.link.confirmClaim, { hopId, deviceId: "dev_unknown" })).rejects.toThrow(
+      "Only the wisher can confirm this claim",
+    );
+  });
+});
+
+describe("link.pendingClaims", () => {
+  test("lists only the caller's verified claims and never includes a phone", async () => {
+    const t = convexTest(schema, modules);
+    const { hopId, wishId, bobId } = await setup(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("hops", hopId, { itsMeIntro: "I hike every weekend", claimAnswers: ["Mt Tam"], actedAt: 5 });
+      // Unverified claim on the same wish: not listed.
+      await ctx.db.insert("hops", {
+        wishId, depth: 1, holderName: "Zed", recipientTags: [], viaGroup: false, action: "its_me", claimPhone: "+14155550111",
+      });
+      // Bob's own wish with a verified claim: not Mia's.
+      const other = await ctx.db.insert("wishes", {
+        creatorId: bobId, type: "do_together", text: "bob's wish", status: "traveling", expiresAt: Date.now() + 1e8,
+      });
+      await ctx.db.insert("hops", {
+        wishId: other, depth: 1, holderName: "Kay", recipientTags: [], viaGroup: false,
+        action: "its_me", claimPhone: "+14155550122", claimVerified: true,
+      });
+    });
+    const mia = await t.query(api.link.pendingClaims, { deviceId: "dev_mia" });
+    expect(mia).toEqual([
+      { hopId, wishId, wishText: "find my hiking buddy", claimerName: "Bob", intro: "I hike every weekend", answers: ["Mt Tam"], claimedAt: 5 },
+    ]);
+    expect(JSON.stringify(mia)).not.toMatch(/\+1415/);
+    const bob = await t.query(api.link.pendingClaims, { deviceId: "dev_bob" });
+    expect(bob.map((c) => c.claimerName)).toEqual(["Kay"]);
+    expect(JSON.stringify(bob)).not.toMatch(/\+1415/);
+    expect(await t.query(api.link.pendingClaims, { deviceId: "dev_nobody" })).toEqual([]);
+
+    await t.mutation(api.link.confirmClaim, { hopId, deviceId: "dev_mia" });
+    expect(await t.query(api.link.pendingClaims, { deviceId: "dev_mia" })).toEqual([]);
   });
 });
 

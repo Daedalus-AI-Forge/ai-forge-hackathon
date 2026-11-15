@@ -122,3 +122,15 @@ jam on drums with in the Bay Area". Re-runs replace only the seed's own rows.
 A rehearsal script tosses and passes the wish as each member and checks the
 coach at every hop (`convex/teamSeed.ts`, `convex/teamSeed.test.ts`,
 `scripts/team-chain.mjs`, `docs/demo/team-chain.md`).
+
+### 2026-11-15 - feat/confirm-claim
+The wisher confirms a claim from the app, and the first text goes from their
+own phone. Voyages shows a "Someone says it's them" card for each verified
+claim (`link.pendingClaims`, which never returns a phone). "Yes, it's you"
+calls `link.confirmClaim`, which now returns the claimer's verified phone to
+the wish creator only. `linkAi.introMessage` drafts a short intro (3s budget,
+template fallback), and "Text {name} from my phone" opens the wisher's own
+Messages app prefilled with it. The wisher taps Send, so no Twilio number is
+needed and the claimer gets the wisher's real number. The automatic notices
+no longer mention numbers (`convex/link.ts`, `convex/linkAi.ts`,
+`src/components/lv/voyages/ClaimCard.tsx`, `src/app/(tabs)/voyages.tsx`).
