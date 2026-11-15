@@ -1,4 +1,228 @@
-// F2 owns this file. Skeleton placeholder with the agreed props.
-import { Text } from "react-native";
+// Screen 3a: claim the boat ("it's me"). Daily boat: intro + optional proof photo + show-name toggle.
+// Real wish: intro + AI follow-up questions + phone verification code.
+import { useAction, useMutation } from "convex/react";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { DButton, DCard, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { phoneFromParts } from "@/lib/phoneNumber";
+import { lv } from "@/theme/tokens";
+
+import { cleanError, isSixDigitCode } from "./claim/errors";
+import { canPickPhoto, pickPhotoWeb, uploadPhoto } from "./claim/photo";
+
 export type ClaimStepProps = { hopId: string; deviceId: string; kind: "daily" | "real"; onDone: () => void };
-export function ClaimStep(_p: ClaimStepProps) { return <Text>Claim</Text>; }
+
+export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
+  const hop = hopId as Id<"hops">;
+  const claim = useMutation(api.link.claim);
+  const generateUploadUrl = useMutation(api.link.generateUploadUrl);
+  const track = useMutation(api.linkMetrics.track);
+  const claimQuestions = useAction(api.linkAi.claimQuestions);
+  const sendClaimCode = useAction(api.linkAi.sendClaimCode);
+
+  const [intro, setIntro] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  // daily
+  const [showNameAndCity, setShowNameAndCity] = useState(true);
+  const [photo, setPhoto] = useState<{ storageId: string; name: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  // real
+  const [questions, setQuestions] = useState<string[] | null>(kind === "real" ? null : []);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (kind !== "real") return;
+    let live = true;
+    claimQuestions({ hopId: hop })
+      .then((qs) => live && setQuestions(qs))
+      .catch(() => live && setQuestions(["What makes you a fit for this wish?"]));
+    return () => {
+      live = false;
+    };
+  }, [kind, hopId]);
+
+  const fullPhone = phone.trim() ? phoneFromParts("1", phone) : "";
+
+  async function onPickPhoto() {
+    setError(null);
+    const file = await pickPhotoWeb();
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await generateUploadUrl({});
+      const storageId = await uploadPhoto(url, file);
+      setPhoto({ storageId, name: file.name });
+    } catch (e) {
+      setError(cleanError(e));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function onSendCode() {
+    setError(null);
+    setSending(true);
+    try {
+      await sendClaimCode({ hopId: hop, phone: fullPhone });
+      setCodeSent(true);
+    } catch (e) {
+      setError(cleanError(e));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function onSubmit() {
+    setError(null);
+    setBusy(true);
+    try {
+      await claim({
+        hopId: hop,
+        deviceId,
+        intro: intro.trim(),
+        ...(kind === "daily"
+          ? { showNameAndCity, proofStorageId: photo ? (photo.storageId as Id<"_storage">) : undefined }
+          : { answers: answers.map((a) => a.trim()), phone: fullPhone, code: code.trim() }),
+      });
+      setDone(true);
+      void track({ hopId: hop, deviceId, event: "claim" }).catch(() => {});
+    } catch (e) {
+      setError(cleanError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <DCard testID="claim-waiting">
+        <Eyebrow>Claimed</Eyebrow>
+        <Text style={styles.title}>Waiting for the wish-maker to confirm</Text>
+        <Sub>We'll let you know as soon as they do.</Sub>
+        <DButton title="Continue" onPress={onDone} testID="claim-continue" />
+      </DCard>
+    );
+  }
+
+  const realReady =
+    kind !== "real" ||
+    (questions !== null && questions.every((_, i) => (answers[i] ?? "").trim()) && codeSent && isSixDigitCode(code.trim()));
+  const canSubmit = intro.trim().length > 0 && realReady && !uploading;
+
+  return (
+    <DCard testID="claim-step">
+      <Eyebrow>It's me</Eyebrow>
+      <Text style={styles.title}>Tell the wish-maker who you are</Text>
+      <DField
+        label="A quick intro"
+        value={intro}
+        onChangeText={setIntro}
+        placeholder="Hi, I'm…"
+        multiline
+        maxLength={500}
+        testID="claim-intro"
+      />
+
+      {kind === "daily" ? (
+        <View style={styles.section}>
+          {canPickPhoto ? (
+            <DButton
+              title={photo ? `Photo added: ${photo.name}` : "Add a proof photo (optional)"}
+              variant="ghost"
+              size="sm"
+              busy={uploading}
+              onPress={onPickPhoto}
+              testID="claim-photo"
+            />
+          ) : (
+            <Sub>Proof photos can be added from the web page.</Sub>
+          )}
+          <Pressable style={styles.toggle} onPress={() => setShowNameAndCity((v) => !v)} accessibilityRole="switch">
+            <Text style={styles.toggleText}>Show my name and city</Text>
+            <Switch
+              value={showNameAndCity}
+              onValueChange={setShowNameAndCity}
+              trackColor={{ true: lv.thread, false: lv.border }}
+              testID="claim-show-name"
+            />
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.section}>
+          {questions === null ? (
+            <View style={styles.row}>
+              <ActivityIndicator color={lv.thread} />
+              <Sub>Getting a few questions…</Sub>
+            </View>
+          ) : (
+            questions.map((q, i) => (
+              <DField
+                key={i}
+                label={q}
+                value={answers[i] ?? ""}
+                onChangeText={(t) => setAnswers((prev) => Object.assign([...prev], { [i]: t }))}
+                maxLength={300}
+                testID={`claim-answer-${i}`}
+              />
+            ))
+          )}
+          <View style={styles.row}>
+            <DField
+              label="Your phone"
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="+1 555 010 0000"
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              testID="claim-phone"
+            />
+            <DButton
+              title={codeSent ? "Resend" : "Send code"}
+              variant="ink"
+              size="sm"
+              style={styles.codeBtn}
+              busy={sending}
+              disabled={fullPhone.replace(/\D/g, "").length < 8}
+              onPress={onSendCode}
+              testID="claim-send-code"
+            />
+          </View>
+          {codeSent ? (
+            <DField
+              label="6-digit code"
+              value={code}
+              onChangeText={(t) => setCode(t.replace(/\D/g, "").slice(0, 6))}
+              keyboardType="number-pad"
+              autoComplete="one-time-code"
+              maxLength={6}
+              testID="claim-code"
+            />
+          ) : null}
+        </View>
+      )}
+
+      <DError error={error} />
+      <DButton title="Claim this boat" onPress={onSubmit} busy={busy} disabled={!canSubmit} testID="claim-submit" />
+    </DCard>
+  );
+}
+
+const styles = StyleSheet.create({
+  title: { fontSize: 20, fontWeight: "700", color: lv.fg },
+  section: { gap: 12 },
+  row: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
+  codeBtn: { marginBottom: 4 },
+  toggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  toggleText: { color: lv.fg, fontSize: 15 },
+});
