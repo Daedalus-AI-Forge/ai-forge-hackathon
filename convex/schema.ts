@@ -31,13 +31,14 @@ export default defineSchema({
     image: v.optional(v.string()),
     email: v.optional(v.string()),
     emailVerificationTime: v.optional(v.number()),
+    // E.164, set by phone sign-in (convex/phoneProvider.ts).
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
   })
     .index("by_deviceId", ["deviceId"])
     .index("by_demoKey", ["demoKey"])
-    // Index names required by Convex Auth.
+    // Index names required by Convex Auth (`phone` also serves phone sign-in).
     .index("email", ["email"])
     .index("phone", ["phone"]),
 

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery } from "convex/react";
+import * as Crypto from "expo-crypto";
 import { useEffect, useState } from "react";
 
 import { api } from "@/convex/_generated/api";
@@ -8,8 +9,7 @@ import { AUTH_ENABLED } from "@/lib/authFlag";
 const KEY = "wishwell.deviceId";
 
 function randomId() {
-  const bytes = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256));
-  return "dev_" + bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return "dev_" + Crypto.randomUUID();
 }
 
 export function useDeviceId() {

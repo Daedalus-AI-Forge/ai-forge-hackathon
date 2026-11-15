@@ -8,6 +8,7 @@ Spec: `docs/wishwell-spec.md`. Built with Capy, Revyl and Convex.
 ```sh
 npm install
 npx convex dev                 # links the deployment, pushes functions, writes EXPO_PUBLIC_CONVEX_URL to .env.local
+npx convex env set DEMO_MODE true   # enables the demo profile button (users.claimDemo); leave unset in prod
 npx convex run seed:run        # resets demo data: 15 users, 3 wishes (granted / traveling / racing)
 npx expo start --web           # pass-on pages + app on web (or: npm start for the dev client)
 ```

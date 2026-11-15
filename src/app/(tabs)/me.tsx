@@ -1,4 +1,4 @@
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +15,7 @@ export default function Me() {
   const { deviceId, user } = useMe();
   const updateProfile = useMutation(api.users.updateProfile);
   const claimDemo = useMutation(api.users.claimDemo);
+  const demoEnabled = useQuery(api.users.demoEnabled);
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   useEffect(() => {
@@ -49,12 +50,14 @@ export default function Me() {
         {AUTH_ENABLED ? <AccountCard /> : null}
         {deviceId ? <NetworkMap deviceId={deviceId} /> : null}
         <Muted>Badges, reputation and "How friends see you" are coming next.</Muted>
-        <Button
-          title="Use demo profile (Mia, SF)"
-          variant="ghost"
-          testID="use-demo-profile-me"
-          onPress={() => deviceId && void claimDemo({ deviceId })}
-        />
+        {demoEnabled ? (
+          <Button
+            title="Use demo profile (Mia, SF)"
+            variant="ghost"
+            testID="use-demo-profile-me"
+            onPress={() => deviceId && void claimDemo({ deviceId })}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

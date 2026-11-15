@@ -1,23 +1,19 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { avatarFor } from "./lib";
+import { DEVICE_ID_PATTERN, avatarFor } from "./lib";
 
 /** Providers that represent a real, recoverable account (vs device/anonymous). */
-export const ACCOUNT_PROVIDERS = ["google", "apple"] as const;
-
-const DEVICE_ID_MAX = 64;
+export const ACCOUNT_PROVIDERS = ["google", "apple", "phone"] as const;
 
 export function cleanDeviceId(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 && value.length <= DEVICE_ID_MAX
-    ? value
-    : undefined;
+  return typeof value === "string" && DEVICE_ID_PATTERN.test(value) ? value : undefined;
 }
 
 export function newUserFields(seed: string) {
   return { name: "", avatar: avatarFor(seed), city: "", wishesLeft: 1, stars: 0 };
 }
 
-/** True when the user row is attached to a Google or Apple account. */
+/** True when the user row is attached to a Google, Apple or phone account. */
 export async function hasAccountLogin(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
   for (const provider of ACCOUNT_PROVIDERS) {
     const account = await ctx.db
@@ -42,14 +38,18 @@ type CreateOrUpdateArgs = {
  * - Anonymous sign-in passes `deviceId`; if this device already has an
  *   (unlinked) user row we adopt it, so a device-identity user keeps all
  *   their data the moment they get an auth session.
- * - Google/Apple create a fresh row (or reuse the one tied to that account);
- *   the device's data is folded in afterwards by `users.linkDevice`.
+ * - Google/Apple/phone create a fresh row (or reuse the one tied to that
+ *   account); the device's data is folded in afterwards by `users.linkDevice`.
+ * - Phone sign-in passes `phone` (E.164, already verified) and sets
+ *   `phone` + `phoneVerificationTime` on the row.
  */
 export async function createOrUpdateUser(ctx: MutationCtx, args: CreateOrUpdateArgs) {
   const { profile } = args;
   const email = typeof profile.email === "string" ? profile.email : undefined;
   const name = typeof profile.name === "string" ? profile.name.trim() : "";
   const image = typeof profile.image === "string" ? profile.image : undefined;
+  const phone =
+    args.provider.id === "phone" && typeof profile.phone === "string" ? profile.phone : undefined;
 
   if (args.existingUserId) {
     const existing = await ctx.db.get("users", args.existingUserId);
@@ -57,6 +57,10 @@ export async function createOrUpdateUser(ctx: MutationCtx, args: CreateOrUpdateA
       const patch: Partial<Doc<"users">> = {};
       if (email && !existing.email) patch.email = email;
       if (image && !existing.image) patch.image = image;
+      if (phone && !existing.phone) {
+        patch.phone = phone;
+        patch.phoneVerificationTime = Date.now();
+      }
       if (name && !existing.name) {
         patch.name = name;
         patch.avatar = avatarFor(name);
@@ -88,11 +92,12 @@ export async function createOrUpdateUser(ctx: MutationCtx, args: CreateOrUpdateA
 
   const verified = profile.emailVerified === true;
   return await ctx.db.insert("users", {
-    ...newUserFields(name || email || args.provider.id),
+    ...newUserFields(name || email || phone || args.provider.id),
     name,
     email,
     image,
     ...(email && verified ? { emailVerificationTime: Date.now() } : {}),
+    ...(phone ? { phone, phoneVerificationTime: Date.now() } : {}),
   });
 }
 
@@ -151,7 +156,6 @@ export async function mergeUserInto(ctx: MutationCtx, from: Doc<"users">, into: 
     avatar: into.name ? into.avatar : from.name ? from.avatar : into.avatar,
     stars: into.stars + from.stars,
     wishesLeft: Math.max(into.wishesLeft, from.wishesLeft),
-    demoKey: into.demoKey ?? from.demoKey,
   });
 
   await deleteUserAndAuthData(ctx, from._id);

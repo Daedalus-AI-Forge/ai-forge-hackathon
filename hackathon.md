@@ -7,12 +7,12 @@
 - **Repo:** private
 - **Frontend:** not deployed
 - **Convex deployment:** not deployed
-- **Components:** none
+- **Components:** @convex-dev/rate-limiter
 - **Convex features:** schema, indexes, queries, mutations, actions, scheduler, crons, realtime useQuery, Convex Auth, HTTP actions
-- **Auth:** Convex Auth (Google, native Apple, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
+- **Auth:** Convex Auth (Google, native Apple, phone OTP, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-15T20:17:00Z
+- **Last updated:** 2026-11-15T21:00:00Z
 
 ## Log
 
@@ -57,6 +57,20 @@ sign-in smoke script. Google and Apple haven't been tested yet because the
 credentials don't exist (`convex/auth.ts`, `convex/authUsers.ts`,
 `convex/appleProvider.ts`, `src/app/sign-in.tsx`, `src/lib/auth.tsx`,
 `docs/auth-setup.md`).
+
+### 2026-11-15 - capy/wishwell-phone-auth
+Added phone number sign-in (API only). `phoneAuth.sendCode({ phone })` normalizes
+the number to E.164 with `libphonenumber-js` and sends a code, then
+`signIn("phone", { phone, code })` verifies it through a `ConvexCredentials`
+provider and finds or creates the account keyed by that number. Codes go
+through one module (`convex/sms.ts`): demo numbers from `DEMO_PHONE_NUMBERS`
+accept a fixed code and never send SMS, and Twilio Verify is used when its env
+vars are set. Sends (1/min, 5/hour) and verify attempts (10/hour) are limited
+per number with the `@convex-dev/rate-limiter` component. Covered by convex-test
+unit tests (Twilio only with a mocked `fetch`) and a live demo-number smoke
+script against the dev deployment. Twilio hasn't been tested against the live
+service (`convex/phoneProvider.ts`, `convex/phoneAuth.ts`, `convex/sms.ts`,
+`convex/phoneLimits.ts`, `src/lib/phoneAuth.ts`).
 
 ### 2026-11-15 - working tree
 Added the well's daily wish and the wish network. The well lines up the five

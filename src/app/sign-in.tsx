@@ -7,6 +7,7 @@ import { openAuthSessionAsync } from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 
+import { PhoneSignIn } from "@/components/PhoneSignIn";
 import { Button, ErrorText, Muted, errorMessage } from "@/components/ui";
 import { AUTH_ENABLED } from "@/lib/authFlag";
 import { colors, radius } from "@/lib/theme";
@@ -109,6 +110,7 @@ function SignInScreen() {
           onPress={() => void withGoogle()}
           testID="sign-in-google"
         />
+        <PhoneSignIn onDone={done} disabled={busy !== null} />
         <ErrorText error={error} />
         <Button title="Not now" variant="ghost" onPress={done} testID="sign-in-skip" />
       </View>

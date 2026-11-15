@@ -21,6 +21,7 @@ export function avatarFor(name: string) {
  * `{ deviceId }` function keeps working with auth on or off.
  */
 export async function userByDevice(ctx: QueryCtx | MutationCtx, deviceId: string) {
+  requireDeviceId(deviceId);
   const authUserId = await getAuthUserId(ctx);
   if (authUserId) {
     const authUser = await ctx.db.get("users", authUserId);
@@ -29,8 +30,33 @@ export async function userByDevice(ctx: QueryCtx | MutationCtx, deviceId: string
   return await deviceUser(ctx, deviceId);
 }
 
+export const DEVICE_ID_PATTERN = /^[A-Za-z0-9_-]{4,64}$/;
+
+export function requireDeviceId(deviceId: string) {
+  if (!DEVICE_ID_PATTERN.test(deviceId)) throw new Error("Invalid device id");
+  return deviceId;
+}
+
+export function clampText(value: string, max: number) {
+  return value.trim().slice(0, max);
+}
+
+export function cleanTags(tags: string[]) {
+  return tags
+    .map((t) => clampText(t, 30))
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+export const LIMITS = { name: 60, city: 60, wish: 500, vouch: 280, intro: 280, contact: 100, message: 600 };
+
+export function demoMode() {
+  return process.env.DEMO_MODE === "true";
+}
+
 /** The row holding this device id, ignoring any auth session. */
 export async function deviceUser(ctx: QueryCtx | MutationCtx, deviceId: string) {
+  requireDeviceId(deviceId);
   return await ctx.db
     .query("users")
     .withIndex("by_deviceId", (q) => q.eq("deviceId", deviceId))
