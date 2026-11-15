@@ -35,6 +35,9 @@ function stem(word: string) {
 }
 
 /** Lowercase word tokens (letters/digits), stopwords dropped, length >= 3, light plural stemming. */
+/** Graph root for the owner; not a valid personKey (personKey never contains "__"). */
+const ROOT = "__me__";
+
 export function tokenize(text: string): string[] {
   const words = text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
   const out = new Set<string>();
@@ -74,12 +77,12 @@ export function rankGraph(args: {
   limit: number;
 }): Candidate[] {
   const graph = new Graph({ multi: true, type: "directed" });
-  graph.addNode("me");
+  graph.addNode(ROOT);
   for (const e of args.edges) {
     const key = personKey(e.personName);
     if (!key) continue;
     if (!graph.hasNode(key)) graph.addNode(key, { name: e.personName.trim(), sender: false });
-    graph.addDirectedEdgeWithKey(e.edgeId, "me", key, {
+    graph.addDirectedEdgeWithKey(e.edgeId, ROOT, key, {
       tag: e.tag,
       reason: e.reason,
       source: e.source,
@@ -96,7 +99,7 @@ export function rankGraph(args: {
 
   const ranked: (Candidate & { recency: number })[] = [];
   graph.forEachNode((key, attrs) => {
-    if (key === "me") return;
+    if (key === ROOT) return;
     let score = 0;
     let recency = 0;
     const evidence: { score: number; createdAt: number; tag: string; reason: string | null }[] = [];
@@ -235,7 +238,7 @@ export const coachContext = internalQuery({
     let wishText: string | null = null;
     if (wishId) {
       const wish = await ctx.db.get("wishes", wishId);
-      if (!wish) throw new Error("Wish not found");
+      if (!wish) throw new Error("Not your wish");
       const holds =
         user &&
         (wish.creatorId === user._id ||
@@ -257,16 +260,22 @@ export function isCoachReady(edgeCount: number) {
 }
 
 export const rankForWish = internalAction({
-  args: { ownerUserId: v.id("users"), wishText: v.string(), limit: v.optional(v.number()) },
+  // useMemory=false skips the paid Supermemory search (rate-limited callers get keyword ranking).
+  args: {
+    ownerUserId: v.id("users"),
+    wishText: v.string(),
+    limit: v.optional(v.number()),
+    useMemory: v.optional(v.boolean()),
+  },
   returns: v.array(candidateValidator),
-  handler: async (ctx, { ownerUserId, wishText, limit }): Promise<Candidate[]> => {
+  handler: async (ctx, { ownerUserId, wishText, limit, useMemory }): Promise<Candidate[]> => {
     const max = Math.min(Math.max(1, Math.floor(limit ?? DEFAULT_LIMIT)), LIMIT_MAX);
     const input: { edges: RankEdge[]; senders: string[] } = await ctx.runQuery(internal.graphRank.graphInput, {
       ownerUserId,
     });
     if (input.edges.length === 0) return [];
-    const edgeScores =
-      (await supermemoryScores(ownerUserId, wishText, input.edges)) ?? keywordScores(wishText, input.edges);
+    const memoryScores = useMemory === false ? null : await supermemoryScores(ownerUserId, wishText, input.edges);
+    const edgeScores = memoryScores ?? keywordScores(wishText, input.edges);
     return rankGraph({ edges: input.edges, senders: input.senders, edgeScores, limit: max });
   },
 });

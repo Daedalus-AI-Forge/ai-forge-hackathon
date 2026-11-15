@@ -162,3 +162,44 @@ describe("ai.coach", () => {
     expect(await t.action(api.ai.askTheWell, { deviceId: "dev_nobody", text: "anything" })).toBeNull();
   });
 });
+
+describe("ai.coach review follow-ups", () => {
+  test("rate-limited: no paid Supermemory/OpenAI call, still ready with grounded fallback", async () => {
+    const t = setup();
+    await seed(t, 6);
+    vi.stubEnv("SUPERMEMORY_API_KEY", "sm_test");
+    vi.stubEnv("OPENAI_API_KEY", "sk_test");
+    const fetchMock = vi.fn(async (url: string | URL) =>
+      String(url).includes("supermemory")
+        ? new Response(JSON.stringify({ results: [] }), { status: 200 })
+        : new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: "{}" }] }] }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    for (let i = 0; i < 20; i++) await t.action(api.ai.coach, { deviceId: "dev_owner", wishText: "drums" });
+    const before = fetchMock.mock.calls.length;
+    const res = await t.action(api.ai.coach, { deviceId: "dev_owner", wishText: "drums" });
+    expect(fetchMock.mock.calls.length).toBe(before);
+    expect(res.ready).toBe(true);
+    if (res.ready) expect(res.suggestions.length).toBeGreaterThan(0);
+  });
+
+  test("a hop holder (not the creator) may coach on the wish by id", async () => {
+    const t = setup();
+    const { wishId, stranger } = await seed(t, 6);
+    await t.run((ctx) => ctx.db.insert("hops", { wishId, depth: 2, holderName: "Olga", holderUserId: stranger, recipientTags: [], viaGroup: false }));
+    const res = await t.action(api.ai.coach, { deviceId: "dev_stranger", wishId });
+    expect(res.ready).toBe(false); // Olga has < threshold edges, but access is allowed (no throw)
+  });
+
+  test("turns are capped to the last COACH_TURNS_MAX before reaching the model", async () => {
+    const t = setup();
+    await seed(t, 6);
+    const fetchMock = mockOpenAI(JSON.stringify({ message: "ok?", suggestions: [] }));
+    const turns = Array.from({ length: 10 }, (_, i) => ({ role: "user" as const, text: `turn-${i}` }));
+    await t.action(api.ai.coach, { deviceId: "dev_owner", wishText: "drums", turns });
+    const body = String((fetchMock.mock.calls.at(-1) as unknown[])[1] && ((fetchMock.mock.calls.at(-1) as any)[1].body));
+    expect(body).toContain("turn-9");
+    expect(body).toContain("turn-4");
+    expect(body).not.toContain("turn-3");
+  });
+});

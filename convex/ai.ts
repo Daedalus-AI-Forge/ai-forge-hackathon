@@ -86,15 +86,16 @@ export const askTheWell = action({
     // Same ranking as the coach: top-1 grounded candidate from the caller's own edges.
     const owner = await ctx.runQuery(internal.graphRank.coachContext, { deviceId: args.deviceId });
     if (owner.ownerUserId && owner.edgeCount > 0) {
+      const allowed = await aiAllowed(ctx, `device:${args.deviceId}`);
       const [top]: Candidate[] = await ctx.runAction(internal.graphRank.rankForWish, {
         ownerUserId: owner.ownerUserId,
         wishText: text,
         limit: 1,
+        useMemory: allowed,
       });
       if (top) {
         // Same wording as the pre-ranking fallback (existing clients/tests rely on it).
         const fallback = `In your wish network ${top.name} is tagged ${[...new Set(top.evidence.map((e) => e.tag))].join(", ")}.`;
-        const allowed = await aiAllowed(ctx, `device:${args.deviceId}`);
         const reason = !allowed
           ? fallback
           : await respond(
@@ -254,13 +255,16 @@ export const coach = action({
       .slice(-COACH_TURNS_MAX)
       .map((t) => ({ role: t.role, text: clampText(t.text, COACH_TURN_TEXT_MAX) }))
       .filter((t) => t.text);
+    // Rate-limit before any paid call (Supermemory search or OpenAI).
+    const allowed = await aiAllowed(ctx, `device:${args.deviceId}`);
     const candidates: Candidate[] = await ctx.runAction(internal.graphRank.rankForWish, {
       ownerUserId: context.ownerUserId,
       wishText,
       limit: 5,
+      useMemory: allowed,
     });
     const fallback = coachFallback(candidates);
-    if (candidates.length === 0 || !(await aiAllowed(ctx, `device:${args.deviceId}`))) {
+    if (candidates.length === 0 || !allowed) {
       return { ready: true, ...fallback };
     }
     const prompt =
