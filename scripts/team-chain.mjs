@@ -50,7 +50,7 @@ try {
     console.log("Seeding +1555 test members (bindDevices)…");
     convexRun("teamSeed:run", { members: FAKE_MEMBERS, bindDevices: true });
     // Give async Supermemory ingest a moment; ranking falls back to keywords when it has no hits.
-    await new Promise((r) => setTimeout(r, 8000));
+    await new Promise((r) => setTimeout(r, 45000));
   }
   const members = {};
   for (const key of KEYS) {

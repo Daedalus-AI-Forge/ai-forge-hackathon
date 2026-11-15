@@ -14,8 +14,8 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { deleteUserAndAuthData } from "./authUsers";
-import { avatarFor, recordEdges } from "./lib";
-import { personKey } from "./graphShared";
+import { LIMITS, avatarFor, clampText, cleanTags, recordEdges } from "./lib";
+import { REASON_MAX, personKey } from "./graphShared";
 
 export const TEAM_KEYS = ["darren", "louise", "katie", "dazi"] as const;
 export type TeamKey = (typeof TEAM_KEYS)[number];
@@ -266,11 +266,19 @@ async function bindDevice(ctx: MutationCtx, userId: Id<"users">, deviceId: strin
   await ctx.db.patch("users", userId, { deviceId });
 }
 
+/**
+ * One person in the owner's graph: a depth-1 hop on the graph wish plus one edge per tag.
+ * Teammates go through `recordEdges` (edges + Supermemory ingest). Generated friends get the
+ * same edge rows but are NOT ingested: when Supermemory has hits, graphRank ranks by semantic
+ * score alone, and 20 loosely similar friends ("Bay Area", "board game nights") outranked the
+ * chain in rehearsal. Keyword ranking (no memory hits, or rate-limited) still covers them.
+ */
 async function writePerson(
   ctx: MutationCtx,
   owner: { userId: Id<"users">; name: string },
   wishId: Id<"wishes">,
   person: { name: string; tags: string[]; reason: string },
+  opts: { ingest: boolean },
 ) {
   const hopId = await ctx.db.insert("hops", {
     wishId,
@@ -279,8 +287,24 @@ async function writePerson(
     recipientTags: person.tags,
     viaGroup: false,
   });
-  return (await recordEdges(ctx, { owner, personName: person.name, tags: person.tags, reason: person.reason, wishId, hopId }))
-    .length;
+  if (opts.ingest) {
+    return (await recordEdges(ctx, { owner, personName: person.name, tags: person.tags, reason: person.reason, wishId, hopId }))
+      .length;
+  }
+  const tags = cleanTags(person.tags);
+  for (const tag of tags) {
+    await ctx.db.insert("edges", {
+      ownerUserId: owner.userId,
+      ownerName: clampText(owner.name, LIMITS.name),
+      personName: clampText(person.name, LIMITS.name),
+      tag,
+      source: "pick",
+      wishId,
+      hopId,
+      reason: clampText(person.reason, REASON_MAX) || undefined,
+    });
+  }
+  return tags.length;
 }
 
 const memberValidator = v.object({
@@ -349,12 +373,12 @@ export const run = internalMutation({
       const mates = resolved.filter((r) => r.key !== me.key);
       let edges = 0;
       for (const f of generateFriends(me.key, resolved.map((r) => r.name))) {
-        edges += await writePerson(ctx, owner, wishId, f);
+        edges += await writePerson(ctx, owner, wishId, f, { ingest: false });
       }
       const chain = CHAIN[me.key];
       for (const mate of mates) {
         const crafted = chain && chain.to === mate.key ? chain : TEAMMATE;
-        edges += await writePerson(ctx, owner, wishId, { name: mate.name, tags: crafted.tags, reason: crafted.reason });
+        edges += await writePerson(ctx, owner, wishId, { name: mate.name, tags: crafted.tags, reason: crafted.reason }, { ingest: true });
       }
       out.push({ key: me.key, userId: me.userId, created: me.created, edges, deviceId: bindDevices ? teamDeviceId(me.key) : null });
     }
