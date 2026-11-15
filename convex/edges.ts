@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internalQuery, mutation, query, type QueryCtx } from "./_generated/server";
-import { avatarFor, requireUser, userByDevice } from "./lib";
+import { LIMITS, avatarFor, clampText, requireUser, userByDevice } from "./lib";
 
 async function peopleOf(ctx: QueryCtx, userId: Id<"users">) {
   const edges = await ctx.db
@@ -40,7 +40,8 @@ export const forget = mutation({
   args: { deviceId: v.string(), personName: v.string() },
   handler: async (ctx, { deviceId, personName }) => {
     const user = await requireUser(ctx, deviceId);
-    const key = personName.trim().toLowerCase();
+    const key = clampText(personName, LIMITS.name).toLowerCase();
+    if (!key) throw new Error("Who should the well forget?");
     const edges = await ctx.db
       .query("edges")
       .withIndex("by_ownerUserId", (q) => q.eq("ownerUserId", user._id))

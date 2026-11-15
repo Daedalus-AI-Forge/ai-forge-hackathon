@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth (Google, native Apple, phone OTP, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-15T21:00:00Z
+- **Last updated:** 2026-11-15T21:10:00Z
 
 ## Log
 
@@ -83,3 +83,12 @@ the network to suggest who to send a wish to first. Convex features: crons,
 internal action, nested-field index (`convex/daily.ts`, `convex/edges.ts`,
 `convex/stats.ts`, `convex/crons.ts`, `src/components/NetworkMap.tsx`,
 `docs/daily-wish-design.md`).
+
+### 2026-11-15 - capy/wishwell-graph-api
+Merged the step1 security fixes into the daily wish and hardened its API the
+same way. Ask the well now checks the device id, caps the wish text and the
+network it sends to OpenAI, and falls back to the tag match once the rate
+limit is hit. Edges clamp names and tags on write, forgetting a person needs a
+name, and the daily wish looks up a player's hop with a (wish, holder) index
+(`convex/ai.ts`, `convex/daily.ts`, `convex/edges.ts`, `convex/lib.ts`,
+`convex/security.test.ts`).

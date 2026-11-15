@@ -93,6 +93,7 @@ export default defineSchema({
     actedAt: v.optional(v.number()),
   })
     .index("by_wishId", ["wishId"])
+    .index("by_wishId_and_holderUserId", ["wishId", "holderUserId"])
     .index("by_parentHopId", ["parentHopId"])
     .index("by_holderUserId_and_action", ["holderUserId", "action"]),
 

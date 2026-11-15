@@ -87,13 +87,16 @@ export async function recordEdges(
     hopId: Id<"hops">;
   },
 ) {
-  const tags = new Map<string, "daily" | "pick">(args.tags.map((t) => [t, "pick"]));
-  if (args.dailyTag) tags.set(args.dailyTag, "daily");
+  // Callers clamp too; this is the last line so no edge row is ever unbounded.
+  const personName = clampText(args.personName, LIMITS.name);
+  if (!personName) return;
+  const tags = new Map<string, "daily" | "pick">(cleanTags(args.tags).map((t) => [t, "pick"]));
+  if (args.dailyTag) tags.set(clampText(args.dailyTag, 30), "daily");
   for (const [tag, source] of tags) {
     await ctx.db.insert("edges", {
       ownerUserId: args.owner.userId,
-      ownerName: args.owner.name,
-      personName: args.personName,
+      ownerName: clampText(args.owner.name, LIMITS.name),
+      personName,
       tag,
       source,
       wishId: args.wishId,

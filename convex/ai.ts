@@ -66,19 +66,32 @@ export const polishWish = action({
   },
 });
 
+const ASK_MAX_PEOPLE = 40;
+const ASK_MAX_TAGS = 8;
+
 /** Ask the well: from the people in my wish network, who should get this wish first? */
 export const askTheWell = action({
   args: { deviceId: v.string(), text: v.string() },
   returns: v.union(v.null(), v.object({ name: v.string(), reason: v.string() })),
-  handler: async (ctx, { deviceId, text }): Promise<{ name: string; reason: string } | null> => {
-    const people: { name: string; tags: { tag: string }[] }[] = await ctx.runQuery(internal.edges.forAsk, { deviceId });
+  handler: async (ctx, args): Promise<{ name: string; reason: string } | null> => {
+    requireDeviceId(args.deviceId);
+    const text = clampText(args.text, LIMITS.wish);
+    if (!text) return null;
+    const network: { name: string; tags: { tag: string }[] }[] = await ctx.runQuery(internal.edges.forAsk, {
+      deviceId: args.deviceId,
+    });
+    // forAsk sorts by tag count; cap what goes into the prompt.
+    const people = network.slice(0, ASK_MAX_PEOPLE).map((p) => ({ ...p, tags: p.tags.slice(0, ASK_MAX_TAGS) }));
     if (people.length === 0) return null;
     const words = new Set(text.toLowerCase().match(/[a-z]{4,}/g) ?? []);
     const overlap = (p: (typeof people)[number]) =>
       p.tags.filter(({ tag }) => tag.toLowerCase().split(/\W+/).some((w) => words.has(w))).length;
     const best = [...people].sort((a, b) => overlap(b) - overlap(a))[0];
     const fallback = `${best.name} | In your wish network ${best.name} is tagged ${best.tags.map((t) => t.tag).join(", ")}.`;
-    const answer = await respond(
+    const allowed = await aiAllowed(ctx, `device:${args.deviceId}`);
+    const answer = !allowed
+      ? fallback
+      : await respond(
       `A user is about to send this wish: "${text}". People they have passed wishes to before, with the tags they carry:\n` +
         people.map((p) => `- ${p.name}: ${p.tags.map((t) => t.tag).join(", ")}`).join("\n") +
         `\nPick the ONE person most likely to know someone who fits. Use only the tags above; do not invent facts. ` +

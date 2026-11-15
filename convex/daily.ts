@@ -10,7 +10,9 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { MAX_RIPPLES, requireUser, userByDevice, wishHops } from "./lib";
+import { MAX_RIPPLES, requireDeviceId, requireUser, userByDevice, wishHops } from "./lib";
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** A daily wish passes through six people, so the well plans one clue per pass. */
@@ -151,17 +153,20 @@ async function insertWish(ctx: MutationCtx, date: string, copy: DailyCopy) {
 }
 
 async function myHop(ctx: QueryCtx, user: Doc<"users">, wish: Doc<"wishes">) {
+  // Indexed on (wish, holder) so the lookup stays correct however many hops the user holds.
   const mine = await ctx.db
     .query("hops")
-    .withIndex("by_holderUserId_and_action", (q) => q.eq("holderUserId", user._id))
-    .take(200);
-  return mine.find((h) => h.wishId === wish._id && h.depth === 1) ?? null;
+    .withIndex("by_wishId_and_holderUserId", (q) => q.eq("wishId", wish._id).eq("holderUserId", user._id))
+    .take(MAX_RIPPLES + 1);
+  return mine.find((h) => h.depth === 1) ?? null;
 }
 
 /** Today's daily wish for the home screen. `date` is the client's UTC date (YYYY-MM-DD). */
 export const today = query({
   args: { deviceId: v.string(), date: v.string() },
   handler: async (ctx, { deviceId, date }) => {
+    requireDeviceId(deviceId);
+    if (!DATE_PATTERN.test(date) || Number.isNaN(Date.parse(date))) throw new Error("Invalid date");
     const wish = await wishFor(ctx, date);
     if (!wish?.daily) {
       const { copy } = await planChain(ctx, date);
