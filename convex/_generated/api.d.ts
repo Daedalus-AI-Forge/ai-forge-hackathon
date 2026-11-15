@@ -8,7 +8,32 @@
  * @module
  */
 
+import type * as ai from "../ai.js";
+import type * as aiLimits from "../aiLimits.js";
+import type * as appleProvider from "../appleProvider.js";
+import type * as auth from "../auth.js";
+import type * as authAdmin from "../authAdmin.js";
+import type * as authRedirect from "../authRedirect.js";
+import type * as authUsers from "../authUsers.js";
+import type * as crons from "../crons.js";
+import type * as daily from "../daily.js";
+import type * as edges from "../edges.js";
+import type * as graph from "../graph.js";
+import type * as graphRank from "../graphRank.js";
+import type * as graphShared from "../graphShared.js";
+import type * as hops from "../hops.js";
+import type * as http from "../http.js";
+import type * as lib from "../lib.js";
+import type * as memory from "../memory.js";
 import type * as openai from "../openai.js";
+import type * as phoneAuth from "../phoneAuth.js";
+import type * as phoneLimits from "../phoneLimits.js";
+import type * as phoneProvider from "../phoneProvider.js";
+import type * as seed from "../seed.js";
+import type * as sms from "../sms.js";
+import type * as stats from "../stats.js";
+import type * as users from "../users.js";
+import type * as wishes from "../wishes.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +42,32 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  ai: typeof ai;
+  aiLimits: typeof aiLimits;
+  appleProvider: typeof appleProvider;
+  auth: typeof auth;
+  authAdmin: typeof authAdmin;
+  authRedirect: typeof authRedirect;
+  authUsers: typeof authUsers;
+  crons: typeof crons;
+  daily: typeof daily;
+  edges: typeof edges;
+  graph: typeof graph;
+  graphRank: typeof graphRank;
+  graphShared: typeof graphShared;
+  hops: typeof hops;
+  http: typeof http;
+  lib: typeof lib;
+  memory: typeof memory;
   openai: typeof openai;
+  phoneAuth: typeof phoneAuth;
+  phoneLimits: typeof phoneLimits;
+  phoneProvider: typeof phoneProvider;
+  seed: typeof seed;
+  sms: typeof sms;
+  stats: typeof stats;
+  users: typeof users;
+  wishes: typeof wishes;
 }>;
 
 /**
@@ -46,4 +96,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+};

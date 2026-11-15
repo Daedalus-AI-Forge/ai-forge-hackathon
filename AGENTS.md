@@ -1,4 +1,4 @@
-# Agent instructions — Raincheck (YC Consumer Mobile Hack 2026-11-15)
+# Agent instructions — Wishwell (YC Consumer Mobile Hack 2026-11-15)
 
 - Required stack: Capy (agents), Revyl (device testing), Convex (backend).
 - Merge permission: Capy may squash-merge its own `capy/*` PRs into `main` without asking when every
