@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { Button, Card, Field } from "@/components/ui";
+import { DButton, DCard, DField } from "@/components/lv/passon/kit";
 import { copyLink, hopUrl, shareLink, smsLink } from "@/lib/links";
-import { colors, mono } from "@/lib/theme";
+import { lv } from "@/theme/tokens";
 
-export function ShareLink({ hopId, name, message }: { hopId: string; name: string; message: string | null }) {
+/** One share row for a boat link: editable AI message, the link, and share actions. */
+export function ShareLink({
+  hopId,
+  name,
+  message,
+  label,
+}: {
+  hopId: string;
+  name: string;
+  message: string | null;
+  label?: string;
+}) {
   const [text, setText] = useState(message ?? "");
   const [note, setNote] = useState<string | null>(null);
   useEffect(() => {
@@ -13,22 +24,24 @@ export function ShareLink({ hopId, name, message }: { hopId: string; name: strin
   }, [message]);
   const url = hopUrl(hopId);
   return (
-    <Card testID={`share-card-${hopId}`}>
-      <Text style={styles.to}>For {name}</Text>
+    <DCard testID={`share-card-${hopId}`}>
+      <Text style={styles.to}>{label ?? `For ${name}`}</Text>
       {message === null && !text ? (
         <View style={styles.drafting}>
-          <ActivityIndicator color={colors.red} />
+          <ActivityIndicator color={lv.thread} />
           <Text style={styles.muted}>AI is drafting your message…</Text>
         </View>
       ) : (
-        <Field value={text} onChangeText={setText} multiline style={{ minHeight: 120 }} testID={`share-message-${hopId}`} />
+        <DField value={text} onChangeText={setText} multiline style={{ minHeight: 96 }} testID={`share-message-${hopId}`} />
       )}
       <Text testID={`share-link-${hopId}`} selectable style={styles.link}>
         {url}
       </Text>
       <View style={styles.row}>
-        <Button
+        <DButton
           title="Share"
+          variant="thread"
+          size="sm"
           style={styles.btn}
           testID={`share-native-${hopId}`}
           onPress={async () => {
@@ -36,10 +49,11 @@ export function ShareLink({ hopId, name, message }: { hopId: string; name: strin
             if (result === "copied") setNote("Copied! Paste it in your chat.");
           }}
         />
-        <Button title="SMS" variant="secondary" style={styles.btn} testID={`share-sms-${hopId}`} onPress={() => smsLink(text, url)} />
-        <Button
+        <DButton title="SMS" variant="ghost" size="sm" style={styles.btn} testID={`share-sms-${hopId}`} onPress={() => smsLink(text, url)} />
+        <DButton
           title="Copy link"
-          variant="secondary"
+          variant="ghost"
+          size="sm"
           style={styles.btn}
           testID={`share-copy-${hopId}`}
           onPress={async () => {
@@ -49,16 +63,16 @@ export function ShareLink({ hopId, name, message }: { hopId: string; name: strin
         />
       </View>
       {note ? <Text style={styles.note}>{note}</Text> : null}
-    </Card>
+    </DCard>
   );
 }
 
 const styles = StyleSheet.create({
-  to: { fontSize: 16, fontWeight: "800", color: colors.ink },
+  to: { fontSize: 16, fontWeight: "700", color: lv.fg },
   drafting: { flexDirection: "row", gap: 8, alignItems: "center", paddingVertical: 8 },
-  muted: { color: colors.muted },
-  link: { fontFamily: mono, fontSize: 13, color: colors.red },
+  muted: { color: lv.mutedFg },
+  link: { fontFamily: lv.font.mono, fontSize: 13, color: lv.thread },
   row: { flexDirection: "row", gap: 8 },
-  btn: { flex: 1, minHeight: 44, paddingHorizontal: 8 },
-  note: { color: colors.muted, fontSize: 14 },
+  btn: { flex: 1 },
+  note: { color: lv.mutedFg, fontSize: 14 },
 });

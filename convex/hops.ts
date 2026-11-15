@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { stepAt } from "./daily";
 import {
+  BOATS_PER_COIN,
   LIMITS,
   MAX_PASSES,
   MAX_RIPPLES,
@@ -231,6 +232,14 @@ export const act = mutation({
       action: args.action,
       actedAt: Date.now(),
     });
+    const holder = hop.holderUserId && (await ctx.db.get("users", hop.holderUserId));
+    if (holder) {
+      const progress = (holder.boatProgress ?? 0) + 1;
+      await ctx.db.patch("users", holder._id, {
+        boatProgress: progress % BOATS_PER_COIN,
+        wishesLeft: holder.wishesLeft + Math.floor(progress / BOATS_PER_COIN),
+      });
+    }
     if (vouch) {
       const sender = await senderOf(ctx, hop, wish);
       const vouchId = await ctx.db.insert("vouches", {
@@ -296,7 +305,14 @@ export const passTo = mutation({
 });
 
 export const itsMe = mutation({
-  args: { hopId: v.id("hops"), name: v.string(), city: v.string(), intro: v.string(), contact: v.string() },
+  args: {
+    hopId: v.id("hops"),
+    name: v.string(),
+    city: v.string(),
+    intro: v.string(),
+    contact: v.string(),
+    showNameAndCity: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const { hop } = await loadUnacted(ctx, args.hopId);
     const intro = clampText(args.intro, LIMITS.intro);
@@ -307,6 +323,7 @@ export const itsMe = mutation({
       city,
       ...coordsFor(city),
       itsMeIntro: intro,
+      itsMePublic: args.showNameAndCity,
       holderContact: clampText(args.contact, LIMITS.contact) || hop.holderContact,
       action: "its_me",
       actedAt: Date.now(),

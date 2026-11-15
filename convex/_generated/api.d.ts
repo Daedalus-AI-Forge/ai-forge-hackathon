@@ -31,6 +31,7 @@ import type * as phoneAuth from "../phoneAuth.js";
 import type * as phoneLimits from "../phoneLimits.js";
 import type * as phoneProvider from "../phoneProvider.js";
 import type * as places from "../places.js";
+import type * as pool from "../pool.js";
 import type * as seed from "../seed.js";
 import type * as sms from "../sms.js";
 import type * as stats from "../stats.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   phoneLimits: typeof phoneLimits;
   phoneProvider: typeof phoneProvider;
   places: typeof places;
+  pool: typeof pool;
   seed: typeof seed;
   sms: typeof sms;
   stats: typeof stats;

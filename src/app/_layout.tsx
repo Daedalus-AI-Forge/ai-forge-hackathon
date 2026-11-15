@@ -35,7 +35,9 @@ export default function RootLayout() {
     <Backend client={convex}>
       <Stack screenOptions={{ contentStyle: { backgroundColor: lv.bg }, headerShadowVisible: false, headerStyle: { backgroundColor: lv.bg }, headerTintColor: lv.fg }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Wishwell" }} />
-        <Stack.Screen name="toss" options={{ presentation: "modal", title: "Toss a wish" }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false }} />
+        <Stack.Screen name="boat/[hopId]" options={{ headerShown: false }} />
+        <Stack.Screen name="toss" options={{ presentation: "modal", title: "Toss a coin" }} />
         <Stack.Screen name="network" options={{ title: "My wish network" }} />
         <Stack.Screen name="sign-in" options={{ presentation: "modal", title: "Sign in" }} />
         <Stack.Screen name="revyl-auth" options={{ headerShown: false }} />

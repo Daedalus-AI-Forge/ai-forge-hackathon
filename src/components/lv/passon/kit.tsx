@@ -138,20 +138,6 @@ export function DChips({
   );
 }
 
-/** Three-segment progress bar ("1 / 3"). */
-export function Progress({ done, of }: { done: number; of: number }) {
-  return (
-    <View style={s.progress} testID="pass-progress">
-      {Array.from({ length: of }, (_, i) => (
-        <View key={i} style={[s.seg, { backgroundColor: i < done ? lv.thread : "rgba(28,25,21,0.1)" }]} />
-      ))}
-      <Text style={s.mono}>
-        {Math.min(done, of)} / {of}
-      </Text>
-    </View>
-  );
-}
-
 export function DError({ error }: { error: string | null }) {
   return error ? <Text style={s.error}>{error}</Text> : null;
 }
@@ -195,8 +181,5 @@ export const s = StyleSheet.create({
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   chip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: lv.bg, borderWidth: 1, borderColor: lv.border },
   chipText: { fontSize: 12, color: lv.fg },
-  progress: { flexDirection: "row", alignItems: "center", gap: 8 },
-  seg: { height: 6, flex: 1, borderRadius: 999 },
-  mono: { fontFamily: lv.font.mono, fontSize: 12, color: lv.fg },
   error: { color: lv.destructive, fontSize: 14 },
 });

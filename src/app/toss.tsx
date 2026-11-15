@@ -20,6 +20,7 @@ const MAX_PEOPLE = 3;
 // Server error text (convex/lib.ts REASON_REQUIRED); shown inline under the card missing a reason.
 const REASON_REQUIRED = "Add one line on why you picked them";
 
+/** Toss a coin: write one line (AI polish), pick 1–3 starting friends, then splash + prophecy. */
 export default function Toss() {
   const router = useRouter();
   const { deviceId, user } = useMe();
@@ -40,6 +41,9 @@ export default function Toss() {
 
   const needsProfile = !user?.name;
   const typeInfo = LV_WISH_TYPES.find((t) => t.id === fromApiType[type])!;
+  const picked = people.filter((p) => p.name.trim());
+  const firstTags = picked.map((p) => p.tags[0]);
+  const sameCircle = picked.length >= 2 && firstTags.every((t) => t) && new Set(firstTags as string[]).size === 1;
 
   async function onPolish() {
     if (!deviceId || !text.trim()) return;
@@ -71,14 +75,12 @@ export default function Toss() {
     setError(null);
     setReasonMissing(false);
     try {
-      const recipients = people
-        .filter((p) => p.name.trim())
-        .map((p) => ({
-          name: p.name,
-          reason: p.reason.trim() || undefined,
-          contact: p.contact.trim() || undefined,
-          tags: p.tags,
-        }));
+      const recipients = picked.map((p) => ({
+        name: p.name,
+        reason: p.reason.trim() || undefined,
+        contact: p.contact.trim() || undefined,
+        tags: p.tags,
+      }));
       const { hopIds } = await toss({ deviceId, type, text, name, city, mode: "serious", recipients });
       const created = hopIds.map((hopId, i) => ({ hopId, name: recipients[i].name, message: null as string | null }));
       setLinks(created);
@@ -108,9 +110,11 @@ export default function Toss() {
         <>
           <View style={styles.header}>
             <Eyebrow>
-              {user ? `${user.wishesLeft} wish ${user.wishesLeft === 1 ? "credit" : "credits"} · refunded if it works` : "Make a wish"}
+              {user
+                ? `${user.wishesLeft} coin${user.wishesLeft === 1 ? "" : "s"} · refunded if it fades`
+                : "Toss a coin"}
             </Eyebrow>
-            <Text style={styles.h1}>Who do you want to meet?</Text>
+            <Text style={styles.h1}>Toss a coin: who do you want to meet?</Text>
           </View>
           <TypeGrid value={type} onChange={setType} />
           <LvCard>
@@ -142,7 +146,7 @@ export default function Toss() {
           <LvButton
             testID="toss-next"
             variant="thread"
-            title="Next: who do you ask first?"
+            title="Next: where does it start?"
             disabled={!text.trim() || (needsProfile && !name.trim())}
             onPress={() => setStep("people")}
           />
@@ -152,11 +156,11 @@ export default function Toss() {
       {step === "people" ? (
         <>
           <View style={styles.header}>
-            <Eyebrow>{typeInfo.label}</Eyebrow>
-            <Text style={styles.h1}>Now, who do you ask first?</Text>
+            <Eyebrow>{`${typeInfo.emoji} ${typeInfo.label}`}</Eyebrow>
+            <Text style={styles.h1}>Pick 1–3 friends to start from</Text>
           </View>
           <LvCard>
-            <Eyebrow>{`${typeInfo.emoji} Your wish`}</Eyebrow>
+            <Eyebrow>Your coin</Eyebrow>
             <Text style={styles.wish}>{text}</Text>
           </LvCard>
           <CoachPanel deviceId={deviceId} wishText={text} onPick={onCoachPick} pickedNames={people.map((p) => p.name)} />
@@ -171,6 +175,11 @@ export default function Toss() {
               onRemove={people.length > 1 ? () => setPeople((prev) => prev.filter((_, j) => j !== i)) : undefined}
             />
           ))}
+          {sameCircle ? (
+            <View testID="toss-diversity" style={styles.diversity}>
+              <Text style={styles.diversityText}>Try a friend from a different circle — boats drift farther.</Text>
+            </View>
+          ) : null}
           {people.length < MAX_PEOPLE ? (
             <LvButton
               testID="toss-add-person"
@@ -183,7 +192,7 @@ export default function Toss() {
           <LvButton
             testID="toss-submit"
             variant="thread"
-            title="Tie the thread"
+            title="Toss it in"
             busy={busy}
             disabled={!people.some((p) => p.name.trim())}
             onPress={onToss}
@@ -195,17 +204,21 @@ export default function Toss() {
       {step === "share" ? (
         <>
           <View style={styles.header}>
-            <Eyebrow color={lv.thread}>Your wish is live</Eyebrow>
-            <Text style={styles.h1}>Splash! It's in the well.</Text>
+            <Eyebrow color={lv.thread}>Your coin is live</Eyebrow>
+            <Text style={styles.h1}>Plop! Your coin is in the pool.</Text>
           </View>
           <View style={{ alignItems: "center" }}>
             <Pool size={180} />
           </View>
-          <Text style={styles.small}>Send each person their own link. Every link carries the trust chain forward.</Text>
+          <View style={styles.prophecy}>
+            <View style={styles.orb} />
+            <Text style={styles.prophecyText}>It might ripple toward {typeInfo.label}.</Text>
+            <Text style={styles.prophecySub}>Send each person their own link. Every link carries the trust chain forward.</Text>
+          </View>
           {links.map((l) => (
             <ShareLink key={l.hopId} hopId={l.hopId} name={l.name} message={l.message} />
           ))}
-          <LvButton title="Watch it ripple" testID="toss-done" variant="ink" onPress={() => router.replace("/")} />
+          <LvButton title="Back to the pool" testID="toss-done" variant="ink" onPress={() => router.replace("/")} />
         </>
       ) : null}
     </ScrollView>
@@ -215,8 +228,14 @@ export default function Toss() {
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 16, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 64 },
   header: { paddingTop: 24, paddingHorizontal: 4, gap: 4 },
-  h1: { fontSize: 32, fontWeight: "700", lineHeight: 38, color: lv.fg },
+  h1: { fontSize: 32, fontWeight: "700", lineHeight: 38, color: lv.fg, letterSpacing: -0.5 },
   small: { fontSize: 13, lineHeight: 18, color: lv.mutedFg, paddingHorizontal: 4 },
   wish: { fontSize: 20, fontWeight: "600", lineHeight: 26, color: lv.fg },
   err: { fontSize: 14, color: lv.destructive, paddingHorizontal: 4 },
+  diversity: { borderRadius: lv.radiusSm, backgroundColor: lv.card, borderWidth: 1, borderColor: lv.gold, padding: 14 },
+  diversityText: { fontSize: 14, fontWeight: "600", color: lv.fg, lineHeight: 19 },
+  prophecy: { overflow: "hidden", borderRadius: 28, backgroundColor: lv.fg, padding: 24, gap: 8, ...lv.shadow },
+  orb: { position: "absolute", right: -48, top: -48, width: 160, height: 160, borderRadius: 80, backgroundColor: lv.gold, opacity: 0.35 },
+  prophecyText: { fontSize: 24, fontWeight: "700", lineHeight: 28, letterSpacing: -0.4, color: lv.bg },
+  prophecySub: { fontSize: 15, color: lv.bg, opacity: 0.75 },
 });
