@@ -6,7 +6,7 @@ import { colors } from "@/lib/theme";
 
 const useNativeDriver = Platform.OS !== "web";
 
-export type Holder = { hopId: string; name: string; depth: number; avatar: string; acted: string | null };
+export type Holder = { key: string; name: string; depth: number; avatar: string; acted: string | null };
 
 function Ripple({ size, delay }: { size: number; delay: number }) {
   const t = useRef(new Animated.Value(0)).current;
@@ -44,7 +44,7 @@ function PlacedAvatar({ holder, x, y }: { holder: Holder; x: number; y: number }
   }, [t]);
   return (
     <Animated.View
-      testID={`pool-holder-${holder.hopId}`}
+      testID={`pool-holder-${holder.key}`}
       style={[
         styles.placed,
         {
@@ -83,7 +83,7 @@ export function Pool({ holders = [], size = 300, testID }: { holders?: Holder[];
           const angle = (j / ring.length) * Math.PI * 2 - Math.PI / 2 + i * 0.7;
           return (
             <PlacedAvatar
-              key={h.hopId}
+              key={h.key}
               holder={h}
               x={Math.cos(angle) * ringRadii[i]}
               y={Math.sin(angle) * ringRadii[i]}

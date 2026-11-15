@@ -1,13 +1,14 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Pool } from "@/components/Pool";
 import { ShareLink } from "@/components/ShareLink";
 import { Avatar, Button, Card, ChipRow, ErrorText, Field, Muted, errorMessage } from "@/components/ui";
+import { useDeviceId } from "@/lib/device";
 import { colors, mono } from "@/lib/theme";
 import { countdown, ordinal, useNow } from "@/lib/time";
 
@@ -21,6 +22,9 @@ type Mode = "view" | "its_me" | "me" | "vouch" | "pass" | "done";
 export default function PassOn() {
   const { hopId, start } = useLocalSearchParams<{ hopId: string; start?: string }>();
   const data = useQuery(api.hops.page, { hopId });
+  const deviceId = useDeviceId();
+  const claim = useMutation(api.hops.claim);
+  const ensure = useMutation(api.users.ensure);
   const act = useMutation(api.hops.act);
   const passTo = useMutation(api.hops.passTo);
   const itsMe = useMutation(api.hops.itsMe);
@@ -46,6 +50,11 @@ export default function PassOn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || !deviceId || !data || data.hop.action) return;
+    void ensure({ deviceId }).then(() => claim({ hopId: data.hop._id, deviceId }));
+  }, [deviceId, data?.hop._id]);
 
   useEffect(() => {
     if (!data || initialized) return;
@@ -127,7 +136,7 @@ export default function PassOn() {
         <Card testID="pass-on-chain">
           <Text style={styles.section}>The trust chain</Text>
           {data.chain.map((c) => (
-            <View key={c.hopId} style={styles.vouch}>
+            <View key={c.depth} style={styles.vouch}>
               <Avatar name={c.name} color={c.avatar} size={28} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.vouchBy}>

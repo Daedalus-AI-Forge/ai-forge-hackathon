@@ -16,6 +16,7 @@ export default function TheWell() {
   const { deviceId } = useMe();
   const home = useQuery(api.wishes.home, deviceId ? { deviceId } : "skip");
   const claimDemo = useMutation(api.users.claimDemo);
+  const demoEnabled = useQuery(api.users.demoEnabled);
   const now = useNow();
 
   if (!home) {
@@ -51,7 +52,7 @@ export default function TheWell() {
           </View>
         )}
         <Button testID="toss-button" title="Toss a wish" onPress={() => router.push("/toss")} />
-        {!wish && home.helpCards.length === 0 && deviceId ? (
+        {demoEnabled && !wish && home.helpCards.length === 0 && deviceId ? (
           <Button
             testID="use-demo-profile"
             title="Try it with demo wishes"

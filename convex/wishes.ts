@@ -2,7 +2,18 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
-import { MAX_PASSES, WISH_LIFETIME_MS, avatarFor, requireUser, rippleSummary, userByDevice, wishHops } from "./lib";
+import {
+  LIMITS,
+  MAX_PASSES,
+  WISH_LIFETIME_MS,
+  avatarFor,
+  clampText,
+  cleanTags,
+  requireUser,
+  rippleSummary,
+  userByDevice,
+  wishHops,
+} from "./lib";
 import { wishType } from "./schema";
 
 async function wishCard(ctx: QueryCtx, wish: Doc<"wishes">) {
@@ -18,8 +29,8 @@ async function wishCard(ctx: QueryCtx, wish: Doc<"wishes">) {
     creatorName: creator?.name ?? "Someone",
     creatorCity: creator?.city ?? "",
     ...rippleSummary(hops),
-    holders: hops.map((h) => ({
-      hopId: h._id,
+    holders: hops.map((h, i) => ({
+      key: String(i),
       name: h.holderName,
       city: h.city ?? null,
       depth: h.depth,
@@ -88,8 +99,11 @@ export const toss = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx, args.deviceId);
-    const text = args.text.trim();
-    const recipients = args.recipients.filter((r) => r.name.trim());
+    const text = clampText(args.text, LIMITS.wish);
+    const recipients = args.recipients
+      .slice(0, MAX_PASSES + 1)
+      .map((r) => ({ name: clampText(r.name, LIMITS.name), tags: cleanTags(r.tags) }))
+      .filter((r) => r.name);
     if (!text) throw new Error("Write your wish first");
     if (recipients.length === 0 || recipients.length > MAX_PASSES) {
       throw new Error("Pick 1 to 3 people");
@@ -97,8 +111,8 @@ export const toss = mutation({
     if (user.wishesLeft < 1) throw new Error("You're out of wishes. Help a friend to earn one!");
     await ctx.db.patch("users", user._id, {
       wishesLeft: user.wishesLeft - 1,
-      name: args.name.trim() || user.name,
-      city: args.city.trim() || user.city,
+      name: clampText(args.name, LIMITS.name) || user.name,
+      city: clampText(args.city, LIMITS.city) || user.city,
     });
     const now = Date.now();
     const wishId = await ctx.db.insert("wishes", {
@@ -108,22 +122,28 @@ export const toss = mutation({
       status: "traveling",
       expiresAt: now + WISH_LIFETIME_MS,
     });
+    const known = new Set(
+      (
+        await ctx.db
+          .query("network")
+          .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+          .take(200)
+      ).map((n) => n.personName.toLowerCase()),
+    );
     const hopIds = [];
     for (const r of recipients) {
       hopIds.push(
         await ctx.db.insert("hops", {
           wishId,
           depth: 1,
-          holderName: r.name.trim(),
+          holderName: r.name,
           recipientTags: r.tags,
           viaGroup: false,
         }),
       );
-      await ctx.db.insert("network", {
-        ownerId: user._id,
-        personName: r.name.trim(),
-        tags: r.tags,
-      });
+      if (known.has(r.name.toLowerCase())) continue;
+      known.add(r.name.toLowerCase());
+      await ctx.db.insert("network", { ownerId: user._id, personName: r.name, tags: r.tags });
     }
     await ctx.scheduler.runAfter(WISH_LIFETIME_MS, internal.wishes.fade, { wishId });
     return { wishId, hopIds };

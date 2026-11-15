@@ -44,11 +44,11 @@ export default function Toss() {
   const typeInfo = TYPES.find((t) => t.key === type);
 
   async function onPolish() {
-    if (!type || !text.trim()) return;
+    if (!deviceId || !type || !text.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      setText(await polish({ type, text }));
+      setText(await polish({ deviceId, type, text }));
     } catch (e) {
       setError(errorMessage(e));
     } finally {

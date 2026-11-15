@@ -1,16 +1,12 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { avatarFor } from "./lib";
+import { DEVICE_ID_PATTERN, avatarFor } from "./lib";
 
 /** Providers that represent a real, recoverable account (vs device/anonymous). */
 export const ACCOUNT_PROVIDERS = ["google", "apple", "phone"] as const;
 
-const DEVICE_ID_MAX = 64;
-
 export function cleanDeviceId(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 && value.length <= DEVICE_ID_MAX
-    ? value
-    : undefined;
+  return typeof value === "string" && DEVICE_ID_PATTERN.test(value) ? value : undefined;
 }
 
 export function newUserFields(seed: string) {
@@ -154,7 +150,6 @@ export async function mergeUserInto(ctx: MutationCtx, from: Doc<"users">, into: 
     avatar: into.name ? into.avatar : from.name ? from.avatar : into.avatar,
     stars: into.stars + from.stars,
     wishesLeft: Math.max(into.wishesLeft, from.wishesLeft),
-    demoKey: into.demoKey ?? from.demoKey,
   });
 
   await deleteUserAndAuthData(ctx, from._id);

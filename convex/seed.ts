@@ -31,7 +31,18 @@ async function clear(ctx: MutationCtx, table: TableNames) {
 export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
-    for (const table of ["network", "vouches", "hops", "wishes", "users"] as const) {
+    for (const table of [
+      "authRefreshTokens",
+      "authVerificationCodes",
+      "authVerifiers",
+      "authSessions",
+      "authAccounts",
+      "network",
+      "vouches",
+      "hops",
+      "wishes",
+      "users",
+    ] as const) {
       await clear(ctx, table);
     }
     const now = Date.now();

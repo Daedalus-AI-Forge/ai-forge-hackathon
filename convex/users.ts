@@ -2,7 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { hasAccountLogin, mergeUserInto } from "./authUsers";
-import { avatarFor, deviceUser, userByDevice } from "./lib";
+import { LIMITS, avatarFor, clampText, demoMode, deviceUser, requireDeviceId, userByDevice } from "./lib";
 
 /** Auth status for the client: is this user backed by a Google/Apple/phone account? */
 export const account = query({
@@ -68,29 +68,47 @@ export const ensure = mutation({
 
 export const updateProfile = mutation({
   args: { deviceId: v.string(), name: v.string(), city: v.string() },
-  handler: async (ctx, { deviceId, name, city }) => {
-    const user = await userByDevice(ctx, deviceId);
+  handler: async (ctx, args) => {
+    const user = await userByDevice(ctx, args.deviceId);
     if (!user) throw new Error("Unknown device");
+    const name = clampText(args.name, LIMITS.name);
     await ctx.db.patch("users", user._id, {
-      name: name.trim(),
-      city: city.trim(),
-      avatar: avatarFor(name.trim() || deviceId),
+      name,
+      city: clampText(args.city, LIMITS.city),
+      avatar: avatarFor(name || args.deviceId),
     });
     return null;
   },
 });
 
+export const demoEnabled = query({
+  args: {},
+  handler: async () => demoMode(),
+});
+
+/**
+ * Demo only (DEMO_MODE=true on the deployment): bind this device to the
+ * seeded demo user. Refuses a demo row that has been upgraded to a real
+ * Google/Apple/phone account, and unbinds every other row holding this
+ * device id so by_deviceId stays unique.
+ */
 export const claimDemo = mutation({
   args: { deviceId: v.string() },
   handler: async (ctx, { deviceId }) => {
+    requireDeviceId(deviceId);
+    if (!demoMode()) throw new Error("Demo mode is off");
     const demo = await ctx.db
       .query("users")
       .withIndex("by_demoKey", (q) => q.eq("demoKey", "me"))
       .unique();
     if (!demo) throw new Error("Seed the demo data first: npx convex run seed:run");
-    const current = await userByDevice(ctx, deviceId);
-    if (current && current._id !== demo._id) {
-      await ctx.db.patch("users", current._id, { deviceId: undefined });
+    if (await hasAccountLogin(ctx, demo._id)) throw new Error("The demo profile is linked to an account");
+    const holders = await ctx.db
+      .query("users")
+      .withIndex("by_deviceId", (q) => q.eq("deviceId", deviceId))
+      .take(10);
+    for (const row of holders) {
+      if (row._id !== demo._id) await ctx.db.patch("users", row._id, { deviceId: undefined });
     }
     await ctx.db.patch("users", demo._id, { deviceId });
     return demo._id;

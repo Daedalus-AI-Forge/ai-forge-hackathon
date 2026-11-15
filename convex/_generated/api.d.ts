@@ -9,6 +9,7 @@
  */
 
 import type * as ai from "../ai.js";
+import type * as aiLimits from "../aiLimits.js";
 import type * as appleProvider from "../appleProvider.js";
 import type * as auth from "../auth.js";
 import type * as authAdmin from "../authAdmin.js";
@@ -34,6 +35,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
+  aiLimits: typeof aiLimits;
   appleProvider: typeof appleProvider;
   auth: typeof auth;
   authAdmin: typeof authAdmin;
