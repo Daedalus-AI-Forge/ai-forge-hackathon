@@ -2,6 +2,8 @@ import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
 import { Platform, Share } from "react-native";
 
+import { smsHref } from "./contactPick";
+
 /**
  * Public link for a boat. Always an https link anyone can open without the app:
  * the Convex /og/w/:hopId route serves the share preview and redirects to the
@@ -40,8 +42,7 @@ export async function shareLink(message: string, url: string) {
   return "shared";
 }
 
-export function smsLink(message: string, url: string) {
-  const body = encodeURIComponent(`${message}\n${url}`);
-  const sep = Platform.OS === "ios" ? "&" : "?";
-  void Linking.openURL(`sms:${sep}body=${body}`);
+/** Open the user's own Messages with the draft (and `to`, when known) pre-filled. Never sends. */
+export function smsLink(message: string, url: string, to?: string) {
+  void Linking.openURL(smsHref(`${message}\n${url}`, to, Platform.OS === "ios" ? "ios" : "android"));
 }

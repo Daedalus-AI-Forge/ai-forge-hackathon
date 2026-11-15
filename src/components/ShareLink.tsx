@@ -11,11 +11,14 @@ export function ShareLink({
   name,
   message,
   label,
+  to,
 }: {
   hopId: string;
   name: string;
   message: string | null;
   label?: string;
+  /** Picked phone (E.164) to pre-fill as the SMS recipient. */
+  to?: string;
 }) {
   const [text, setText] = useState(message ?? "");
   const [note, setNote] = useState<string | null>(null);
@@ -49,7 +52,7 @@ export function ShareLink({
             if (result === "copied") setNote("Copied! Paste it in your chat.");
           }}
         />
-        <DButton title="SMS" variant="ghost" size="sm" style={styles.btn} testID={`share-sms-${hopId}`} onPress={() => smsLink(text, url)} />
+        <DButton title="SMS" variant="ghost" size="sm" style={styles.btn} testID={`share-sms-${hopId}`} onPress={() => smsLink(text, url, to)} />
         <DButton
           title="Copy link"
           variant="ghost"

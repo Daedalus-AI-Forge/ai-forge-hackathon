@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { ContactPickButton } from "@/components/ContactPickButton";
 import { ShareLink } from "@/components/ShareLink";
 import { WellHint } from "@/components/WellHint";
 import { errorMessage } from "@/components/ui";
@@ -68,6 +69,9 @@ export default function PassOn() {
   const [contactSaved, setContactSaved] = useState(false);
   const [showNameAndCity, setShowNameAndCity] = useState(true);
   const [nextName, setNextName] = useState("");
+  // Picked from Contacts, kept on this device only: pre-fills the SMS recipient for that boat.
+  const [nextPhone, setNextPhone] = useState<string | null>(null);
+  const [phones, setPhones] = useState<Record<string, string>>({});
   const [nextReason, setNextReason] = useState("");
   const [nextTags, setNextTags] = useState<string[]>([]);
   const [lastTags, setLastTags] = useState<string[]>([]);
@@ -424,7 +428,7 @@ export default function PassOn() {
           </View>
 
           {data.children.map((c) => (
-            <ShareLink key={c.hopId} hopId={c.hopId} name={c.name} message={messages[c.hopId] ?? c.passMessage} label={`Send ${c.name} their boat`} />
+            <ShareLink key={c.hopId} hopId={c.hopId} name={c.name} message={messages[c.hopId] ?? c.passMessage} label={`Send ${c.name} their boat`} to={phones[c.hopId]} />
           ))}
 
           {canAddMore ? (
@@ -442,6 +446,15 @@ export default function PassOn() {
                 onChangeText={setNextName}
                 placeholder={action === "group" ? "Climbing crew" : `Friend ${data.children.length + 1}`}
               />
+              {action !== "group" ? (
+                <ContactPickButton
+                  testID="contact-pick-pass"
+                  onPick={({ name: picked, phone }) => {
+                    if (picked) setNextName(picked);
+                    setNextPhone(phone);
+                  }}
+                />
+              ) : null}
               {serious ? (
                 <DField
                   testID="pass-next-reason"
@@ -474,6 +487,8 @@ export default function PassOn() {
                       ...(serious ? { reason: nextReason.trim() } : {}),
                     });
                     setLastTags(nextTags);
+                    if (nextPhone) setPhones((prev) => ({ ...prev, [childId]: nextPhone }));
+                    setNextPhone(null);
                     setNextName("");
                     setNextReason("");
                     setNextTags([]);

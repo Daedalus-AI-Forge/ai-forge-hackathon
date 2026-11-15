@@ -7,6 +7,8 @@ import { ActivityIndicator, Linking, Platform, Share, StyleSheet, Text, View } f
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DButton, DCard, DChips, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { ContactPickButton } from "@/components/ContactPickButton";
+import { smsHref } from "@/lib/contactPick";
 import { copyLink } from "@/lib/links";
 import type { FirstScreen } from "@/lib/linkApi.types";
 import { lv } from "@/theme/tokens";
@@ -30,6 +32,8 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
 
   const [hint, setHint] = useState<string | null>(null);
   const [name, setName] = useState("");
+  // Picked from Contacts (native only), kept in state: pre-fills the Messages recipient.
+  const [phone, setPhone] = useState<string | null>(null);
   const [relation, setRelation] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [vouch, setVouch] = useState<string | null>(null);
@@ -129,15 +133,14 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
   }
 
   // Open the visitor's own Messages app with the AI draft prefilled. We never send anything:
-  // the person reviews it, picks the recipient and taps Send themselves.
+  // the person reviews it (recipient pre-filled if they picked a contact) and taps Send themselves.
   async function onOpenMessages() {
     if (!childHopId || message === null) return;
     const webOrigin = Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : null;
     const url = ogShareUrl(childHopId, process.env.EXPO_PUBLIC_CONVEX_SITE_URL, webOrigin);
-    const body = encodeURIComponent(`${message.trim()}\n${url}`);
-    // iOS expects `sms:&body=`, Android `sms:?body=`.
+    // iOS expects `sms:<to>&body=`, Android `sms:<to>?body=`.
     const isAndroid = Platform.OS === "android" || (typeof navigator !== "undefined" && /android/i.test(navigator.userAgent ?? ""));
-    const smsUrl = isAndroid ? `sms:?body=${body}` : `sms:&body=${body}`;
+    const smsUrl = smsHref(`${message.trim()}\n${url}`, phone ?? undefined, isAndroid ? "android" : "ios");
     setError(null);
     try {
       await Linking.openURL(smsUrl);
@@ -194,6 +197,13 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
       <Eyebrow>Push it to one person</Eyebrow>
       {hint ? <Text style={styles.hint}>{hint}</Text> : <ActivityIndicator color={lv.thread} />}
       <DField label="Their name" value={name} onChangeText={setName} placeholder="Ben" maxLength={60} testID="push-name" />
+      <ContactPickButton
+        testID="contact-pick-push"
+        onPick={({ name: picked, phone: p }) => {
+          if (picked) setName(picked);
+          setPhone(p);
+        }}
+      />
       <DChips label="They are my…" options={RELATIONS} value={relation} onChange={setRelation} testIDPrefix="push-relation" />
       <DField
         label="Why them, in one line"
