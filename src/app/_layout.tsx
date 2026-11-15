@@ -1,22 +1,34 @@
 import { ConvexProvider } from "convex/react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import type { ReactNode } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 import { convex } from "@/lib/convex";
-
-function Providers({ children }: { children: ReactNode }) {
-  if (!convex) return children;
-  return <ConvexProvider client={convex}>{children}</ConvexProvider>;
-}
+import { colors } from "@/lib/theme";
 
 export default function RootLayout() {
+  if (!convex) {
+    return (
+      <View testID="convex-status" style={styles.notLinked}>
+        <Text style={styles.title}>Wishwell</Text>
+        <Text style={styles.body}>Convex is not linked. Run npx convex dev to write EXPO_PUBLIC_CONVEX_URL.</Text>
+      </View>
+    );
+  }
   return (
-    <Providers>
-      <Stack>
-        <Stack.Screen name="index" options={{ title: "Raincheck" }} />
+    <ConvexProvider client={convex}>
+      <Stack screenOptions={{ contentStyle: { backgroundColor: colors.cream }, headerShadowVisible: false, headerStyle: { backgroundColor: colors.cream }, headerTintColor: colors.red }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Wishwell" }} />
+        <Stack.Screen name="toss" options={{ presentation: "modal", title: "Toss a wish" }} />
+        <Stack.Screen name="w/[hopId]" options={{ headerShown: false, title: "A wish for you" }} />
       </Stack>
-      <StatusBar style="auto" />
-    </Providers>
+      <StatusBar style="dark" />
+    </ConvexProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  notLinked: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24, backgroundColor: colors.cream },
+  title: { fontSize: 32, fontWeight: "800", color: colors.red },
+  body: { fontSize: 16, color: colors.muted, textAlign: "center" },
+});
