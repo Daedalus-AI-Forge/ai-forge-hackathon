@@ -111,3 +111,14 @@ chain and ending. Finders of Today's boat choose whether their name and city
 show, and Me has a privacy switch and "how friends see you" (`convex/pool.ts`,
 `convex/hops.ts`, `convex/pool.test.ts`, `src/app/(tabs)/*`, `src/app/welcome.tsx`,
 `src/app/boat/[hopId].tsx`, `src/app/w/[hopId].tsx`, `docs/plans/paper-boat-ux-*.md`).
+
+### 2026-11-15 - feat/team-seed
+Team demo data: `teamSeed:run` takes the four team members' phone numbers at
+run time and binds each number to a user through the same Convex Auth phone
+account that sign-in looks up. Each member gets 20 generated close friends
+(job, habits, Bay Area city, one-line reason) and the chain Darren → Louise →
+Katie → Dazi, tuned so the coach ranks the next person first for "someone to
+jam on drums with in the Bay Area". Re-runs replace only the seed's own rows.
+A rehearsal script tosses and passes the wish as each member and checks the
+coach at every hop (`convex/teamSeed.ts`, `convex/teamSeed.test.ts`,
+`scripts/team-chain.mjs`, `docs/demo/team-chain.md`).
