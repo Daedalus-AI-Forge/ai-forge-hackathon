@@ -1,3 +1,4 @@
+import { personKey } from "./graphShared";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -41,14 +42,14 @@ export const forget = mutation({
   args: { deviceId: v.string(), personName: v.string() },
   handler: async (ctx, { deviceId, personName }) => {
     const user = await requireUser(ctx, deviceId);
-    const key = clampText(personName, LIMITS.name).toLowerCase();
+    const key = personKey(clampText(personName, LIMITS.name));
     if (!key) throw new Error("Who should the well forget?");
     const edges = await ctx.db
       .query("edges")
       .withIndex("by_ownerUserId", (q) => q.eq("ownerUserId", user._id))
       .take(500);
     for (const e of edges) {
-      if (e.personName.trim().toLowerCase() === key) {
+      if (personKey(e.personName) === key) {
         await ctx.db.delete("edges", e._id);
         await ctx.scheduler.runAfter(0, internal.memory.forget, { edgeId: e._id, ownerUserId: user._id });
       }

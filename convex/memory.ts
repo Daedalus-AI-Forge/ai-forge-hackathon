@@ -23,16 +23,20 @@ function apiKey() {
 async function callSupermemory(method: "POST" | "DELETE", namespace: string, body: unknown, what: string) {
   const key = apiKey();
   if (!key) return;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const res = await fetch(`${SUPERMEMORY_BASE}/ns/${encodeURIComponent(namespace)}/document`, {
       method,
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: controller.signal,
     });
     if (!res.ok) console.warn(`supermemory ${what} failed`, { namespace, status: res.status });
   } catch (err) {
     console.warn(`supermemory ${what} error`, { namespace, error: String(err) });
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -75,7 +79,7 @@ export const ingest = internalAction({
       memoryNamespace(edge.ownerUserId),
       {
         id: edgeId,
-        content: `${edge.personName}: ${edge.reason ?? ""} [${edge.tag}]`,
+        content: edge.reason ? `${edge.personName}: ${edge.reason} [${edge.tag}]` : `${edge.personName} [${edge.tag}]`,
         metadata: { personKey: personKey(edge.personName), tag: edge.tag, source: edge.source },
       },
       "ingest",

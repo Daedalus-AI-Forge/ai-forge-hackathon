@@ -114,3 +114,14 @@ describe("graph.coachReady", () => {
     expect(await t.query(api.graph.coachReady, { deviceId: "dev_alice" })).toEqual({ ready: true, edgeCount: 5, threshold: 5 });
   });
 });
+
+test("edges.forget removes every spelling that myNetwork merges into one node", async () => {
+  const t = convexTest(schema, modules);
+  const a = await seedUser(t, "Darren", "dev_forget_a");
+  await addEdge(t, a, "Amy Lee", "music");
+  await addEdge(t, a, "amy   lee", "drums");
+  await addEdge(t, a, "Ken", "tokyo");
+  await t.mutation(api.edges.forget, { deviceId: "dev_forget_a", personName: "AMY LEE" });
+  const net = await t.query(api.graph.myNetwork, { deviceId: "dev_forget_a" });
+  expect(net?.nodes.map((n) => n.personKey)).toEqual(["ken"]);
+});
