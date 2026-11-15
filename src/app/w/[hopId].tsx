@@ -272,8 +272,8 @@ export default function PassOn() {
                   testID="its-me-intro"
                 />
                 <View style={styles.pair}>
-                  <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" />
-                  <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" />
+                  <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" containerStyle={{ flex: 1 }} />
+                  <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" containerStyle={{ flex: 1 }} />
                 </View>
                 <View style={styles.toggleRow}>
                   <Switch
@@ -317,8 +317,8 @@ export default function PassOn() {
                   testID="its-me-contact"
                 />
                 <View style={styles.pair}>
-                  <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" />
-                  <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" />
+                  <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" containerStyle={{ flex: 1 }} />
+                  <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" containerStyle={{ flex: 1 }} />
                 </View>
                 <DError error={error} />
                 <DButton
@@ -347,8 +347,8 @@ export default function PassOn() {
           <Header eyebrow="Step 1 of 3" title="Who are you?" onBack={() => go("view")} />
           <DCard>
             <View style={styles.pair}>
-              <DField placeholder="Your name" value={name} onChangeText={setName} testID="pass-name" />
-              <DField placeholder="Where are you?" value={city} onChangeText={setCity} testID="pass-city" />
+              <DField placeholder="Your name" value={name} onChangeText={setName} testID="pass-name" containerStyle={{ flex: 1 }} />
+              <DField placeholder="Where are you?" value={city} onChangeText={setCity} testID="pass-city" containerStyle={{ flex: 1 }} />
             </View>
             <DError error={fromTheWell ? error : null} />
           </DCard>

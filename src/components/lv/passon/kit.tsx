@@ -1,5 +1,5 @@
 // New-design primitives for the pass-on page (buttons, glass panel, fields, chips).
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -47,7 +47,7 @@ export function DButton({
       onPress={inactive ? undefined : onPress}
       style={({ pressed }) => [
         s.btn,
-        { height: size === "lg" ? 56 : size === "sm" ? 40 : 48 },
+        { height: size === "lg" ? 56 : size === "sm" ? 44 : 52 },
         variant === "thread" && { backgroundColor: lv.thread },
         variant === "ink" && { backgroundColor: lv.primary },
         variant === "ghost" && s.ghost,
@@ -59,7 +59,7 @@ export function DButton({
       {busy ? (
         <ActivityIndicator color={fg} />
       ) : (
-        <Text style={[s.btnText, { color: fg, fontSize: size === "lg" ? 17 : size === "sm" ? 14 : 15 }]}>{title}</Text>
+        <Text style={[s.btnText, { color: fg, fontSize: size === "lg" ? 17 : size === "sm" ? 15 : 16 }]}>{title}</Text>
       )}
     </Pressable>
   );
@@ -90,14 +90,39 @@ export function Sub({ children, style }: { children: ReactNode; style?: StylePro
   return <Text style={[s.sub, style]}>{children}</Text>;
 }
 
-export function DField({ label, ...props }: TextInputProps & { label?: string }) {
+/**
+ * Labelled text field. The wrapper never flexes on its own: in a column it takes its content's
+ * height (a `flexBasis: 0` wrapper collapses to 0px on react-native-web, letting the next element
+ * draw over the input). Inside a row, pass `containerStyle={{ flex: 1 }}`.
+ */
+export function DField({
+  label,
+  containerStyle,
+  ...props
+}: TextInputProps & { label?: string; containerStyle?: StyleProp<ViewStyle> }) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={{ gap: 6, flexGrow: 1, flexBasis: 0 }}>
+    <View style={[s.fieldWrap, containerStyle]}>
       {label ? <Text style={s.label}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={lv.mutedFg}
+        accessibilityLabel={label}
         {...keyboardInputProps(props)}
-        style={[s.field, props.multiline && { minHeight: 72, textAlignVertical: "top", paddingTop: 12 }, props.style]}
+        onFocus={(e) => {
+          setFocused(true);
+          props.onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          props.onBlur?.(e);
+        }}
+        style={[
+          s.field,
+          props.multiline && s.fieldMulti,
+          focused && { borderColor: lv.fg },
+          props.editable === false && { backgroundColor: lv.muted, color: lv.mutedFg },
+          props.style,
+        ]}
       />
     </View>
   );
@@ -119,8 +144,8 @@ export function DChips({
 }) {
   const on = (o: string) => (Array.isArray(value) ? value.includes(o) : value === o);
   return (
-    <View style={{ gap: 6 }}>
-      {label ? <Text style={s.chipLabel}>{label}</Text> : null}
+    <View style={s.fieldWrap}>
+      {label ? <Text style={s.label}>{label}</Text> : null}
       <View style={s.chipRow}>
         {options.map((o) => (
           <Pressable
@@ -129,7 +154,7 @@ export function DChips({
             accessibilityRole="button"
             accessibilityState={{ selected: on(o) }}
             onPress={() => onChange(o)}
-            style={[s.chip, on(o) && { backgroundColor: lv.fg }]}
+            style={[s.chip, on(o) && { backgroundColor: lv.fg, borderColor: lv.fg }]}
           >
             <Text style={[s.chipText, on(o) && { color: lv.bg }]}>{o}</Text>
           </Pressable>
@@ -140,7 +165,20 @@ export function DChips({
 }
 
 export function DError({ error }: { error: string | null }) {
-  return error ? <Text style={s.error}>{error}</Text> : null;
+  return error ? (
+    <Text style={s.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+      {error}
+    </Text>
+  ) : null;
+}
+
+/** Quiet line under a disabled primary button saying what is still missing. */
+export function DHint({ children, testID }: { children: ReactNode; testID?: string }) {
+  return children ? (
+    <Text style={s.hint} testID={testID} accessibilityLiveRegion="polite">
+      {children}
+    </Text>
+  ) : null;
 }
 
 export function DAvatar({ name, color, size = 28 }: { name: string; color: string; size?: number }) {
@@ -164,23 +202,35 @@ export const s = StyleSheet.create({
     gap: 10,
     ...lv.shadow,
   },
-  card: { backgroundColor: lv.card, borderRadius: lv.radius, borderWidth: 1, borderColor: lv.border, padding: 16, gap: 12, ...lv.shadow },
+  card: { backgroundColor: lv.card, borderRadius: lv.radius, borderWidth: 1, borderColor: lv.border, padding: 20, gap: 18, ...lv.shadow },
   eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase", color: lv.mutedFg },
   sub: { fontSize: 15, color: lv.mutedFg, lineHeight: 21 },
-  label: { fontSize: 13, color: lv.mutedFg, fontWeight: "500" },
+  fieldWrap: { gap: 8, alignSelf: "stretch" },
+  label: { fontSize: 15, lineHeight: 20, color: lv.fg, fontWeight: "600" },
   field: {
-    minHeight: 48,
+    minHeight: 52,
     borderRadius: 14,
     backgroundColor: lv.bg,
-    borderWidth: 1,
-    borderColor: lv.border,
+    borderWidth: 1.5,
+    borderColor: lv.fieldBorder,
     paddingHorizontal: 14,
-    fontSize: 16,
+    paddingVertical: 12,
+    fontSize: 17,
+    lineHeight: 22,
     color: lv.fg,
   },
-  chipLabel: { fontSize: 11, color: lv.mutedFg },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  chip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: lv.bg, borderWidth: 1, borderColor: lv.border },
-  chipText: { fontSize: 12, color: lv.fg },
-  error: { color: lv.destructive, fontSize: 14 },
+  fieldMulti: { minHeight: 96, textAlignVertical: "top" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    minHeight: 40,
+    justifyContent: "center",
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    backgroundColor: lv.bg,
+    borderWidth: 1.5,
+    borderColor: lv.fieldBorder,
+  },
+  chipText: { fontSize: 15, color: lv.fg },
+  error: { color: lv.destructive, fontSize: 15, lineHeight: 20 },
+  hint: { color: lv.mutedFg, fontSize: 14, lineHeight: 19, textAlign: "center" },
 });

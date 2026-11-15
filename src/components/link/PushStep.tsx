@@ -6,7 +6,7 @@ import { ActivityIndicator, Linking, Platform, Share, StyleSheet, Text, View } f
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DButton, DCard, DChips, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { DButton, DCard, DChips, DError, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { ContactPickButton } from "@/components/ContactPickButton";
 import { smsHref } from "@/lib/contactPick";
 import { copyLink } from "@/lib/links";
@@ -226,7 +226,10 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
         testID="push-reason"
       />
       {vouch === null ? (
-        <DButton title="Write the vouch" variant="ink" onPress={onWriteVouch} busy={writing} testID="push-write-vouch" />
+        <>
+          <DButton title="Write the vouch" variant="ink" size="lg" onPress={onWriteVouch} busy={writing} testID="push-write-vouch" />
+          {error ? null : <DHint testID="push-missing">{missing}</DHint>}
+        </>
       ) : (
         <>
           <DField label="Your vouch (edit freely)" value={vouch} onChangeText={setVouch} multiline maxLength={400} testID="push-vouch" />
@@ -235,7 +238,17 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
       )}
       <DError error={error} />
       {vouch !== null ? (
-        <DButton title={`Push to ${name.trim() || "them"}`} onPress={onPush} busy={pushing} disabled={!formReady || !vouch.trim()} testID="push-submit" />
+        <>
+          <DButton
+            title={`Push to ${name.trim() || "them"}`}
+            size="lg"
+            onPress={onPush}
+            busy={pushing}
+            disabled={!formReady || !vouch.trim()}
+            testID="push-submit"
+          />
+          <DHint>{missing ?? (vouch.trim() ? null : "Write a line of vouch first.")}</DHint>
+        </>
       ) : null}
     </DCard>
   );
@@ -248,6 +261,6 @@ function webShareFn(): ((d: ShareData) => Promise<void>) | null {
 
 const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: "700", color: lv.fg },
-  hint: { fontSize: 16, color: lv.mutedFg, fontStyle: "italic" },
+  hint: { fontSize: 17, lineHeight: 24, color: lv.mutedFg, fontStyle: "italic" },
   row: { flexDirection: "row", gap: 8, alignItems: "center" },
 });

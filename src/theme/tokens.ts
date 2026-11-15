@@ -11,6 +11,7 @@ export const lv = {
   mutedFg: "#6E6862",
   accent: "#F8E9E6",
   border: "#E3DED8",
+  fieldBorder: "#CDC6BD", // input/chip outline: visible on both card and paper
   thread: "#E0453F", // the red "thread" accent
   threadFg: "#FDFBF8",
   gold: "#EBCF8A",
