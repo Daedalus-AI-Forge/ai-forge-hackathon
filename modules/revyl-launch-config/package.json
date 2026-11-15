@@ -1,0 +1,9 @@
+{
+  "name": "revyl-launch-config",
+  "version": "0.1.0",
+  "description": "Reads Revyl launch variables (iOS launch arguments, Android intent extras) for test-only auth bypass",
+  "main": "index.ts",
+  "license": "UNLICENSED",
+  "author": "Wishwell",
+  "homepage": "https://docs.revyl.com/devices/auth-bypass"
+}

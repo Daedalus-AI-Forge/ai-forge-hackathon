@@ -34,6 +34,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Wishwell" }} />
         <Stack.Screen name="toss" options={{ presentation: "modal", title: "Toss a wish" }} />
         <Stack.Screen name="sign-in" options={{ presentation: "modal", title: "Sign in" }} />
+        <Stack.Screen name="revyl-auth" options={{ headerShown: false }} />
         <Stack.Screen name="w/[hopId]" options={{ headerShown: false, title: "A wish for you" }} />
       </Stack>
       <StatusBar style="dark" />
