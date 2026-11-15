@@ -19,5 +19,5 @@ export function GetTheApp({ title = "Get the app", deviceId, hopId, testID = "ge
     if (Platform.OS === "web" && typeof window !== "undefined") window.open(APP_URL, "_blank", "noopener");
     else void Linking.openURL(APP_URL).catch(() => {});
   };
-  return <DButton testID={testID} variant="ghost" title={title} onPress={onPress} />;
+  return <DButton testID={testID} variant="glass" title={title} onPress={onPress} />;
 }

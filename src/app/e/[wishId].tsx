@@ -3,16 +3,17 @@ import { useQuery } from "convex/react";
 import { Stack, useLocalSearchParams } from "expo-router";
 import * as Linking from "expo-linking";
 import { useState } from "react";
-import { ActivityIndicator, Image, Platform, ScrollView, Share, Text, View } from "react-native";
+import { ActivityIndicator, Image, Platform, Share, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { Screen } from "@/components/ios";
 import { GetTheApp } from "@/components/link/end/GetTheApp";
 import { endingShareText, routeChain } from "@/components/link/end/logic";
 import { DButton, DCard, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { copyLink } from "@/lib/links";
 import { useDeviceId } from "@/lib/device";
 import type { EndingView } from "@/lib/linkApi.types";
-import { lv } from "@/theme/tokens";
+import { lv, shadows, type } from "@/theme/tokens";
 
 const STATUS: Record<EndingView["status"], string> = {
   traveling: "Still drifting",
@@ -54,37 +55,57 @@ export default function EndingPage() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: lv.bg }} contentContainerStyle={{ padding: 20, gap: 16, maxWidth: 560, width: "100%", alignSelf: "center" }}>
+    <Screen maxWidth={560}>
       <Stack.Screen options={{ headerShown: false, title: "How the wish ended" }} />
       {view === undefined ? (
-        <ActivityIndicator color={lv.fg} style={{ marginTop: 80 }} />
+        <ActivityIndicator color={lv.thread} style={styles.loading} />
       ) : view === null ? (
-        <View style={{ gap: 10, marginTop: 40 }} testID="ending-missing">
-          <Text style={{ fontSize: 26, fontWeight: "700", color: lv.fg }}>We couldn't find this ending</Text>
+        <View style={styles.missing} testID="ending-missing">
+          <Text style={styles.h1}>We couldn't find this ending</Text>
           <Sub>The link may be incomplete, or the story isn't ready yet.</Sub>
         </View>
       ) : (
         <>
           <Eyebrow>{STATUS[view.status] ?? "A paper boat"}</Eyebrow>
           {/* Polaroid-style card: photo, wish, story */}
-          <DCard testID="ending-card" style={{ padding: 12, paddingBottom: 20, transform: [{ rotate: "-1deg" }] }}>
+          <View testID="ending-card" style={styles.polaroid}>
             {view.photoUrl ? (
-              <Image testID="ending-photo" source={{ uri: view.photoUrl }} style={{ width: "100%", aspectRatio: 1, borderRadius: 10, backgroundColor: lv.muted }} resizeMode="cover" />
+              <Image testID="ending-photo" source={{ uri: view.photoUrl }} style={styles.photo} resizeMode="cover" />
             ) : null}
-            <Text style={{ fontSize: 20, fontWeight: "700", color: lv.fg }}>"{view.wishText}"</Text>
-            <Text testID="ending-story" style={{ fontSize: 16, color: lv.fg, lineHeight: 23 }}>{view.story}</Text>
-          </DCard>
+            <Text style={styles.wish}>"{view.wishText}"</Text>
+            <Text testID="ending-story" style={styles.story}>{view.story}</Text>
+          </View>
           {view.route.length ? (
             <DCard testID="ending-route">
               <Eyebrow>Route · {view.ripples} hop{view.ripples === 1 ? "" : "s"}</Eyebrow>
-              <Text style={{ fontSize: 15, color: lv.fg, lineHeight: 22 }}>{routeChain(view.route)}</Text>
+              <Text style={styles.route}>{routeChain(view.route)}</Text>
             </DCard>
           ) : null}
-          <DButton testID="ending-share" size="lg" title="Share" onPress={share} />
+          <DButton testID="ending-share" size="lg" title="Share" icon="share" onPress={share} />
           {note ? <Sub>{note}</Sub> : null}
           <GetTheApp deviceId={deviceId} title="Get the app — see where all your boats drifted" testID="ending-get-app" />
         </>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: { marginTop: 80 },
+  missing: { gap: 10, marginTop: 40 },
+  h1: { ...type.title1, color: lv.fg },
+  polaroid: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    borderCurve: "continuous",
+    padding: 12,
+    paddingBottom: 20,
+    gap: 12,
+    transform: [{ rotate: "-1deg" }],
+    boxShadow: shadows.float,
+  },
+  photo: { width: "100%", aspectRatio: 1, borderRadius: 6, backgroundColor: lv.muted },
+  wish: { ...type.title3, fontWeight: "700", color: lv.fg },
+  story: { ...type.callout, color: lv.fg },
+  route: { ...type.subheadline, color: lv.fg },
+});

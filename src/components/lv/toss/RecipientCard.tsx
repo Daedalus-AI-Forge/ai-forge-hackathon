@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ContactPickButton } from "@/components/ContactPickButton";
 import { ContactSuggestions } from "@/components/ContactSuggestions";
-import { lv } from "@/theme/tokens";
+import { Icon } from "@/components/ios";
+import { lv, type } from "@/theme/tokens";
 
 import { LvAvatar, LvCard, LvField } from "./parts";
 
@@ -50,8 +51,15 @@ export function RecipientCard({
           />
         </View>
         {onRemove ? (
-          <Pressable testID={`toss-remove-person-${index}`} onPress={onRemove} hitSlop={10}>
-            <Text style={s.remove}>✕</Text>
+          <Pressable
+            testID={`toss-remove-person-${index}`}
+            accessibilityRole="button"
+            accessibilityLabel="Remove"
+            onPress={onRemove}
+            hitSlop={10}
+            style={({ pressed }) => [s.remove, pressed && { opacity: 0.6 }]}
+          >
+            <Icon name="close" size={12} color={lv.mutedFg} weight="bold" />
           </Pressable>
         ) : null}
       </View>
@@ -87,7 +95,13 @@ export function RecipientCard({
         {TAGS.map((tag) => {
           const on = person.tags.includes(tag);
           return (
-            <Pressable key={tag} onPress={() => toggle(tag)} style={[s.tag, on && s.tagOn]}>
+            <Pressable
+              key={tag}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              onPress={() => toggle(tag)}
+              style={[s.tag, on && s.tagOn]}
+            >
               <Text style={[s.tagText, on && { color: lv.primaryFg }]}>{tag}</Text>
             </Pressable>
           );
@@ -99,10 +113,10 @@ export function RecipientCard({
 
 const s = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: 12 },
-  remove: { fontSize: 16, color: lv.mutedFg, paddingHorizontal: 4 },
-  err: { fontSize: 13, color: lv.thread, marginTop: -4 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: lv.secondary },
+  remove: { width: 30, height: 30, borderRadius: 15, backgroundColor: lv.fill, alignItems: "center", justifyContent: "center" },
+  err: { ...type.footnote, color: lv.thread, marginTop: -4, paddingHorizontal: 4 },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tag: { minHeight: 34, justifyContent: "center", paddingHorizontal: 14, borderRadius: 999, backgroundColor: lv.fill },
   tagOn: { backgroundColor: lv.primary },
-  tagText: { fontSize: 12, fontWeight: "500", color: lv.fg },
+  tagText: { ...type.subheadline, fontWeight: "500", color: lv.fg },
 });

@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth (Google, native Apple, phone OTP, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-15T21:10:00Z
+- **Last updated:** 2026-11-15T23:25:16Z
 
 ## Log
 
@@ -145,3 +145,43 @@ never sent to Convex; it only pre-fills the recipient when "SMS" / "Open in
 Messages" opens the user's own Messages (`sms:<to>&body=` on iOS,
 `sms:<to>?body=` on Android). The user still taps Send. Needs a native rebuild
 (new native module + `NSContactsUsageDescription`).
+
+### 2026-11-15 - working tree — network presentation
+Refined My wish network within the existing warm palette: curved red threads,
+concentric ripples, connection badges, tag previews, selection highlighting,
+and six-person pages that can locate anyone selected in the full list. Added
+live friend/connection/tag totals and source/date context to existing details
+(`src/components/lv/me/EgoGraph.tsx`, `src/components/lv/me/MeNetwork.tsx`).
+Typecheck, targeted ESLint and all 20 Expo Doctor checks passed. Browser checks
+with isolated fixture data covered 320/390/430px widths, selection, pagination,
+forgetting tags/people, last-page removal, and empty/loading/single-person states.
+No backend changes, new dependencies, deployment or native-device verification.
+
+### 2026-11-15 - working tree — community network perspective
+Replaced the personal ring with a community map centered on the viewer: solid
+paths fade by graph distance, unrelated components use dashed lines, and people
+can be selected, searched, zoomed and panned. The bounded Convex projection uses
+verified user IDs and wish hops, respects visibility, excludes the platform well,
+and keeps saved aliases and identity-specific evidence private to their owner
+(`convex/graph.ts`, `src/components/lv/me/`, `src/lib/graphApi.types.ts`).
+Validated 22 scoped tests, full TypeScript, targeted ESLint, 20 Expo Doctor checks,
+Web/iOS/Android JS exports, and a push to the isolated local-anonymous backend.
+Browser fixtures verified paths, pan/zoom/recenter, search expansion, same-name
+identities, aliases, deletion transitions and 320/390px layouts. Added SVG rendering
+and the missing expo-font peer for the existing symbols package. No cloud deploy,
+push, native development-build rebuild or physical-device verification.
+
+### 2026-11-15 - working tree — iOS glass design system
+Restyled every screen in the iOS idiom with frosted glass: an ambient gradient
+backdrop, real UIKit blur materials (expo-blur) with Liquid Glass for the floating
+tab bar and round back buttons on iOS 26 (expo-glass-effect), CSS backdrop-filter on
+web, SF Symbols (expo-symbols), the iOS type ramp, continuous corners and one page
+grid (20-pt margins; caps section headers inset to card content). New primitives live
+in `src/components/ios/` (Glass, Screen, NavBar/BackButton, LargeTitle, SectionHeader,
+Segmented, GlassTabBar, Icon); `passon/kit`, `toss/parts` and `ui.tsx` now share one
+control set. Fixed the pass-on screen sitting under the status bar, fields collapsing
+in web cards, and the well coin drifting below the pool. Native effects are gated on
+the module being present, so an older dev client falls back to translucent views.
+Typecheck, 30 src tests, ESLint (no new errors) and 20 Expo Doctor checks pass;
+web screens verified in iPhone-sized Chrome. Real blur and SF Symbols need a new
+dev build; not yet verified on a device or simulator.

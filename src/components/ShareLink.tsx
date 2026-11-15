@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { DButton, DCard, DField } from "@/components/lv/passon/kit";
 import { phoneTail } from "@/lib/contactPick";
 import { copyLink, hopUrl, shareLink, smsLink } from "@/lib/links";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 /** One share row for a boat link: editable AI message, the link, and share actions. */
 export function ShareLink({
@@ -50,14 +50,16 @@ export function ShareLink({
       ) : (
         <DField value={text} onChangeText={edit} multiline style={{ minHeight: 96 }} testID={`share-message-${hopId}`} />
       )}
-      <Text testID={`share-link-${hopId}`} selectable style={styles.link}>
-        {url}
-      </Text>
+      <View style={styles.linkWell}>
+        <Text testID={`share-link-${hopId}`} selectable numberOfLines={1} style={styles.link}>
+          {url}
+        </Text>
+      </View>
       <View style={styles.row}>
         <DButton
           title="Share"
+          icon="share"
           variant="thread"
-          size="sm"
           style={styles.btn}
           testID={`share-native-${hopId}`}
           onPress={async () => {
@@ -65,11 +67,10 @@ export function ShareLink({
             if (result === "copied") setNote("Copied! Paste it in your chat.");
           }}
         />
-        <DButton title="SMS" variant="ghost" size="sm" style={styles.btn} testID={`share-sms-${hopId}`} onPress={() => smsLink(text, url, to)} />
+        <DButton title="SMS" variant="ghost" style={styles.btn} testID={`share-sms-${hopId}`} onPress={() => smsLink(text, url, to)} />
         <DButton
           title="Copy link"
           variant="ghost"
-          size="sm"
           style={styles.btn}
           testID={`share-copy-${hopId}`}
           onPress={async () => {
@@ -84,11 +85,12 @@ export function ShareLink({
 }
 
 const styles = StyleSheet.create({
-  to: { fontSize: 16, fontWeight: "700", color: lv.fg },
+  to: { ...type.headline, color: lv.fg },
   drafting: { flexDirection: "row", gap: 8, alignItems: "center", paddingVertical: 8 },
-  muted: { color: lv.mutedFg },
+  muted: { ...type.subheadline, color: lv.mutedFg },
+  linkWell: { borderRadius: lv.radiusSm, borderCurve: "continuous", backgroundColor: lv.fill, paddingHorizontal: 12, paddingVertical: 10 },
   link: { fontFamily: lv.font.mono, fontSize: 13, color: lv.thread },
   row: { flexDirection: "row", gap: 8 },
-  btn: { flex: 1 },
-  note: { color: lv.mutedFg, fontSize: 14 },
+  btn: { flex: 1, paddingHorizontal: 8 },
+  note: { ...type.footnote, color: lv.mutedFg },
 });

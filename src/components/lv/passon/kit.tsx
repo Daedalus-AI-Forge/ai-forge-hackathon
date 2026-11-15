@@ -1,4 +1,5 @@
-// New-design primitives for the pass-on page (buttons, glass panel, fields, chips).
+// Shared controls in the iOS style: capsule buttons, glass cards, filled text fields, chips.
+// Every screen builds on these, so sizes and colors stay identical across the app.
 import { useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -13,10 +14,35 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { lv } from "@/theme/tokens";
+import { Glass as GlassSurface, GlassCard, Icon, type IconName } from "@/components/ios";
 import { keyboardInputProps } from "@/components/keyboard";
+import { lv, shadows, type } from "@/theme/tokens";
 
-type Variant = "thread" | "ink" | "ghost";
+/**
+ * thread: brand red, filled (primary action) · ink: dark filled · ghost: iOS gray fill ·
+ * tinted: red label on a red tint · plain: text only · glass: frosted capsule for floating over the backdrop.
+ */
+type Variant = "thread" | "ink" | "ghost" | "tinted" | "plain" | "glass";
+type Size = "sm" | "md" | "lg";
+
+// sm stays compact but gets a hit slop, so every button has at least a 44-pt target.
+const HEIGHT: Record<Size, number> = { sm: 40, md: 48, lg: 54 };
+const FONT: Record<Size, number> = { sm: 15, md: 16, lg: 17 };
+const FG: Record<Variant, string> = {
+  thread: lv.threadFg,
+  ink: lv.primaryFg,
+  ghost: lv.fg,
+  tinted: lv.thread,
+  plain: lv.thread,
+  glass: lv.fg,
+};
+const BG: Record<Exclude<Variant, "glass">, ViewStyle> = {
+  thread: { backgroundColor: lv.thread },
+  ink: { backgroundColor: lv.primary },
+  ghost: { backgroundColor: lv.fill },
+  tinted: { backgroundColor: lv.threadTint },
+  plain: { backgroundColor: "transparent" },
+};
 
 export function DButton({
   title,
@@ -26,6 +52,7 @@ export function DButton({
   busy,
   testID,
   size = "md",
+  icon,
   style,
 }: {
   title: string;
@@ -34,51 +61,79 @@ export function DButton({
   disabled?: boolean;
   busy?: boolean;
   testID?: string;
-  size?: "sm" | "md" | "lg";
+  size?: Size;
+  icon?: IconName;
   style?: StyleProp<ViewStyle>;
 }) {
-  const inactive = disabled || busy;
-  const fg = variant === "ghost" ? lv.fg : variant === "ink" ? lv.primaryFg : lv.threadFg;
+  const inactive = !!disabled || !!busy;
+  const fg = variant === "glass" && inactive && !busy ? lv.tertiaryFg : FG[variant];
+  const content = busy ? (
+    <ActivityIndicator color={fg} />
+  ) : (
+    <View style={s.labelRow}>
+      {icon ? <Icon name={icon} size={FONT[size]} color={fg} /> : null}
+      <Text style={[s.btnText, { color: fg, fontSize: FONT[size] }]} numberOfLines={1}>
+        {title}
+      </Text>
+    </View>
+  );
+
+  if (variant === "glass") {
+    // A glass surface never dims (opacity would break the blur on web); its label greys out instead.
+    return (
+      <GlassSurface
+        variant="regular"
+        radius={999}
+        testID={testID}
+        onPress={onPress}
+        disabled={inactive}
+        accessibilityState={{ disabled: inactive, busy: !!busy }}
+        style={[s.btn, { height: HEIGHT[size] }, style]}
+      >
+        {content}
+      </GlassSurface>
+    );
+  }
+
+  const lift = size === "lg" && !inactive ? (variant === "thread" ? s.liftThread : variant === "ink" ? s.liftInk : null) : null;
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!inactive, busy: !!busy }}
+      accessibilityState={{ disabled: inactive, busy: !!busy }}
       onPress={inactive ? undefined : onPress}
+      hitSlop={size === "sm" ? 4 : undefined}
       style={({ pressed }) => [
         s.btn,
-        { height: size === "lg" ? 56 : size === "sm" ? 44 : 52 },
-        variant === "thread" && { backgroundColor: lv.thread },
-        variant === "ink" && { backgroundColor: lv.primary },
-        variant === "ghost" && s.ghost,
-        inactive && { opacity: 0.45 },
-        pressed && { transform: [{ scale: 0.98 }] },
+        { height: HEIGHT[size] },
+        BG[variant],
+        lift,
+        variant === "plain" && s.plain,
+        inactive && s.inactive,
+        pressed && !inactive && s.pressed,
         style,
       ]}
     >
-      {busy ? (
-        <ActivityIndicator color={fg} />
-      ) : (
-        <Text style={[s.btnText, { color: fg, fontSize: size === "lg" ? 17 : size === "sm" ? 15 : 16 }]}>{title}</Text>
-      )}
+      {content}
     </Pressable>
   );
 }
 
-/** Frosted "glass" panel. */
+/** Frosted content card. */
 export function Glass({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
   return (
-    <View testID={testID} style={[s.glass, style]}>
+    <GlassCard testID={testID} style={style}>
       {children}
-    </View>
+    </GlassCard>
   );
 }
 
+/** Content card for forms and dense text: the same glass, a little more opaque, with roomier rows. */
 export function DCard({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
   return (
-    <View testID={testID} style={[s.card, style]}>
+    <GlassCard variant="thick" testID={testID} style={[s.formCard, style]}>
       {children}
-    </View>
+    </GlassCard>
   );
 }
 
@@ -91,38 +146,37 @@ export function Sub({ children, style }: { children: ReactNode; style?: StylePro
 }
 
 /**
- * Labelled text field. The wrapper never flexes on its own: in a column it takes its content's
- * height (a `flexBasis: 0` wrapper collapses to 0px on react-native-web, letting the next element
- * draw over the input). Inside a row, pass `containerStyle={{ flex: 1 }}`.
+ * iOS text field: gray fill with a faint outline; a red ring while focused.
+ * The wrapper never flexes by default: in a column it takes its content's height (a `flexBasis: 0`
+ * wrapper collapses to 0px on react-native-web). Side by side in a row, pass `grow`
+ * (or `containerStyle={{ flex: 1 }}`) so the fields share the row.
  */
 export function DField({
   label,
+  onFocus,
+  onBlur,
+  grow = false,
   containerStyle,
   ...props
-}: TextInputProps & { label?: string; containerStyle?: StyleProp<ViewStyle> }) {
+}: TextInputProps & { label?: string; grow?: boolean; containerStyle?: StyleProp<ViewStyle> }) {
   const [focused, setFocused] = useState(false);
   return (
-    <View style={[s.fieldWrap, containerStyle]}>
+    <View style={[s.fieldWrap, grow && s.fieldGrow, containerStyle]}>
       {label ? <Text style={s.label}>{label}</Text> : null}
       <TextInput
-        placeholderTextColor={lv.mutedFg}
+        placeholderTextColor={lv.tertiaryFg}
+        selectionColor={lv.thread}
         accessibilityLabel={label}
         {...keyboardInputProps(props)}
         onFocus={(e) => {
           setFocused(true);
-          props.onFocus?.(e);
+          onFocus?.(e);
         }}
         onBlur={(e) => {
           setFocused(false);
-          props.onBlur?.(e);
+          onBlur?.(e);
         }}
-        style={[
-          s.field,
-          props.multiline && s.fieldMulti,
-          focused && { borderColor: lv.fg },
-          props.editable === false && { backgroundColor: lv.muted, color: lv.mutedFg },
-          props.style,
-        ]}
+        style={[s.field, props.multiline && s.fieldMulti, focused && s.fieldFocused, props.editable === false && s.fieldOff, props.style]}
       />
     </View>
   );
@@ -144,7 +198,7 @@ export function DChips({
 }) {
   const on = (o: string) => (Array.isArray(value) ? value.includes(o) : value === o);
   return (
-    <View style={s.fieldWrap}>
+    <View style={{ gap: 8 }}>
       {label ? <Text style={s.label}>{label}</Text> : null}
       <View style={s.chipRow}>
         {options.map((o) => (
@@ -154,12 +208,32 @@ export function DChips({
             accessibilityRole="button"
             accessibilityState={{ selected: on(o) }}
             onPress={() => onChange(o)}
-            style={[s.chip, on(o) && { backgroundColor: lv.fg, borderColor: lv.fg }]}
+            style={({ pressed }) => [s.chip, on(o) && s.chipOn, pressed && s.chipPressed]}
           >
-            <Text style={[s.chipText, on(o) && { color: lv.bg }]}>{o}</Text>
+            <Text style={[s.chipText, on(o) && s.chipTextOn]}>{o}</Text>
           </Pressable>
         ))}
       </View>
+    </View>
+  );
+}
+
+type TagTone = "thread" | "threadSolid" | "gold" | "neutral" | "ink";
+const TAG: Record<TagTone, { bg: string; fg: string }> = {
+  thread: { bg: lv.threadTint, fg: lv.thread },
+  threadSolid: { bg: lv.thread, fg: lv.threadFg },
+  gold: { bg: lv.goldTint, fg: "#7A5A12" },
+  neutral: { bg: lv.fill, fg: lv.mutedFg },
+  ink: { bg: lv.fg, fg: lv.primaryFg },
+};
+
+/** Small capsule label ("Today's boat", "Mia's real wish", "Your coin"). */
+export function DTag({ label, tone = "thread", testID }: { label: string; tone?: TagTone; testID?: string }) {
+  return (
+    <View testID={testID} style={[s.tag, { backgroundColor: TAG[tone].bg }]}>
+      <Text style={[s.tagText, { color: TAG[tone].fg }]} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -183,54 +257,59 @@ export function DHint({ children, testID }: { children: ReactNode; testID?: stri
 
 export function DAvatar({ name, color, size = 28 }: { name: string; color: string; size?: number }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: "center", justifyContent: "center" }}>
+    <View style={[s.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: color }]}>
       <Text style={{ color: "#fff", fontWeight: "700", fontSize: size * 0.42 }}>{(name.trim()[0] ?? "?").toUpperCase()}</Text>
     </View>
   );
 }
 
 export const s = StyleSheet.create({
-  btn: { borderRadius: 999, alignItems: "center", justifyContent: "center", paddingHorizontal: 18 },
-  ghost: { backgroundColor: "rgba(254,253,251,0.7)", borderWidth: 1, borderColor: lv.border },
-  btnText: { fontWeight: "600" },
-  glass: {
-    backgroundColor: "rgba(254,253,251,0.72)",
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.8)",
-    padding: 16,
-    gap: 10,
-    ...lv.shadow,
-  },
-  card: { backgroundColor: lv.card, borderRadius: lv.radius, borderWidth: 1, borderColor: lv.border, padding: 20, gap: 18, ...lv.shadow },
-  eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase", color: lv.mutedFg },
-  sub: { fontSize: 15, color: lv.mutedFg, lineHeight: 21 },
+  btn: { borderRadius: 999, alignItems: "center", justifyContent: "center", paddingHorizontal: 20 },
+  labelRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  btnText: { fontWeight: "600", textAlign: "center" },
+  plain: { paddingHorizontal: 8 },
+  liftThread: { boxShadow: shadows.button },
+  liftInk: { boxShadow: shadows.ink },
+  inactive: { opacity: 0.4 },
+  pressed: { opacity: 0.78, transform: [{ scale: 0.98 }] },
+  eyebrow: { ...type.eyebrow, color: lv.mutedFg },
+  sub: { ...type.subheadline, color: lv.mutedFg },
+  label: { ...type.subheadline, fontWeight: "600", color: lv.fg, paddingHorizontal: 4 },
+  formCard: { gap: 16 },
   fieldWrap: { gap: 8, alignSelf: "stretch" },
-  label: { fontSize: 15, lineHeight: 20, color: lv.fg, fontWeight: "600" },
+  fieldGrow: { flexGrow: 1, flexBasis: 0 },
   field: {
-    minHeight: 52,
-    borderRadius: 14,
-    backgroundColor: lv.bg,
-    borderWidth: 1.5,
-    borderColor: lv.fieldBorder,
+    minHeight: 50,
+    borderRadius: lv.radiusSm,
+    borderCurve: "continuous",
+    backgroundColor: lv.fill,
+    borderWidth: 1,
+    borderColor: lv.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 17,
     lineHeight: 22,
     color: lv.fg,
+    outlineWidth: 0,
   },
-  fieldMulti: { minHeight: 96, textAlignVertical: "top" },
+  fieldMulti: { minHeight: 96, textAlignVertical: "top", paddingTop: 12 },
+  fieldFocused: { backgroundColor: "rgba(255,255,255,0.85)", borderColor: lv.thread },
+  fieldOff: { color: lv.mutedFg, backgroundColor: lv.fillStrong },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
-    minHeight: 40,
+    minHeight: 38,
     justifyContent: "center",
     borderRadius: 999,
-    paddingHorizontal: 16,
-    backgroundColor: lv.bg,
-    borderWidth: 1.5,
-    borderColor: lv.fieldBorder,
+    paddingHorizontal: 15,
+    backgroundColor: lv.fill,
   },
-  chipText: { fontSize: 15, color: lv.fg },
-  error: { color: lv.destructive, fontSize: 15, lineHeight: 20 },
-  hint: { color: lv.mutedFg, fontSize: 14, lineHeight: 19, textAlign: "center" },
+  chipOn: { backgroundColor: lv.fg },
+  chipPressed: { opacity: 0.7 },
+  chipText: { ...type.subheadline, fontWeight: "500", color: lv.fg },
+  chipTextOn: { color: lv.primaryFg, fontWeight: "600" },
+  tag: { alignSelf: "flex-start", flexShrink: 1, height: 24, justifyContent: "center", borderRadius: 999, paddingHorizontal: 10 },
+  tagText: { ...type.caption1, fontWeight: "600" },
+  error: { ...type.subheadline, color: lv.destructive },
+  hint: { ...type.footnote, color: lv.mutedFg, textAlign: "center" },
+  avatar: { alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.9)" },
 });

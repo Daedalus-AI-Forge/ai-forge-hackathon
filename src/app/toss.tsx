@@ -1,24 +1,25 @@
 import { useAction, useMutation } from "convex/react";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { Pool } from "@/components/Pool";
+import { Glass, Screen } from "@/components/ios";
+import { Well } from "@/components/lv/home/Well";
 import { ShareLink } from "@/components/ShareLink";
 import { TextAll } from "@/components/TextAll";
 import { errorMessage } from "@/components/ui";
 import { CoachPanel, type CoachPick } from "@/components/lv/toss/CoachPanel";
+import { DButton } from "@/components/lv/passon/kit";
 import { Eyebrow, LvButton, LvCard, LvField } from "@/components/lv/toss/parts";
 import { RecipientCard, emptyPerson, type Person } from "@/components/lv/toss/RecipientCard";
 import { TypeGrid } from "@/components/lv/toss/TypeGrid";
 import { useMe } from "@/lib/device";
 import { LV_WISH_TYPES, fromApiType, type ApiWishType } from "@/lib/lvWishTypes";
-import { lv } from "@/theme/tokens";
-import { formScrollProps } from "@/components/keyboard";
 import { toE164 } from "@/lib/contactPick";
 import { prefillPeople } from "@/lib/tossPeople";
+import { lv, type } from "@/theme/tokens";
 
 const MAX_PEOPLE = 3;
 // The contact field holds a phone (picked or typed) or an @handle; only a phone pre-fills SMS.
@@ -121,12 +122,7 @@ export default function Toss() {
   }
 
   return (
-    <ScrollView
-      testID="toss-screen"
-      style={{ backgroundColor: lv.bg }}
-      contentContainerStyle={styles.container}
-      {...formScrollProps}
-    >
+    <Screen testID="toss-screen" nativeHeader>
       {step === "write" ? (
         <>
           <View style={styles.header}>
@@ -197,9 +193,9 @@ export default function Toss() {
             />
           ))}
           {sameCircle ? (
-            <View testID="toss-diversity" style={styles.diversity}>
+            <Glass testID="toss-diversity" variant="thin" radius={lv.radiusMd} style={styles.diversity}>
               <Text style={styles.diversityText}>Try a friend from a different circle — boats drift farther.</Text>
-            </View>
+            </Glass>
           ) : null}
           {people.length < MAX_PEOPLE ? (
             <LvButton
@@ -218,7 +214,7 @@ export default function Toss() {
             disabled={!people.some((p) => p.name.trim())}
             onPress={onToss}
           />
-          <LvButton variant="ghost" title="Back" onPress={() => setStep("write")} />
+          <DButton variant="plain" title="Back" onPress={() => setStep("write")} style={styles.back} />
         </>
       ) : null}
 
@@ -228,13 +224,13 @@ export default function Toss() {
             <Eyebrow color={lv.thread}>Your coin is live</Eyebrow>
             <Text style={styles.h1}>Plop! Your coin is in the pool.</Text>
           </View>
-          <View style={{ alignItems: "center" }}>
-            <Pool size={180} />
-          </View>
-          <View style={styles.prophecy}>
+          <Well size={200} />
+          <View>
             <View style={styles.orb} />
-            <Text style={styles.prophecyText}>It might ripple toward {typeInfo.label}.</Text>
-            <Text style={styles.prophecySub}>Send each person their own link. Every link carries the trust chain forward.</Text>
+            <Glass variant="dark" radius={30} style={styles.prophecy}>
+              <Text style={styles.prophecyText}>It might ripple toward {typeInfo.label}.</Text>
+              <Text style={styles.prophecySub}>Send each person their own link. Every link carries the trust chain forward.</Text>
+            </Glass>
           </View>
           <TextAll
             targets={links.map((l) => ({
@@ -257,21 +253,29 @@ export default function Toss() {
           <LvButton title="Back to the pool" testID="toss-done" variant="ink" onPress={() => router.replace("/")} />
         </>
       ) : null}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 16, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 64 },
-  header: { paddingTop: 24, paddingHorizontal: 4, gap: 4 },
-  h1: { fontSize: 32, fontWeight: "700", lineHeight: 38, color: lv.fg, letterSpacing: -0.5 },
-  small: { fontSize: 13, lineHeight: 18, color: lv.mutedFg, paddingHorizontal: 4 },
-  wish: { fontSize: 20, fontWeight: "600", lineHeight: 26, color: lv.fg },
-  err: { fontSize: 14, color: lv.destructive, paddingHorizontal: 4 },
-  diversity: { borderRadius: lv.radiusSm, backgroundColor: lv.card, borderWidth: 1, borderColor: lv.gold, padding: 14 },
-  diversityText: { fontSize: 14, fontWeight: "600", color: lv.fg, lineHeight: 19 },
-  prophecy: { overflow: "hidden", borderRadius: 28, backgroundColor: lv.fg, padding: 24, gap: 8, ...lv.shadow },
-  orb: { position: "absolute", right: -48, top: -48, width: 160, height: 160, borderRadius: 80, backgroundColor: lv.gold, opacity: 0.35 },
-  prophecyText: { fontSize: 24, fontWeight: "700", lineHeight: 28, letterSpacing: -0.4, color: lv.bg },
-  prophecySub: { fontSize: 15, color: lv.bg, opacity: 0.75 },
+  header: { paddingTop: 4, gap: 6 },
+  h1: { ...type.title1, color: lv.fg },
+  small: { ...type.footnote, color: lv.mutedFg },
+  wish: { ...type.title3, color: lv.fg },
+  err: { ...type.footnote, color: lv.destructive },
+  diversity: { padding: 14, borderColor: lv.gold, borderWidth: 1 },
+  diversityText: { ...type.subheadline, fontWeight: "600", color: lv.fg },
+  back: { alignSelf: "center" },
+  orb: {
+    position: "absolute",
+    right: -30,
+    top: -40,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundImage: "radial-gradient(circle, rgba(235,207,138,0.9) 0%, rgba(235,207,138,0) 70%)",
+  },
+  prophecy: { padding: 24, gap: 8 },
+  prophecyText: { ...type.title2, color: "#FFFFFF" },
+  prophecySub: { ...type.subheadline, color: "rgba(255,255,255,0.75)" },
 });

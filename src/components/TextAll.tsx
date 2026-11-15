@@ -4,7 +4,7 @@ import { AppState, StyleSheet, Text } from "react-native";
 import { DButton, DCard } from "@/components/lv/passon/kit";
 import { hopUrl, smsLink } from "@/lib/links";
 import { textAllLabel } from "@/lib/tossPeople";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 export type TextAllTarget = { hopId: string; name: string; message: string | null; to?: string };
 
@@ -79,6 +79,6 @@ export function TextAll({ targets }: { targets: TextAllTarget[] }) {
 }
 
 const styles = StyleSheet.create({
-  progress: { fontSize: 15, fontWeight: "700", color: lv.fg },
-  hint: { fontSize: 14, lineHeight: 20, color: lv.mutedFg },
+  progress: { ...type.headline, color: lv.fg },
+  hint: { ...type.footnote, color: lv.mutedFg },
 });

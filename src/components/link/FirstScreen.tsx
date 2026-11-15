@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DButton, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { Glass, GlassCard } from "@/components/ios";
+import { DButton, DTag, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import type { FirstScreen as FirstScreenData } from "@/lib/linkApi.types";
 import { ordinal, timeLeft, useNow } from "@/lib/time";
-import { lv } from "@/theme/tokens";
+import { layout, lv, type } from "@/theme/tokens";
 
 export type FirstScreenProps = { screen: FirstScreenData; onStart: () => void };
 
@@ -36,11 +37,9 @@ export function FirstScreen({ screen, onStart }: FirstScreenProps) {
         <Eyebrow>{screen.senderName} sent you a paper boat</Eyebrow>
       )}
 
-      <View style={styles.card} testID="link-boat">
+      <GlassCard testID="link-boat">
         <View style={styles.tagRow}>
-          <Text style={styles.tag} testID="link-source-tag">
-            {sourceTag(boat)}
-          </Text>
+          <DTag testID="link-source-tag" label={sourceTag(boat)} tone={boat.kind === "daily" ? "gold" : "thread"} />
           <Text style={styles.meta}>{timeLeft(screen.expiresAt, now)}</Text>
         </View>
         <Text style={styles.wish} testID="link-wish">
@@ -77,7 +76,7 @@ export function FirstScreen({ screen, onStart }: FirstScreenProps) {
             ))}
           </View>
         ) : null}
-      </View>
+      </GlassCard>
 
       <DButton
         title={screen.freeWishAvailable ? "Claim your free wish" : "Help this boat"}
@@ -86,10 +85,10 @@ export function FirstScreen({ screen, onStart }: FirstScreenProps) {
         testID="link-start"
       />
       {!screen.freeWishAvailable ? (
-        <Sub style={{ textAlign: "center", fontSize: 13 }}>You've used your free wish. Helping still moves you toward the next one.</Sub>
+        <Sub style={styles.footnote}>You've used your free wish. Helping still moves you toward the next one.</Sub>
       ) : null}
 
-      <View style={styles.how} testID="link-how">
+      <Glass variant="thin" testID="link-how" style={styles.how}>
         <Eyebrow>How it works</Eyebrow>
         {HOW_IT_WORKS.map((t, i) => (
           <View key={t} style={styles.howRow}>
@@ -97,46 +96,36 @@ export function FirstScreen({ screen, onStart }: FirstScreenProps) {
             <Text style={styles.howText}>{t}</Text>
           </View>
         ))}
-      </View>
+      </Glass>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   vouch: { gap: 6, paddingTop: 4 },
-  vouchText: { fontSize: 19, lineHeight: 26, color: lv.fg, fontWeight: "600" },
-  card: { backgroundColor: lv.card, borderRadius: lv.radiusXl, borderWidth: 1, borderColor: lv.border, padding: 18, gap: 12, ...lv.shadow },
+  vouchText: { ...type.title3, color: lv.fg },
   tagRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  tag: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: lv.thread,
-    backgroundColor: lv.accent,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    overflow: "hidden",
-  },
-  wish: { fontSize: 22, lineHeight: 29, color: lv.fg, fontWeight: "700" },
-  meta: { fontSize: 13, color: lv.mutedFg },
-  link: { fontSize: 13, color: lv.fg, fontWeight: "600" },
-  chain: { gap: 10, borderTopWidth: 1, borderTopColor: lv.border, paddingTop: 10 },
+  wish: { ...type.title2, color: lv.fg },
+  meta: { ...type.footnote, color: lv.mutedFg },
+  link: { ...type.footnote, color: lv.thread, fontWeight: "600" },
+  chain: { gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: lv.separator, paddingTop: 12 },
   chainItem: { gap: 2 },
-  chainName: { fontSize: 14, fontWeight: "600", color: lv.fg },
-  chainVouch: { fontSize: 14, color: lv.mutedFg, fontStyle: "italic" },
-  how: { gap: 10, marginTop: 18, padding: 16, borderRadius: lv.radius, backgroundColor: lv.muted },
-  howRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  chainName: { ...type.subheadline, fontWeight: "600", color: lv.fg },
+  chainVouch: { ...type.subheadline, color: lv.mutedFg, fontStyle: "italic" },
+  footnote: { ...type.footnote, textAlign: "center" },
+  how: { gap: 12, marginTop: 12, padding: layout.cardPadding },
+  howRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   howNum: {
     width: 22,
     height: 22,
     borderRadius: 11,
     backgroundColor: lv.fg,
-    color: lv.bg,
+    color: lv.primaryFg,
     textAlign: "center",
     lineHeight: 22,
     fontSize: 12,
     fontWeight: "700",
     overflow: "hidden",
   },
-  howText: { flex: 1, fontSize: 14, lineHeight: 20, color: lv.fg },
+  howText: { flex: 1, ...type.subheadline, color: lv.fg },
 });

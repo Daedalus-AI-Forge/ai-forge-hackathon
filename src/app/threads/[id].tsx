@@ -1,16 +1,18 @@
 import { useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { BackButton, GlassCard, LargeTitle, NavBar, Screen, SectionHeader } from "@/components/ios";
+import { DAvatar, DTag } from "@/components/lv/passon/kit";
 import { ThreadMap } from "@/components/lv/threads/ThreadMap";
 import { STATUS_LABEL, TIER_LABEL, actionLabel, badgesFor, totalKm } from "@/components/lv/threads/threadData";
 import { useMe } from "@/lib/device";
 import { countdown, useNow } from "@/lib/time";
-import { lv } from "@/theme/tokens";
+import { lv, shadows, type } from "@/theme/tokens";
 
 const TIER_BG = { gold: lv.gold, silver: lv.silver, bronze: lv.bronze, red: lv.accent } as const;
+const INSET = 8; // map inset inside the card; its radius stays concentric
 
 /** One wish of mine (id = wishId). Data comes from `wishes.mine`; there is no per-wish query yet. */
 export default function ThreadDetail() {
@@ -21,21 +23,25 @@ export default function ThreadDetail() {
   const now = useNow(1000);
   const w = wishes?.find((x) => x._id === id);
 
-  const back = (
-    <Pressable testID="thread-back" accessibilityRole="button" onPress={() => (router.canGoBack() ? router.back() : router.replace("/voyages"))} hitSlop={12}>
-      <Text style={styles.back}>‹ Voyages</Text>
-    </Pressable>
+  const nav = (
+    <NavBar
+      left={
+        <BackButton
+          testID="thread-back"
+          label="Back to Voyages"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/voyages"))}
+        />
+      }
+    />
   );
 
   if (!w) {
     return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
+      <Screen testID="thread-screen">
         <Stack.Screen options={{ headerShown: false }} />
-        <View testID="thread-screen" style={styles.container}>
-          {back}
-          <Text style={styles.muted}>{wishes === undefined ? "Loading…" : "Thread not found."}</Text>
-        </View>
-      </SafeAreaView>
+        {nav}
+        <Text style={styles.muted}>{wishes === undefined ? "Loading…" : "Thread not found."}</Text>
+      </Screen>
     );
   }
 
@@ -44,150 +50,134 @@ export default function ThreadDetail() {
   const badges = badgesFor(w);
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <Screen testID="thread-screen">
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView testID="thread-screen" contentContainerStyle={styles.container}>
-        {back}
-        <Text style={styles.headline}>
-          Your coin: <Text style={{ color: lv.thread }}>{w.text}</Text>
-        </Text>
+      {nav}
+      <LargeTitle
+        size="title"
+        title={
+          <>
+            Your coin: <Text style={{ color: lv.thread }}>{w.text}</Text>
+          </>
+        }
+      />
 
-        <View style={[styles.card, { padding: 12 }]}>
-          <ThreadMap testID="thread-map" holders={w.holders} highlightName={w.creatorName} />
-          <View style={styles.stats}>
-            <Stat value={String(w.ripples)} label="Hops" />
-            <Stat value={Math.round(totalKm(w.holders)).toLocaleString()} label="Km" />
-            <Stat value={w.status === "traveling" && left > 0 ? countdown(w.expiresAt, now) : "—"} label="Left" />
-          </View>
+      <GlassCard style={styles.mapCard}>
+        <ThreadMap testID="thread-map" holders={w.holders} highlightName={w.creatorName} radius={lv.radiusXl - INSET} />
+        <View style={styles.stats}>
+          <Stat value={String(w.ripples)} label="Hops" />
+          <Stat value={Math.round(totalKm(w.holders)).toLocaleString()} label="Km" divider />
+          <Stat value={w.status === "traveling" && left > 0 ? countdown(w.expiresAt, now) : "—"} label="Left" divider />
         </View>
+      </GlassCard>
 
-        {w.status === "found" ? (
-          <View style={[styles.card, styles.center, { borderColor: lv.thread }]}>
-            <Text style={styles.cardTitle}>Someone says they're who you're looking for</Text>
-            <Text style={[styles.muted, { textAlign: "center" }]}>
-              Confirming them comes next — you'll see their intro and the vouch chain here.
+      {w.status === "found" ? (
+        <GlassCard style={styles.center}>
+          <Text style={[styles.cardTitle, styles.centerText]}>Someone says they're who you're looking for</Text>
+          <Text style={[styles.muted, styles.centerText]}>
+            Confirming them comes next — you'll see their intro and the vouch chain here.
+          </Text>
+        </GlassCard>
+      ) : null}
+
+      {w.status === "faded" ? (
+        <GlassCard>
+          <Text style={styles.cardTitle}>This thread faded.</Text>
+          <Text style={styles.muted}>It ran out of time before reaching the right person.</Text>
+        </GlassCard>
+      ) : null}
+
+      {w.status === "granted" ? (
+        <View testID="thread-ending" style={styles.polaroid}>
+          <View style={[styles.tierPill, { backgroundColor: w.tier ? TIER_BG[w.tier] : lv.muted }]}>
+            <Text style={styles.tierText}>
+              {w.tier ? TIER_LABEL[w.tier] : "Wish granted"} · {w.ripples} ripples
             </Text>
           </View>
-        ) : null}
-
-        {w.status === "faded" ? (
-          <View style={[styles.card, { borderColor: lv.thread }]}>
-            <Text style={styles.cardTitle}>This thread faded.</Text>
-            <Text style={styles.muted}>It ran out of time before reaching the right person.</Text>
-          </View>
-        ) : null}
-
-        {w.status === "granted" ? (
-          <View testID="thread-ending" style={styles.polaroid}>
-            <View style={styles.row}>
-              <View style={[styles.tierPill, { backgroundColor: w.tier ? TIER_BG[w.tier] : lv.muted }]}>
-                <Text style={styles.tierText}>
-                  {w.tier ? TIER_LABEL[w.tier] : "Wish granted"} · {w.ripples} ripples
-                </Text>
-              </View>
+          <ThreadMap holders={w.holders} compact radius={6} />
+          {badges.length ? (
+            <View style={styles.badges}>
+              {badges.map((b) => (
+                <DTag key={b} label={b} tone="neutral" />
+              ))}
             </View>
-            <ThreadMap holders={w.holders} compact />
-            {badges.length ? (
-              <View style={styles.badges}>
-                {badges.map((b) => (
-                  <View key={b} style={styles.badge}>
-                    <Text style={styles.badgeText}>{b}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
-        ) : null}
+          ) : null}
+        </View>
+      ) : null}
 
-        <Text style={[styles.eyebrow, { paddingHorizontal: 8, paddingTop: 8 }]}>
-          The chain · {STATUS_LABEL[w.status]} · {w.holding} holding it
-        </Text>
-        <View style={styles.chain}>
-          {chain.map((h) => {
-            const isMe = h.depth === 0;
-            return (
-              <View key={h.key} style={styles.chainItem}>
-                <View style={[styles.avatar, { backgroundColor: h.avatar }]}>
-                  <Text style={styles.avatarText}>{h.name.slice(0, 1).toUpperCase()}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
+      <SectionHeader title={`The chain · ${STATUS_LABEL[w.status]} · ${w.holding} holding it`} />
+      <GlassCard style={styles.timeline}>
+        {chain.map((h, i) => {
+          const isMe = h.depth === 0;
+          return (
+            <View key={h.key} style={styles.row}>
+              <View style={styles.rail}>
+                <DAvatar name={h.name} color={h.avatar} size={28} />
+                {i < chain.length - 1 ? <View style={styles.stem} /> : null}
+              </View>
+              <View style={[styles.chainBody, i < chain.length - 1 && styles.rowGap]}>
+                <View style={styles.chainHead}>
+                  {isMe ? <DTag label="You" tone="threadSolid" /> : null}
                   <Text style={styles.chainMeta}>
-                    {isMe ? <Text style={styles.youPill}> You </Text> : null}
-                    {isMe ? " " : ""}
-                    <Text style={{ color: lv.fg, fontWeight: "600" }}>{h.name}</Text>
+                    <Text style={styles.chainName}>{h.name}</Text>
                     {h.city ? ` · ${h.city}` : ""} · {actionLabel(h)}
                   </Text>
-                  {!h.acted && h.depth > 0 ? <Text style={styles.chainMsg}>Holding it now</Text> : null}
                 </View>
+                {!h.acted && h.depth > 0 ? <Text style={styles.chainMsg}>Holding it now</Text> : null}
               </View>
-            );
-          })}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+            </View>
+          );
+        })}
+      </GlassCard>
+    </Screen>
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function Stat({ value, label, divider }: { value: string; label: string; divider?: boolean }) {
   return (
-    <View style={{ flex: 1, alignItems: "center" }}>
+    <View style={[styles.stat, divider && styles.statDivider]}>
       <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
-      <Text style={styles.eyebrow}>{label}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: lv.bg },
-  container: { padding: 16, paddingTop: 20, gap: 20, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 48 },
-  back: { fontSize: 15, color: lv.mutedFg, paddingHorizontal: 8 },
-  headline: { fontSize: 34, lineHeight: 37, fontWeight: "700", color: lv.fg, paddingHorizontal: 8, letterSpacing: -0.5 },
-  card: {
-    backgroundColor: lv.card,
-    borderRadius: lv.radiusXl,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: lv.border,
-    gap: 6,
-    ...lv.shadow,
-  },
+  muted: { ...type.subheadline, color: lv.mutedFg },
+  mapCard: { padding: INSET, gap: 0 },
+  stats: { flexDirection: "row", paddingTop: 14, paddingBottom: 8 },
+  stat: { flex: 1, alignItems: "center", gap: 2, paddingHorizontal: 4 },
+  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderColor: lv.separator },
+  statValue: { ...type.title2, color: lv.fg, fontVariant: ["tabular-nums"] },
+  statLabel: { ...type.eyebrow, color: lv.mutedFg },
   center: { alignItems: "center" },
-  cardTitle: { fontSize: 22, fontWeight: "700", color: lv.fg },
-  stats: { flexDirection: "row", gap: 8, paddingHorizontal: 8, paddingTop: 16, paddingBottom: 4 },
-  statValue: { fontSize: 24, fontWeight: "700", color: lv.fg, fontVariant: ["tabular-nums"] },
-  eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.mutedFg },
-  muted: { fontSize: 14, color: lv.mutedFg, lineHeight: 20 },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  centerText: { textAlign: "center" },
+  cardTitle: { ...type.title3, color: lv.fg },
   polaroid: {
     width: "90%",
     alignSelf: "center",
-    backgroundColor: lv.card,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    borderCurve: "continuous",
     padding: 12,
     paddingBottom: 20,
     gap: 12,
     transform: [{ rotate: "-1.5deg" }],
-    ...lv.shadow,
+    boxShadow: shadows.float,
   },
-  tierPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
-  tierText: { fontSize: 12, fontWeight: "500", color: lv.fg },
+  tierPill: { alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 12, height: 26, justifyContent: "center" },
+  tierText: { ...type.caption1, fontWeight: "600", color: lv.fg },
   badges: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  badge: { borderWidth: 1, borderColor: lv.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2 },
-  badgeText: { fontSize: 12, color: lv.fg },
-  chain: { marginLeft: 16, borderLeftWidth: 1, borderLeftColor: lv.thread, paddingLeft: 0, gap: 20 },
-  chainItem: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginLeft: -13 },
-  avatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: lv.card,
-  },
-  avatarText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  chainMeta: { fontSize: 12, color: lv.mutedFg, lineHeight: 18 },
-  youPill: { backgroundColor: lv.thread, color: lv.threadFg, fontSize: 10, fontWeight: "600", borderRadius: 999, overflow: "hidden" },
-  chainMsg: { fontSize: 15, color: lv.fg, marginTop: 2 },
+  timeline: { gap: 0 },
+  row: { flexDirection: "row", gap: 12 },
+  rail: { width: 28, alignItems: "center" },
+  stem: { width: 2, flex: 1, minHeight: 12, marginVertical: 3, borderRadius: 1, backgroundColor: lv.thread },
+  rowGap: { paddingBottom: 16 },
+  chainBody: { flex: 1, paddingTop: 4, gap: 2 },
+  chainHead: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
+  chainMeta: { ...type.footnote, color: lv.mutedFg, flexShrink: 1 },
+  chainName: { color: lv.fg, fontWeight: "600" },
+  chainMsg: { ...type.subheadline, color: lv.fg },
 });

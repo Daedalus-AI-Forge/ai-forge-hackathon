@@ -2,13 +2,12 @@
 // Polish is capped at 3s; on timeout or error the visitor's own text stays.
 import { useAction } from "convex/react";
 import { useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { DButton, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { DButton, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { withTimeout } from "@/lib/linkDraft";
-import { lv } from "@/theme/tokens";
-import { KEYBOARD_DONE_ID } from "@/components/keyboard";
+import { lv, type } from "@/theme/tokens";
 
 export const POLISH_TIMEOUT_MS = 3000;
 const MAX_WISH = 200;
@@ -50,7 +49,7 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
         <Sub>One line is enough. It sails to friends of friends, never to a stranger feed.</Sub>
       </View>
 
-      <TextInput
+      <DField
         testID="link-wish-input"
         value={text}
         onChangeText={(t) => {
@@ -59,11 +58,8 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
         }}
         editable={!polishing}
         placeholder="Someone who switched from pre-med to design"
-        placeholderTextColor={lv.mutedFg}
         maxLength={MAX_WISH}
         returnKeyType="done"
-        submitBehavior="blurAndSubmit"
-        inputAccessoryViewID={Platform.OS === "ios" ? KEYBOARD_DONE_ID : undefined}
         onSubmitEditing={() => trimmed && onContinue(trimmed)}
         style={styles.input}
         accessibilityLabel="Your wish"
@@ -72,7 +68,8 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
       <View style={styles.row}>
         <DButton
           title="Polish with AI"
-          variant="ghost"
+          icon="sparkles"
+          variant="tinted"
           size="sm"
           onPress={() => void polish()}
           busy={polishing}
@@ -90,26 +87,15 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
         testID="link-wish-continue"
       />
       {!trimmed && !polishing ? <DHint>Write one line to continue, or skip it below.</DHint> : null}
-      <Pressable onPress={onSkip} accessibilityRole="button" hitSlop={8} testID="link-skip-wish" style={{ alignSelf: "center" }}>
-        <Text style={styles.skip}>Not now, just help</Text>
-      </Pressable>
+      <DButton title="Not now, just help" variant="plain" size="sm" onPress={onSkip} testID="link-skip-wish" style={styles.skip} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  h1: { fontSize: 26, lineHeight: 32, fontWeight: "700", color: lv.fg },
-  input: {
-    minHeight: 56,
-    borderRadius: 14,
-    backgroundColor: lv.card,
-    borderWidth: 1.5,
-    borderColor: lv.fieldBorder,
-    paddingHorizontal: 16,
-    fontSize: 17,
-    color: lv.fg,
-  },
+  h1: { ...type.title1, color: lv.fg },
+  input: { minHeight: 56 },
   row: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  note: { fontSize: 13, color: lv.mutedFg, flexShrink: 1 },
-  skip: { fontSize: 15, color: lv.mutedFg, textDecorationLine: "underline" },
+  note: { ...type.footnote, color: lv.mutedFg, flexShrink: 1 },
+  skip: { alignSelf: "center" },
 });

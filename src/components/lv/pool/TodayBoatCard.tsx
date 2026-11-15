@@ -1,11 +1,12 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { glass } from "@/components/lv/home/glass";
+import { Glass, Icon } from "@/components/ios";
+import { DTag } from "@/components/lv/passon/kit";
 import { errorMessage } from "@/components/ui";
-import { lv } from "@/theme/tokens";
+import { layout, lv, type } from "@/theme/tokens";
 
 const useNativeDriver = Platform.OS !== "web";
 
@@ -29,6 +30,7 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
   if (!today) return null;
 
   const pushed = today.passedTo > 0;
+  const live = !pushed && today.open;
   const play = async () => {
     if (busy || !today.open) return;
     setBusy(true);
@@ -45,53 +47,70 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
 
   return (
     <Animated.View
-      style={
-        pushed || !today.open
-          ? null
-          : {
+      style={[
+        styles.halo,
+        live
+          ? {
               shadowColor: lv.gold,
-              shadowOpacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] }),
-              shadowRadius: 22,
+              shadowOpacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.8] }),
+              shadowRadius: 24,
               shadowOffset: { width: 0, height: 6 },
               elevation: 8,
             }
-      }
+          : null,
+      ]}
     >
-      <Pressable
+      <Glass
         testID="today-boat"
-        accessibilityRole="button"
-        disabled={pushed || busy || !today.open}
+        disabled={!live || busy}
         onPress={() => void play()}
-        style={({ pressed }) => [styles.card, glass.light, pushed && styles.cardPushed, pressed && { opacity: 0.85 }]}
+        accessibilityLabel={pushed ? "Today’s boat, pushed" : `Today’s boat: ${today.title}`}
+        accessibilityHint={pushed ? undefined : "Opens today’s boat"}
+        style={styles.card}
       >
         {pushed ? (
-          <Text style={styles.pushed}>Pushed ✓ — it’s drifting</Text>
-        ) : (
-          <>
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>Today’s boat</Text>
+          <View style={styles.pushedRow}>
+            <View style={styles.check}>
+              <Icon name="check" size={14} color={lv.threadFg} weight="bold" />
             </View>
+            <Text style={styles.pushed}>Pushed — it’s drifting</Text>
+          </View>
+        ) : (
+          <View style={[styles.body, !today.open && styles.dim]}>
+            <DTag label="Today’s boat" tone="gold" />
             <Text style={styles.title}>{today.title}</Text>
             <Text style={styles.hint}>Clue: {today.hint}</Text>
-            <Text style={styles.players}>
-              {busy ? "Opening…" : `${today.players} pushing today · Tap to open ›`}
-            </Text>
-          </>
+            {/* The whole card opens the boat; the Pool keeps a single primary button. */}
+            <View style={styles.footer}>
+              <Text style={styles.players}>{busy ? "Opening…" : `${today.players} pushing today`}</Text>
+              {today.open && !busy ? (
+                <View style={styles.open}>
+                  <Text style={styles.openText}>Tap to open</Text>
+                  <Icon name="forward" size={12} color={lv.thread} weight="bold" />
+                </View>
+              ) : null}
+            </View>
+          </View>
         )}
         {error ? <Text style={styles.error}>{error}</Text> : null}
-      </Pressable>
+      </Glass>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: lv.radiusXl, padding: 18, gap: 6 },
-  cardPushed: { opacity: 0.75 },
-  pill: { alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: lv.gold },
-  pillText: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.fg },
-  title: { fontSize: 22, fontWeight: "700", color: lv.fg, lineHeight: 28, marginTop: 4 },
-  hint: { fontSize: 15, color: lv.mutedFg, marginTop: 2 },
-  players: { fontSize: 12, color: lv.mutedFg, marginTop: 4 },
-  pushed: { fontSize: 15, fontWeight: "600", color: lv.mutedFg, paddingVertical: 6 },
-  error: { color: lv.destructive, fontSize: 13 },
+  halo: { borderRadius: lv.radiusXl },
+  card: { padding: layout.cardPadding + 2, gap: 6 },
+  body: { gap: 6 },
+  dim: { opacity: 0.55 },
+  title: { ...type.title2, color: lv.fg, marginTop: 6 },
+  hint: { ...type.subheadline, color: lv.mutedFg },
+  footer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 },
+  players: { ...type.footnote, color: lv.mutedFg, flexShrink: 1 },
+  open: { flexDirection: "row", alignItems: "center", gap: 4, height: 30, paddingHorizontal: 12, borderRadius: 999, backgroundColor: lv.threadTint },
+  openText: { ...type.footnote, fontWeight: "600", color: lv.thread },
+  pushedRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 2 },
+  check: { width: 24, height: 24, borderRadius: 12, backgroundColor: lv.thread, alignItems: "center", justifyContent: "center" },
+  pushed: { ...type.headline, color: lv.mutedFg },
+  error: { ...type.footnote, color: lv.destructive },
 });

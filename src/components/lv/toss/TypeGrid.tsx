@@ -1,8 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Glass } from "@/components/ios";
 import { LV_WISH_TYPES, toApiType, type ApiWishType } from "@/lib/lvWishTypes";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
+/** Wish type picker: a 2-column grid of glass tiles; the chosen one turns ink. */
 export function TypeGrid({ value, onChange }: { value: ApiWishType | null; onChange: (t: ApiWishType) => void }) {
   return (
     <View style={s.grid}>
@@ -10,17 +12,18 @@ export function TypeGrid({ value, onChange }: { value: ApiWishType | null; onCha
         const api = toApiType[x.id];
         const on = value === api;
         return (
-          <Pressable
+          <Glass
             key={x.id}
             testID={`toss-type-${api}`}
-            accessibilityRole="button"
             accessibilityState={{ selected: on }}
             onPress={() => onChange(api)}
-            style={[s.tile, on ? s.tileOn : s.tileOff]}
+            radius={lv.radiusMd + 2}
+            style={[s.tile, on && s.tileOn]}
           >
+            {on ? <View style={s.ink} /> : null}
             <Text style={s.emoji}>{x.emoji}</Text>
             <Text style={[s.label, { color: on ? lv.primaryFg : lv.fg }]}>{x.label}</Text>
-          </Pressable>
+          </Glass>
         );
       })}
     </View>
@@ -28,10 +31,11 @@ export function TypeGrid({ value, onChange }: { value: ApiWishType | null; onCha
 }
 
 const s = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  tile: { width: "48.5%", flexGrow: 1, flexBasis: "45%", borderRadius: lv.radiusSm, borderWidth: 1, padding: 16 },
-  tileOn: { backgroundColor: lv.primary, borderColor: lv.fg },
-  tileOff: { backgroundColor: lv.card, borderColor: lv.border },
-  emoji: { fontSize: 22 },
-  label: { marginTop: 8, fontSize: 14, fontWeight: "600" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  tile: { flexGrow: 1, flexBasis: "45%", padding: 16 },
+  tileOn: { borderColor: lv.primary },
+  // Solid ink above the glass material for the chosen tile.
+  ink: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: lv.primary },
+  emoji: { fontSize: 24 },
+  label: { ...type.subheadline, fontWeight: "600", marginTop: 8 },
 });

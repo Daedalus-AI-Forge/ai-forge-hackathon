@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { PickedContact } from "@/components/ContactPickButton";
 import { toSuggestions, type ContactSuggestion } from "@/lib/contactPick";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 const MIN_CHARS = 2;
 const FIELDS = [ContactField.FULL_NAME, ContactField.PHONES] as const;
@@ -71,14 +71,14 @@ export function ContactSuggestions({
         <View style={s.row}>
           <Pressable
             testID={`${testID}-allow`}
-            style={s.chip}
+            style={[s.chip, s.allow]}
             onPress={() =>
               requestPermissionsAsync()
                 .then((p) => update(p.granted ? "granted" : "off"))
                 .catch(() => update("off"))
             }
           >
-            <Text style={s.chipText}>Allow</Text>
+            <Text style={[s.chipText, s.allowText]}>Allow</Text>
           </Pressable>
           <Pressable testID={`${testID}-no`} style={s.plain} onPress={() => update("off")}>
             <Text style={s.plainText}>Not now</Text>
@@ -114,11 +114,13 @@ export function ContactSuggestions({
 }
 
 const s = StyleSheet.create({
-  row: { flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: lv.secondary, maxWidth: "100%" },
-  chipText: { fontSize: 13, fontWeight: "600", color: lv.fg },
-  ask: { gap: 6 },
-  askText: { fontSize: 13, color: lv.mutedFg },
-  plain: { paddingHorizontal: 8, paddingVertical: 8 },
-  plainText: { fontSize: 13, color: lv.mutedFg },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
+  chip: { minHeight: 34, justifyContent: "center", paddingHorizontal: 14, borderRadius: 999, backgroundColor: lv.fill, maxWidth: "100%" },
+  chipText: { ...type.subheadline, fontWeight: "500", color: lv.fg },
+  allow: { backgroundColor: lv.threadTint },
+  allowText: { color: lv.thread, fontWeight: "600" },
+  ask: { gap: 8 },
+  askText: { ...type.footnote, color: lv.mutedFg, paddingHorizontal: 4 },
+  plain: { paddingHorizontal: 8, minHeight: 34, justifyContent: "center" },
+  plainText: { ...type.subheadline, color: lv.mutedFg },
 });
