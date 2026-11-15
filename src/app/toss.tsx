@@ -1,27 +1,24 @@
 import { useAction, useMutation } from "convex/react";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Pool } from "@/components/Pool";
 import { ShareLink } from "@/components/ShareLink";
-import { Button, Card, ChipRow, ErrorText, Field, Muted, Title, errorMessage } from "@/components/ui";
+import { errorMessage } from "@/components/ui";
+import { CoachPanel, type CoachPick } from "@/components/lv/toss/CoachPanel";
+import { Eyebrow, LvButton, LvCard, LvField } from "@/components/lv/toss/parts";
+import { RecipientCard, emptyPerson, type Person } from "@/components/lv/toss/RecipientCard";
+import { TypeGrid } from "@/components/lv/toss/TypeGrid";
 import { useMe } from "@/lib/device";
-import { colors } from "@/lib/theme";
+import { LV_WISH_TYPES, fromApiType, type ApiWishType } from "@/lib/lvWishTypes";
+import { lv } from "@/theme/tokens";
 
-const TYPES = [
-  { key: "do_together", title: "Someone to do something with", example: "Someone to jam on drums with" },
-  { key: "local", title: "A local", example: "A local in Tokyo to show me izakayas" },
-  { key: "been_there", title: "Someone who's been there", example: "Someone who has been to Antarctica" },
-  { key: "same_boat", title: "Someone in the same boat", example: "Someone who also just moved to SF" },
-] as const;
-
-type WishType = (typeof TYPES)[number]["key"];
-const TAGS = ["music", "travel", "food", "sports", "tech", "outdoors", "art", "knows everyone"] as const;
-
-type Person = { name: string; tags: string[] };
+const MAX_PEOPLE = 3;
+// Server error text (convex/lib.ts REASON_REQUIRED); shown inline under the card missing a reason.
+const REASON_REQUIRED = "Add one line on why you picked them";
 
 export default function Toss() {
   const router = useRouter();
@@ -29,24 +26,23 @@ export default function Toss() {
   const toss = useMutation(api.wishes.toss);
   const polish = useAction(api.ai.polishWish);
   const draftMessage = useAction(api.ai.draftPassMessage);
-  const askTheWell = useAction(api.ai.askTheWell);
-  const [advice, setAdvice] = useState<{ name: string; reason: string } | "none" | null>(null);
 
-  const [step, setStep] = useState<"type" | "write" | "people" | "share">("type");
-  const [type, setType] = useState<WishType | null>(null);
+  const [step, setStep] = useState<"write" | "people" | "share">("write");
+  const [type, setType] = useState<ApiWishType>("do_together");
   const [text, setText] = useState("");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
-  const [people, setPeople] = useState<Person[]>([{ name: "", tags: [] }]);
+  const [people, setPeople] = useState<Person[]>([emptyPerson()]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reasonMissing, setReasonMissing] = useState(false);
   const [links, setLinks] = useState<{ hopId: Id<"hops">; name: string; message: string | null }[]>([]);
 
   const needsProfile = !user?.name;
-  const typeInfo = TYPES.find((t) => t.key === type);
+  const typeInfo = LV_WISH_TYPES.find((t) => t.id === fromApiType[type])!;
 
   async function onPolish() {
-    if (!deviceId || !type || !text.trim()) return;
+    if (!deviceId || !text.trim()) return;
     setBusy(true);
     setError(null);
     try {
@@ -58,176 +54,158 @@ export default function Toss() {
     }
   }
 
+  function onCoachPick(p: CoachPick) {
+    setPeople((prev) => {
+      const filled = prev.filter((x) => x.name.trim());
+      if (filled.some((x) => x.name.trim().toLowerCase() === p.name.toLowerCase())) return prev;
+      const next = { ...emptyPerson(), name: p.name, reason: p.why };
+      const blank = prev.findIndex((x) => !x.name.trim());
+      if (blank >= 0) return prev.map((x, i) => (i === blank ? { ...x, name: p.name, reason: x.reason || p.why } : x));
+      return [...prev, next].slice(0, MAX_PEOPLE);
+    });
+  }
+
   async function onToss() {
-    if (!deviceId || !type) return;
+    if (!deviceId) return;
     setBusy(true);
     setError(null);
+    setReasonMissing(false);
     try {
-      const recipients = people.filter((p) => p.name.trim());
-      const { hopIds } = await toss({ deviceId, type, text, name, city, recipients });
+      const recipients = people
+        .filter((p) => p.name.trim())
+        .map((p) => ({
+          name: p.name,
+          reason: p.reason.trim() || undefined,
+          contact: p.contact.trim() || undefined,
+          tags: p.tags,
+        }));
+      const { hopIds } = await toss({ deviceId, type, text, name, city, mode: "serious", recipients });
       const created = hopIds.map((hopId, i) => ({ hopId, name: recipients[i].name, message: null as string | null }));
       setLinks(created);
       setStep("share");
       created.forEach(({ hopId }) => {
-        void draftMessage({ hopId }).then((message) =>
-          setLinks((prev) => prev.map((l) => (l.hopId === hopId ? { ...l, message } : l))),
-        );
+        void draftMessage({ hopId })
+          .then((message) => setLinks((prev) => prev.map((l) => (l.hopId === hopId ? { ...l, message } : l))))
+          .catch(() => setLinks((prev) => prev.map((l) => (l.hopId === hopId ? { ...l, message: "" } : l))));
       });
     } catch (e) {
-      setError(errorMessage(e));
+      const msg = errorMessage(e);
+      if (msg.includes(REASON_REQUIRED)) setReasonMissing(true);
+      else setError(msg);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <ScrollView testID="toss-screen" contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      {step === "type" ? (
+    <ScrollView
+      testID="toss-screen"
+      style={{ backgroundColor: lv.bg }}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+      {step === "write" ? (
         <>
-          <Title>What kind of person?</Title>
-          <Muted>Wish for a type of person, never a specific one.</Muted>
-          {TYPES.map((t) => (
-            <Pressable
-              key={t.key}
-              testID={`toss-type-${t.key}`}
-              onPress={() => {
-                setType(t.key);
-                setStep("write");
-              }}
-            >
-              <Card>
-                <Text style={styles.typeTitle}>{t.title}</Text>
-                <Muted>“{t.example}”</Muted>
-              </Card>
-            </Pressable>
-          ))}
-        </>
-      ) : null}
-
-      {step === "write" && typeInfo ? (
-        <>
-          <Title>Make your wish</Title>
-          <Muted>Who + what to do + why. Friends help more when they know why.</Muted>
-          <Field
-            testID="toss-text"
-            multiline
-            value={text}
-            onChangeText={setText}
-            placeholder={`${typeInfo.example}…`}
-          />
-          <Button testID="toss-polish" title="✨ AI polish" variant="secondary" busy={busy} disabled={!text.trim()} onPress={onPolish} />
+          <View style={styles.header}>
+            <Eyebrow>
+              {user ? `${user.wishesLeft} wish ${user.wishesLeft === 1 ? "credit" : "credits"} · refunded if it works` : "Make a wish"}
+            </Eyebrow>
+            <Text style={styles.h1}>Who do you want to meet?</Text>
+          </View>
+          <TypeGrid value={type} onChange={setType} />
+          <LvCard>
+            <Text style={styles.small}>A type of person + what to do + why. Never a specific named person.</Text>
+            <LvField
+              testID="toss-text"
+              multiline
+              value={text}
+              onChangeText={setText}
+              placeholder={`${typeInfo.example[0].toUpperCase()}${typeInfo.example.slice(1)}…`}
+            />
+            <LvButton
+              testID="toss-polish"
+              variant="ghost"
+              title={busy ? "Polishing…" : "✦ Polish with AI"}
+              busy={busy}
+              disabled={!text.trim()}
+              onPress={onPolish}
+            />
+          </LvCard>
           {needsProfile ? (
-            <Card>
-              <Field label="Your name" value={name} onChangeText={setName} testID="toss-name" placeholder="Louise" />
-              <Field label="Your city" value={city} onChangeText={setCity} testID="toss-city" placeholder="San Francisco" />
-            </Card>
+            <LvCard>
+              <Eyebrow>About you</Eyebrow>
+              <LvField value={name} onChangeText={setName} testID="toss-name" placeholder="Your name" />
+              <LvField value={city} onChangeText={setCity} testID="toss-city" placeholder="Your city" />
+            </LvCard>
           ) : null}
-          <ErrorText error={error} />
-          <Button
+          {error ? <Text style={styles.err}>{error}</Text> : null}
+          <LvButton
             testID="toss-next"
-            title="Next"
+            variant="thread"
+            title="Next: who do you ask first?"
             disabled={!text.trim() || (needsProfile && !name.trim())}
             onPress={() => setStep("people")}
           />
-          <Button title="Back" variant="ghost" onPress={() => setStep("type")} />
         </>
       ) : null}
 
       {step === "people" ? (
         <>
-          <Title>Who should get it first?</Title>
-          <Card testID="ask-the-well">
-            <Text style={styles.typeTitle}>Ask the well</Text>
-            {advice === null ? (
-              <>
-                <Muted>The well looks at your wish network and suggests who to send this to first.</Muted>
-                <Button
-                  testID="ask-the-well-button"
-                  title="Who should get it first?"
-                  variant="secondary"
-                  busy={busy}
-                  onPress={async () => {
-                    if (!deviceId) return;
-                    setBusy(true);
-                    setError(null);
-                    try {
-                      setAdvice((await askTheWell({ deviceId, text })) ?? "none");
-                    } catch (e) {
-                      setError(errorMessage(e));
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                />
-              </>
-            ) : advice === "none" ? (
-              <Muted>The well doesn't know your friends yet. Pass a few daily wishes and it will.</Muted>
-            ) : (
-              <>
-                <Text testID="ask-the-well-answer" style={styles.advice}>
-                  Start with {advice.name}. {advice.reason}
-                </Text>
-                {people.some((p) => p.name.trim().toLowerCase() === advice.name.toLowerCase()) ? null : (
-                  <Button
-                    testID="ask-the-well-add"
-                    title={`Add ${advice.name}`}
-                    variant="secondary"
-                    onPress={() =>
-                      setPeople((prev) => [{ name: advice.name, tags: [] }, ...prev.filter((p) => p.name.trim())].slice(0, 3))
-                    }
-                  />
-                )}
-              </>
-            )}
-          </Card>
-          <Muted>Pick up to 3 people most likely to know someone.</Muted>
+          <View style={styles.header}>
+            <Eyebrow>{typeInfo.label}</Eyebrow>
+            <Text style={styles.h1}>Now, who do you ask first?</Text>
+          </View>
+          <LvCard>
+            <Eyebrow>{`${typeInfo.emoji} Your wish`}</Eyebrow>
+            <Text style={styles.wish}>{text}</Text>
+          </LvCard>
+          <CoachPanel deviceId={deviceId} wishText={text} onPick={onCoachPick} pickedNames={people.map((p) => p.name)} />
+          <Text style={styles.small}>Pick up to {MAX_PEOPLE} people most likely to know someone — say why in one line.</Text>
           {people.map((p, i) => (
-            <Card key={i}>
-              <Field
-                testID={`toss-person-${i}`}
-                label={`Person ${i + 1}`}
-                value={p.name}
-                placeholder="Their name"
-                onChangeText={(v) => setPeople((prev) => prev.map((x, j) => (j === i ? { ...x, name: v } : x)))}
-              />
-              <ChipRow
-                options={TAGS}
-                value={null}
-                onChange={(tag) =>
-                  setPeople((prev) =>
-                    prev.map((x, j) =>
-                      j === i ? { ...x, tags: x.tags.includes(tag) ? x.tags.filter((t) => t !== tag) : [...x.tags, tag].slice(-3) } : x,
-                    ),
-                  )
-                }
-              />
-              {p.tags.length ? <Muted>Tags: {p.tags.join(", ")}</Muted> : null}
-            </Card>
+            <RecipientCard
+              key={i}
+              index={i}
+              person={p}
+              reasonError={reasonMissing && p.name.trim() && !p.reason.trim() ? REASON_REQUIRED : null}
+              onChange={(np) => setPeople((prev) => prev.map((x, j) => (j === i ? np : x)))}
+              onRemove={people.length > 1 ? () => setPeople((prev) => prev.filter((_, j) => j !== i)) : undefined}
+            />
           ))}
-          {people.length < 3 ? (
-            <Button title="+ Add someone" variant="ghost" testID="toss-add-person" onPress={() => setPeople((prev) => [...prev, { name: "", tags: [] }])} />
+          {people.length < MAX_PEOPLE ? (
+            <LvButton
+              testID="toss-add-person"
+              variant="ghost"
+              title="+ Add someone"
+              onPress={() => setPeople((prev) => [...prev, emptyPerson()])}
+            />
           ) : null}
-          <ErrorText error={error} />
-          <Button
+          {error ? <Text style={styles.err}>{error}</Text> : null}
+          <LvButton
             testID="toss-submit"
-            title="Toss it into the well"
+            variant="thread"
+            title="Tie the thread"
             busy={busy}
             disabled={!people.some((p) => p.name.trim())}
             onPress={onToss}
           />
-          <Button title="Back" variant="ghost" onPress={() => setStep("write")} />
+          <LvButton variant="ghost" title="Back" onPress={() => setStep("write")} />
         </>
       ) : null}
 
       {step === "share" ? (
         <>
-          <Pool size={180} />
-          <Title>Splash! Your wish is in the well.</Title>
-          <Muted>Send each person their own link. Every link carries the trust chain forward.</Muted>
+          <View style={styles.header}>
+            <Eyebrow color={lv.thread}>Your wish is live</Eyebrow>
+            <Text style={styles.h1}>Splash! It's in the well.</Text>
+          </View>
+          <View style={{ alignItems: "center" }}>
+            <Pool size={180} />
+          </View>
+          <Text style={styles.small}>Send each person their own link. Every link carries the trust chain forward.</Text>
           {links.map((l) => (
             <ShareLink key={l.hopId} hopId={l.hopId} name={l.name} message={l.message} />
           ))}
-          <Button title="Watch it ripple" testID="toss-done" onPress={() => router.replace("/")} />
+          <LvButton title="Watch it ripple" testID="toss-done" variant="ink" onPress={() => router.replace("/")} />
         </>
       ) : null}
     </ScrollView>
@@ -235,7 +213,10 @@ export default function Toss() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 14, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 48 },
-  typeTitle: { fontSize: 17, fontWeight: "800", color: colors.ink },
-  advice: { fontSize: 16, fontWeight: "700", color: colors.ink, lineHeight: 22 },
+  container: { padding: 16, gap: 16, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 64 },
+  header: { paddingTop: 24, paddingHorizontal: 4, gap: 4 },
+  h1: { fontSize: 32, fontWeight: "700", lineHeight: 38, color: lv.fg },
+  small: { fontSize: 13, lineHeight: 18, color: lv.mutedFg, paddingHorizontal: 4 },
+  wish: { fontSize: 20, fontWeight: "600", lineHeight: 26, color: lv.fg },
+  err: { fontSize: 14, color: lv.destructive, paddingHorizontal: 4 },
 });
