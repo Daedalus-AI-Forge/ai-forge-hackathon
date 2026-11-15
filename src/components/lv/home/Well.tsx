@@ -95,14 +95,14 @@ export function Well({ holders = [], size = 320, testID }: { holders?: WellHolde
           <Ripple key={i} size={pool} delay={i * 880} color="rgba(255,250,236,0.55)" />
         ))}
         <Ripple size={pool} delay={440} color={lv.thread} />
-      </View>
-      <Bob>
-        <View testID="pool-coin" style={styles.coin}>
-          <View style={styles.coinInner}>
-            <Text style={styles.coinStar}>✦</Text>
+        <Bob>
+          <View testID="pool-coin" style={styles.coin}>
+            <View style={styles.coinInner}>
+              <Text style={styles.coinStar}>✦</Text>
+            </View>
           </View>
-        </View>
-      </Bob>
+        </Bob>
+      </View>
       {placed.map((h, i) => {
         const depth = Math.min(i, 2);
         const a = -Math.PI / 2 + i * 2.1 + depth * 0.6;
