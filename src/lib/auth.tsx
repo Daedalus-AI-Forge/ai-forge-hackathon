@@ -1,8 +1,8 @@
-import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
-import { useConvexAuth, useMutation } from "convex/react";
+import { useAuthActions, useAuthToken, useConvexAuth as useConvexAuthTokens } from "@convex-dev/auth/react";
+import { ConvexProviderWithAuth, type ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { usePathname } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useEffect, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import { Platform } from "react-native";
 
 import { api } from "@/convex/_generated/api";
@@ -19,6 +19,43 @@ export const authStorage =
         removeItem: SecureStore.deleteItemAsync,
       }
     : undefined;
+
+/** The `sub` claim ("userId|sessionId") of a Convex Auth JWT, or null. */
+export function sessionOf(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const part = token.split(".")[1]!.replace(/-/g, "+").replace(/_/g, "/");
+    const sub = (JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), "="))) as { sub?: unknown }).sub;
+    return typeof sub === "string" ? sub : token;
+  } catch {
+    return token;
+  }
+}
+
+/**
+ * Convex Auth's own ConvexProviderWithAuth only calls `client.setAuth` when
+ * isAuthenticated flips false -> true. AuthBridge signs every device in
+ * anonymously first, so a later Google/Apple/phone sign-in swaps one valid
+ * token for another and the websocket keeps the anonymous identity until the
+ * JWT expires (~1h) or the app restarts. This hook hands Convex a new
+ * fetchAccessToken whenever the session (JWT `sub`) changes, which re-runs
+ * setAuth; plain token refreshes keep the same session and do not re-auth.
+ */
+function useSessionAwareAuth() {
+  const { isLoading, isAuthenticated, fetchAccessToken } = useConvexAuthTokens();
+  const session = sessionOf(useAuthToken());
+  const fetchForSession = useCallback((args: { forceRefreshToken: boolean }) => fetchAccessToken(args), [fetchAccessToken, session]);
+  return useMemo(() => ({ isLoading, isAuthenticated, fetchAccessToken: fetchForSession }), [isLoading, isAuthenticated, fetchForSession]);
+}
+
+/** Place directly inside ConvexAuthProvider; re-authenticates the client on every new session. */
+export function SessionAuth({ client, children }: { client: ConvexReactClient; children: ReactNode }) {
+  return (
+    <ConvexProviderWithAuth client={client} useAuth={useSessionAwareAuth}>
+      {children}
+    </ConvexProviderWithAuth>
+  );
+}
 
 /**
  * Keeps the auth session and the device identity in step (auth on only):

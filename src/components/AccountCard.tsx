@@ -16,7 +16,7 @@ export function AccountCard() {
   if (account.signedIn && account.hasAccount) {
     return (
       <Card testID="account-card">
-        <Muted>Signed in{account.email ? ` as ${account.email}` : " with Apple"}</Muted>
+        <Muted>Signed in{account.email ? ` as ${account.email}` : account.phone ? ` as ${account.phone}` : " with Apple"}</Muted>
         <Button
           title="Sign out"
           variant="ghost"
