@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { SHELL_TAB_CLEARANCE } from "@/components/lv/shell/tabBarStyle";
 import { ThreadMap } from "@/components/lv/threads/ThreadMap";
 import { STATUS_LABEL, TIER_LABEL, pathHolders } from "@/components/lv/threads/threadData";
+import { ClaimCard, type PendingClaim } from "@/components/lv/voyages/ClaimCard";
 import { MiniRoute } from "@/components/lv/voyages/MiniRoute";
 import { VOYAGE_STATUS } from "@/components/lv/voyages/voyageData";
 import { useMe } from "@/lib/device";
@@ -22,6 +23,14 @@ export default function VoyagesScreen() {
   const [tab, setTab] = useState<Tab>("boats");
   const boats = useQuery(api.pool.voyages, deviceId ? { deviceId } : "skip");
   const coins = useQuery(api.wishes.mine, deviceId ? { deviceId } : "skip");
+  const claims = useQuery(api.link.pendingClaims, deviceId ? { deviceId } : "skip");
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  // Confirmed claims drop out of pendingClaims; keep their cards for the draft/text step.
+  const [confirmed, setConfirmed] = useState<Record<string, PendingClaim>>({});
+  const claimCards = [
+    ...Object.values(confirmed).filter((c) => !claims?.some((p) => p.hopId === c.hopId)),
+    ...(claims ?? []),
+  ].filter((c) => !hidden.has(c.hopId));
   const now = useNow(30000);
   const router = useRouter();
 
@@ -32,6 +41,18 @@ export default function VoyagesScreen() {
           <Text style={styles.eyebrow}>Where they drifted</Text>
           <Text style={styles.title}>Voyages</Text>
         </View>
+
+        {deviceId
+          ? claimCards.map((c) => (
+                <ClaimCard
+                  key={c.hopId}
+                  claim={c}
+                  deviceId={deviceId}
+                  onDismiss={() => setHidden((prev) => new Set(prev).add(c.hopId))}
+                  onConfirmed={() => setConfirmed((prev) => ({ ...prev, [c.hopId]: c }))}
+                />
+              ))
+          : null}
 
         <View style={styles.segment}>
           {(["boats", "coins"] as const).map((t) => (

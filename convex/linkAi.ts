@@ -212,3 +212,39 @@ export const verifyClaimCode = action({
     return { verified: true };
   },
 });
+
+const INTRO_MAX = 320;
+
+export function introFallback(claimerName: string, makerName: string, wishText: string): string {
+  const hi = claimerName ? `Hi ${claimerName}` : "Hi";
+  const wish = wishText ? ` for my wish "${short(wishText, 60)}"` : "";
+  return `${hi}, it's ${makerName || "me"} from Wishwell — you're the one${wish}. Want to grab a coffee or hop on a call this week?`;
+}
+
+/**
+ * Draft the first text the wisher sends the confirmed claimer from their OWN phone.
+ * Returns a draft only — the app opens Messages and the wisher taps Send.
+ */
+export const introMessage = action({
+  args: { hopId: v.id("hops") },
+  returns: v.string(),
+  handler: async (ctx, { hopId }): Promise<string> => {
+    const generic = introFallback("", "", "");
+    return await safe(generic, async () => {
+      const c = await ctx.runQuery(internal.hops.aiContext, { hopId });
+      if (!c) return generic;
+      const claimer = clampText(c.holderName, LIMITS.name);
+      const maker = clampText(c.wisherName, LIMITS.name);
+      const wishText = clampText(c.wishText, LIMITS.wish);
+      const fallback = introFallback(claimer, maker, wishText);
+      if (!(await aiAllowed(ctx, `link:${hopId}`))) return fallback;
+      const out = await respondFast(
+        `Write a 1–2 sentence text message from ${maker || "the wisher"} to ${claimer || "the person"}, who said they are the one ` +
+          `for this wish: "${wishText}". Start with "Hi ${claimer || "there"}, it's ${maker || "me"} from Wishwell". ` +
+          `Say they're the one for the wish and suggest meeting up or a quick call. Use only these facts.`,
+        fallback,
+      );
+      return clampText(stripQuotes(out), INTRO_MAX) || fallback;
+    });
+  },
+});

@@ -213,3 +213,13 @@ describe("linkAi fallbacks", () => {
     expect(results.at(-1)).toBe("Amy is my friend — drums");
   });
 });
+
+describe("linkAi.introMessage", () => {
+  test("falls back to a template naming claimer, maker and wish when AI is off", async () => {
+    const t = setup();
+    const { hopId } = await seed(t);
+    const text = await t.action(api.linkAi.introMessage, { hopId });
+    expect(text).toContain("Hi Vee, it's Darren from Wishwell");
+    expect(text).toContain("Someone to jam on drums");
+  });
+});
