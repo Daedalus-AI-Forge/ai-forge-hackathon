@@ -1,6 +1,7 @@
 // Screen 3a: claim the boat ("it's me"). Daily boat: intro + optional proof photo + show-name toggle.
 // Real wish: intro + AI follow-up questions + phone verification code.
 import { useAction, useMutation } from "convex/react";
+import type { FunctionReference } from "convex/server";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
@@ -13,6 +14,10 @@ import { lv } from "@/theme/tokens";
 import { cleanError, isSixDigitCode } from "./claim/errors";
 import { canPickPhoto, pickPhotoWeb, uploadPhoto } from "./claim/photo";
 
+// Lands in convex/linkAi.ts at merge; typed here so this file compiles before then.
+type VerifyClaimCode = FunctionReference<"action", "public", { hopId: Id<"hops">; phone: string; code: string }, { verified: boolean }>;
+const verifyClaimCodeRef = (api.linkAi as unknown as { verifyClaimCode: VerifyClaimCode }).verifyClaimCode;
+
 export type ClaimStepProps = { hopId: string; deviceId: string; kind: "daily" | "real"; onDone: () => void };
 
 export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
@@ -22,6 +27,7 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
   const track = useMutation(api.linkMetrics.track);
   const claimQuestions = useAction(api.linkAi.claimQuestions);
   const sendClaimCode = useAction(api.linkAi.sendClaimCode);
+  const verifyClaimCode = useAction(verifyClaimCodeRef);
 
   const [intro, setIntro] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +46,8 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     if (kind !== "real") return;
@@ -76,10 +84,26 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
     try {
       await sendClaimCode({ hopId: hop, phone: fullPhone });
       setCodeSent(true);
+      setVerified(false);
+      setCode("");
     } catch (e) {
       setError(cleanError(e));
     } finally {
       setSending(false);
+    }
+  }
+
+  async function onVerify() {
+    setError(null);
+    setVerifying(true);
+    try {
+      const { verified: ok } = await verifyClaimCode({ hopId: hop, phone: fullPhone, code: code.trim() });
+      setVerified(ok);
+      if (!ok) setError("That code didn't work");
+    } catch (e) {
+      setError(cleanError(e));
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -117,7 +141,7 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
 
   const realReady =
     kind !== "real" ||
-    (questions !== null && questions.every((_, i) => (answers[i] ?? "").trim()) && codeSent && isSixDigitCode(code.trim()));
+    (questions !== null && questions.every((_, i) => (answers[i] ?? "").trim()) && verified);
   const canSubmit = intro.trim().length > 0 && realReady && !uploading;
 
   return (
@@ -181,7 +205,10 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
             <DField
               label="Your phone"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(t) => {
+                setPhone(t);
+                setVerified(false);
+              }}
               placeholder="+1 555 010 0000"
               keyboardType="phone-pad"
               autoComplete="tel"
@@ -199,15 +226,31 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
             />
           </View>
           {codeSent ? (
-            <DField
-              label="6-digit code"
-              value={code}
-              onChangeText={(t) => setCode(t.replace(/\D/g, "").slice(0, 6))}
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              maxLength={6}
-              testID="claim-code"
-            />
+            <View style={styles.row}>
+              <DField
+                label="6-digit code"
+                value={code}
+                onChangeText={(t) => {
+                  setCode(t.replace(/\D/g, "").slice(0, 6));
+                  setVerified(false);
+                }}
+                keyboardType="number-pad"
+                autoComplete="one-time-code"
+                maxLength={6}
+                editable={!verified}
+                testID="claim-code"
+              />
+              <DButton
+                title={verified ? "Verified" : "Verify"}
+                variant="ink"
+                size="sm"
+                style={styles.codeBtn}
+                busy={verifying}
+                disabled={verified || !isSixDigitCode(code.trim())}
+                onPress={onVerify}
+                testID="claim-verify"
+              />
+            </View>
           ) : null}
         </View>
       )}
