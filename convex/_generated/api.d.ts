@@ -37,6 +37,7 @@ import type * as pool from "../pool.js";
 import type * as seed from "../seed.js";
 import type * as sms from "../sms.js";
 import type * as stats from "../stats.js";
+import type * as teamSeed from "../teamSeed.js";
 import type * as users from "../users.js";
 import type * as wishes from "../wishes.js";
 
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   sms: typeof sms;
   stats: typeof stats;
+  teamSeed: typeof teamSeed;
   users: typeof users;
   wishes: typeof wishes;
 }>;
