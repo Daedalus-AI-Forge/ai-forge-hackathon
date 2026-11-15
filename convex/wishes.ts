@@ -113,7 +113,7 @@ export const toss = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx, args.deviceId);
     const text = clampText(args.text, LIMITS.wish);
-    const mode = args.mode ?? "serious";
+    const mode = args.mode ?? "fun"; // omitted = legacy UI; new UI sends "serious"
     const picked = args.recipients
       .slice(0, MAX_PASSES + 1)
       .map((r) => ({ ...r, name: clampText(r.name, LIMITS.name) }))

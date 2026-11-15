@@ -80,10 +80,14 @@ export async function wishHops(ctx: QueryCtx, wishId: Id<"wishes">) {
 
 export const REASON_REQUIRED = "Add one line on why you picked them";
 
-/** A wish's effective mode: daily wishes are always fun; missing = serious. */
+/**
+ * A wish's effective mode: daily wishes are always fun. Missing mode = legacy "fun" so
+ * wishes created before the graph API (and today's UI) keep passing without a reason;
+ * new UI sends mode "serious" explicitly to require reasons.
+ */
 export function wishModeOf(wish: Pick<Doc<"wishes">, "mode" | "daily">): WishMode {
   if (wish.daily) return "fun";
-  return wish.mode ?? "serious";
+  return wish.mode ?? "fun";
 }
 
 /**
@@ -121,6 +125,8 @@ export async function recordEdges(
   const contact = clampText(args.contact ?? "", CONTACT_MAX) || undefined;
   const tags = new Map<string, "daily" | "pick">(cleanTags(args.tags).map((t) => [t, "pick"]));
   if (args.dailyTag) tags.set(clampText(args.dailyTag, 30), "daily");
+  // A pick with a reason but no tags still belongs in the graph.
+  if (tags.size === 0 && reason) tags.set("friend", "pick");
   const edgeIds: Id<"edges">[] = [];
   for (const [tag, source] of tags) {
     const edgeId = await ctx.db.insert("edges", {

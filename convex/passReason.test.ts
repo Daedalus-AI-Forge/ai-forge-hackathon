@@ -30,12 +30,12 @@ async function passable(t: ReturnType<typeof convexTest>, hopId: Id<"hops">) {
   await t.mutation(api.hops.act, { hopId, action: "pass", name: "Sam", city: "", vouch: "Mia rocks", tags: [] });
 }
 
-test("serious toss (default mode) rejects a recipient without a reason and writes nothing", async () => {
+test("serious toss rejects a recipient without a reason and writes nothing", async () => {
   const t = convexTest(schema, modules);
   await mia(t);
   await expect(
     t.mutation(api.wishes.toss, {
-      ...base,
+      ...base, mode: "serious",
       recipients: [
         { name: "Ken", reason: "Grew up in Shibuya", tags: ["tokyo"] },
         { name: "Amy", reason: "   ", tags: [] },
@@ -68,7 +68,7 @@ test("serious toss stores mode, clamps reason/contact onto edges and schedules i
   const t = convexTest(schema, modules);
   await mia(t);
   const { wishId, hopIds } = await t.mutation(api.wishes.toss, {
-    ...base,
+    ...base, mode: "serious",
     recipients: [
       { name: "Ken", reason: ` ${"r".repeat(500)} `, contact: "c".repeat(500), tags: ["tokyo", "food"] },
     ],
@@ -91,7 +91,7 @@ test("passTo on a serious wish requires a reason; with one it lands on the edge"
   const t = convexTest(schema, modules);
   await mia(t);
   const { hopIds } = await t.mutation(api.wishes.toss, {
-    ...base,
+    ...base, mode: "serious",
     recipients: [{ name: "Sam", reason: "Lived in Tokyo", tags: [] }],
   });
   await passable(t, hopIds[0]);
@@ -132,4 +132,24 @@ test("daily wishes count as fun: passTo needs no reason and the page reports mod
   await t.mutation(api.hops.passTo, { parentHopId: hopId, name: "Amy", tags: [] });
   expect((await t.query(api.hops.page, { hopId }))?.wish.mode).toBe("fun");
   expect((await edges(t)).length).toBeGreaterThan(0);
+});
+
+
+test("legacy wish without mode (old rows / current UI) passes without a reason", async () => {
+  const t = convexTest(schema, modules);
+  await mia(t);
+  const { wishId, hopIds } = await t.mutation(api.wishes.toss, { ...base, recipients: [{ name: "Sam", tags: [] }] });
+  expect((await t.run((ctx) => ctx.db.get("wishes", wishId)))?.mode).toBe("fun");
+  await t.run((ctx) => ctx.db.patch("wishes", wishId, { mode: undefined }));
+  await passable(t, hopIds[0]);
+  await expect(t.mutation(api.hops.passTo, { parentHopId: hopIds[0], name: "Ken", tags: [] })).resolves.toBeTruthy();
+});
+
+test("a pick with a reason but no tags still writes a 'friend' edge", async () => {
+  const t = convexTest(schema, modules);
+  await mia(t);
+  await t.mutation(api.wishes.toss, { ...base, mode: "serious", recipients: [{ name: "Lia", reason: "Runs the climbing group", tags: [] }] });
+  const lia = (await edges(t)).filter((e) => e.personName === "Lia");
+  expect(lia).toHaveLength(1);
+  expect(lia[0]).toMatchObject({ tag: "friend", source: "pick", reason: "Runs the climbing group" });
 });
