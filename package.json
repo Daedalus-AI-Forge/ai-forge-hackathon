@@ -5,6 +5,7 @@
   "dependencies": {
     "@auth/core": "^0.41.3",
     "@convex-dev/auth": "0.0.98",
+    "@convex-dev/rate-limiter": "^0.4.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "convex": "^1.50.0",
     "expo": "~58.0.25",
@@ -19,6 +20,7 @@
     "expo-status-bar": "~58.0.5",
     "expo-web-browser": "~58.0.8",
     "jose": "^6.2.17",
+    "libphonenumber-js": "^1.13.16",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",

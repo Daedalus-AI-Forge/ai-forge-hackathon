@@ -18,7 +18,11 @@ import type * as hops from "../hops.js";
 import type * as http from "../http.js";
 import type * as lib from "../lib.js";
 import type * as openai from "../openai.js";
+import type * as phoneAuth from "../phoneAuth.js";
+import type * as phoneLimits from "../phoneLimits.js";
+import type * as phoneProvider from "../phoneProvider.js";
 import type * as seed from "../seed.js";
+import type * as sms from "../sms.js";
 import type * as users from "../users.js";
 import type * as wishes from "../wishes.js";
 
@@ -39,7 +43,11 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   lib: typeof lib;
   openai: typeof openai;
+  phoneAuth: typeof phoneAuth;
+  phoneLimits: typeof phoneLimits;
+  phoneProvider: typeof phoneProvider;
   seed: typeof seed;
+  sms: typeof sms;
   users: typeof users;
   wishes: typeof wishes;
 }>;
@@ -70,4 +78,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+};
