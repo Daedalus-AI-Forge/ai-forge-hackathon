@@ -1,7 +1,6 @@
 // Screen 3a: claim the boat ("it's me"). Daily boat: intro + optional proof photo + show-name toggle.
 // Real wish: intro + AI follow-up questions + phone verification code.
 import { useAction, useMutation } from "convex/react";
-import type { FunctionReference } from "convex/server";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
