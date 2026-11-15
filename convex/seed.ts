@@ -58,7 +58,7 @@ export const run = internalMutation({
         city,
         avatar: avatarFor(name),
         wishesLeft: 1,
-        stars: key === "amy" || key === "ben" ? 2 : 0,
+        stars: key === "amy" || key === "ben" ? 2 : key === "me" ? 3 : 0,
         demoKey: key,
       });
       users[key] = { id, name, city, lat, lng };

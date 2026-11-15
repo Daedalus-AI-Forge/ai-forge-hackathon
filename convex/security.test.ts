@@ -308,6 +308,10 @@ describe("daily-wish API hardening", () => {
       city: "SF",
       recipients: [{ name: "Sam", tags: ["food"] }],
     });
+    await t.run(async (ctx) => {
+      const u = await ctx.db.query("users").withIndex("by_deviceId", (q) => q.eq("deviceId", "dev_mia")).unique();
+      await ctx.db.patch("users", u!._id, { stars: 30 });
+    });
     await expect(t.action(api.ai.askTheWell, { deviceId: "../", text: "food" })).rejects.toThrow(/Invalid device id/);
     expect(await t.action(api.ai.askTheWell, { deviceId: "dev_mia", text: "   " })).toBeNull();
     const args = { deviceId: "dev_mia", text: "food ".repeat(1000) };

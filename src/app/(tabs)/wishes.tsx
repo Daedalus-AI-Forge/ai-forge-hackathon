@@ -1,8 +1,10 @@
 import { useQuery } from "convex/react";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
+import { BranchRace } from "@/components/BranchRace";
+import { TierBadge } from "@/components/TierBadge";
 import { Card, Muted, Title } from "@/components/ui";
 import { useMe } from "@/lib/device";
 import { colors } from "@/lib/theme";
@@ -18,11 +20,19 @@ export default function MyWishes() {
         <Title>My wishes</Title>
         <Muted>The full wish tree, vouches and endings arrive in the next build.</Muted>
         {(wishes ?? []).map((w) => (
-          <Card key={w._id}>
-            <Text style={styles.status}>{w.status === "granted" ? "Wish granted" : w.status}</Text>
-            <Text style={styles.text}>{w.text}</Text>
-            <Muted>{rippleLine(w.ripples, w.holding, w.expiresAt, now)}</Muted>
-          </Card>
+          <View key={w._id} style={{ gap: 8 }}>
+            <Card testID={`my-wish-${w._id}`}>
+              <View style={styles.top}>
+                <Text style={styles.status}>{w.status === "granted" ? "Wish granted" : w.status}</Text>
+                {w.tier ? <TierBadge tier={w.tier} testID={`my-wish-tier-${w._id}`} /> : null}
+              </View>
+              <Text style={styles.text}>{w.text}</Text>
+              <Muted>{rippleLine(w.ripples, w.holding, w.expiresAt, now)}</Muted>
+            </Card>
+            {deviceId && (w.status === "traveling" || w.status === "found") ? (
+              <BranchRace deviceId={deviceId} wishId={w._id} />
+            ) : null}
+          </View>
         ))}
         {wishes && wishes.length === 0 ? <Muted>No wishes yet. Toss one into the well!</Muted> : null}
       </ScrollView>
@@ -32,6 +42,7 @@ export default function MyWishes() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 14, maxWidth: 430, width: "100%", alignSelf: "center" },
+  top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   status: { fontSize: 13, fontWeight: "800", color: colors.red, textTransform: "capitalize" },
   text: { fontSize: 17, fontWeight: "700", color: colors.ink },
 });

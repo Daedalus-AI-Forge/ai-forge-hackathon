@@ -40,7 +40,7 @@ async function seed(t: ReturnType<typeof setup>, edgeCount: number) {
       avatar: "#000",
       city: "SF",
       wishesLeft: 1,
-      stars: 0,
+      stars: 5,
       deviceId: "dev_owner",
     });
     const stranger = await ctx.db.insert("users", {

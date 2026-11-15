@@ -140,12 +140,16 @@ export default function Toss() {
             <Text style={styles.typeTitle}>Ask the well</Text>
             {advice === null ? (
               <>
-                <Muted>The well looks at your wish network and suggests who to send this to first.</Muted>
+                <Muted>
+                  The well reads what your friends' vouches and tags say and suggests who to send this to first. Costs 1 star
+                  (you have {user?.stars ?? 0}). No idea, no charge.
+                </Muted>
                 <Button
                   testID="ask-the-well-button"
-                  title="Who should get it first?"
+                  title="★ Ask the well (1 star)"
                   variant="secondary"
                   busy={busy}
+                  disabled={(user?.stars ?? 0) < 1}
                   onPress={async () => {
                     if (!deviceId) return;
                     setBusy(true);
@@ -161,7 +165,7 @@ export default function Toss() {
                 />
               </>
             ) : advice === "none" ? (
-              <Muted>The well doesn't know your friends yet. Pass a few daily wishes and it will.</Muted>
+              <Muted>The well doesn't know your friends yet, so your star is back. Pass a few daily wishes and it will.</Muted>
             ) : (
               <>
                 <Text testID="ask-the-well-answer" style={styles.advice}>
@@ -170,10 +174,14 @@ export default function Toss() {
                 {people.some((p) => p.name.trim().toLowerCase() === advice.name.toLowerCase()) ? null : (
                   <Button
                     testID="ask-the-well-add"
-                    title={`Add ${advice.name}`}
+                    title={`Send it to ${advice.name}`}
                     variant="secondary"
                     onPress={() =>
-                      setPeople((prev) => [{ name: advice.name, tags: [] }, ...prev.filter((p) => p.name.trim())].slice(0, 3))
+                      setPeople((prev) => {
+                        const empty = prev.findIndex((p) => !p.name.trim());
+                        if (empty >= 0) return prev.map((p, j) => (j === empty ? { ...p, name: advice.name } : p));
+                        return [{ name: advice.name, tags: [] }, ...prev].slice(0, 3);
+                      })
                     }
                   />
                 )}

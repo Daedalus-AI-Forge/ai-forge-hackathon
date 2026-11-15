@@ -62,6 +62,8 @@ export default defineSchema({
     tier: v.optional(
       v.union(v.literal("gold"), v.literal("silver"), v.literal("bronze"), v.literal("red")),
     ),
+    // Set by rewards.grantRewards once a granted wish's wishes and stars are handed out.
+    rewardsAppliedAt: v.optional(v.number()),
     // Set on the platform's daily wish (convex/daily.ts). One step per pass:
     // `tag` is the kind of friend the well learns about on that pass, `hint` the clue.
     daily: v.optional(

@@ -4,9 +4,11 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-nat
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
+import { BranchRace } from "@/components/BranchRace";
 import { DailyWishCard } from "@/components/DailyWishCard";
 import { Pool } from "@/components/Pool";
 import { Button, Muted } from "@/components/ui";
+import { TierBadge } from "@/components/TierBadge";
 import { HelpCard } from "@/components/WishCard";
 import { useMe } from "@/lib/device";
 import { colors, mono } from "@/lib/theme";
@@ -45,6 +47,7 @@ export default function TheWell() {
             <Text testID="well-countdown" style={styles.countdown}>
               {countdown(wish.expiresAt, now)}
             </Text>
+            {wish.tier ? <TierBadge tier={wish.tier} testID="well-tier" /> : null}
           </View>
         ) : (
           <View style={styles.wishBlock}>
@@ -52,6 +55,7 @@ export default function TheWell() {
             <Muted style={{ textAlign: "center" }}>Toss a wish and watch it ripple through your friends.</Muted>
           </View>
         )}
+        {wish && deviceId ? <BranchRace deviceId={deviceId} wishId={wish._id} showCountdown={false} /> : null}
         <Button testID="toss-button" title="Toss a wish" onPress={() => router.push("/toss")} />
         {demoEnabled && !wish && home.helpCards.length === 0 && deviceId ? (
           <Button
@@ -66,7 +70,12 @@ export default function TheWell() {
           <View style={{ gap: 12 }}>
             <Text style={styles.section}>Friends' wishes you can help</Text>
             {home.helpCards.map((c) => (
-              <HelpCard key={c.hopId} hopId={c.hopId} creatorName={c.creatorName} text={c.text} depth={c.depth} expiresAt={c.expiresAt} />
+              <View key={c.hopId} style={{ gap: 8 }}>
+                <HelpCard hopId={c.hopId} creatorName={c.creatorName} text={c.text} depth={c.depth} expiresAt={c.expiresAt} />
+                {deviceId && c.branches > 1 ? (
+                  <BranchRace deviceId={deviceId} wishId={c._id} title={`${c.creatorName}'s branches racing`} />
+                ) : null}
+              </View>
             ))}
           </View>
         ) : null}

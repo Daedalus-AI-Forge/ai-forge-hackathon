@@ -1,12 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
 import { Avatar, Button, Card, Field, Muted, Title } from "@/components/ui";
 import { AccountCard } from "@/components/AccountCard";
 import { NetworkMap } from "@/components/NetworkMap";
+import { StarsCard } from "@/components/StarsCard";
 import { AUTH_ENABLED } from "@/lib/authFlag";
 import { useMe } from "@/lib/device";
 import { colors } from "@/lib/theme";
@@ -32,16 +33,7 @@ export default function Me() {
           <Avatar name={user?.name || "?"} color={user?.avatar ?? colors.red} size={56} />
           <Title>{user?.name || "You"}</Title>
         </View>
-        <View style={styles.stats}>
-          <Card style={styles.stat}>
-            <Text style={styles.num}>{user?.wishesLeft ?? 0}</Text>
-            <Muted>wishes left</Muted>
-          </Card>
-          <Card style={styles.stat}>
-            <Text style={styles.num}>{user?.stars ?? 0}</Text>
-            <Muted>stars</Muted>
-          </Card>
-        </View>
+        <StarsCard />
         <Card>
           <Field label="Your name" value={name} onChangeText={setName} testID="me-name" />
           <Field label="Your city" value={city} onChangeText={setCity} testID="me-city" />
@@ -66,7 +58,4 @@ export default function Me() {
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 14, maxWidth: 430, width: "100%", alignSelf: "center" },
   header: { alignItems: "center", gap: 8 },
-  stats: { flexDirection: "row", gap: 12 },
-  stat: { flex: 1, alignItems: "center" },
-  num: { fontSize: 28, fontWeight: "800", color: colors.red },
 });

@@ -5,6 +5,7 @@ import { aiAllowed } from "./aiLimits";
 import { COACH_THRESHOLD, COACH_TURNS_MAX, WISH_TEXT_MAX, type Candidate } from "./graphShared";
 import { isCoachReady } from "./graphRank";
 import { LIMITS, clampText, requireDeviceId } from "./lib";
+import { NO_STARS } from "./stars";
 import { wishType } from "./schema";
 
 const STYLE =
@@ -75,7 +76,10 @@ export const polishWish = action({
 const ASK_MAX_PEOPLE = 40;
 const ASK_MAX_TAGS = 8;
 
-/** Ask the well: from the people in my wish network, who should get this wish first? */
+/**
+ * Ask the well (1 star): from the people in my wish network, who should get this wish first?
+ * The star comes back when the well has nothing to suggest or the lookup fails.
+ */
 export const askTheWell = action({
   args: { deviceId: v.string(), text: v.string() },
   returns: v.union(v.null(), v.object({ name: v.string(), reason: v.string() })),
@@ -83,34 +87,48 @@ export const askTheWell = action({
     requireDeviceId(args.deviceId);
     const text = clampText(args.text, LIMITS.wish);
     if (!text) return null;
-    // Same ranking as the coach: top-1 grounded candidate from the caller's own edges.
-    const owner = await ctx.runQuery(internal.graphRank.coachContext, { deviceId: args.deviceId });
-    if (owner.ownerUserId && owner.edgeCount > 0) {
-      const allowed = await aiAllowed(ctx, `device:${args.deviceId}`);
-      const [top]: Candidate[] = await ctx.runAction(internal.graphRank.rankForWish, {
-        ownerUserId: owner.ownerUserId,
-        wishText: text,
-        limit: 1,
-        useMemory: allowed,
-      });
-      if (top) {
-        // Same wording as the pre-ranking fallback (existing clients/tests rely on it).
-        const fallback = `In your wish network ${top.name} is tagged ${[...new Set(top.evidence.map((e) => e.tag))].join(", ")}.`;
-        const reason = !allowed
-          ? fallback
-          : await respond(
-              `A user is about to send this wish: "${text}". The well picked ${top.name} from their network. ` +
-                `What the user told the well about ${top.name}:\n${evidenceLines(top)}\n` +
-                `Write one short reason to the user (under 18 words) why ${top.name} is a good first pass. ` +
-                `Use only the facts above; do not invent anything.`,
-              fallback,
-            );
-        return { name: top.name, reason: clampText(reason, 200) || fallback };
-      }
+    const spent = await ctx.runMutation(internal.stars.spendForAsk, { deviceId: args.deviceId });
+    if (spent === "no_user") return null;
+    if (spent === "no_stars") throw new Error(NO_STARS);
+    try {
+      const answer = await suggestFirst(ctx, args.deviceId, text);
+      if (!answer) await ctx.runMutation(internal.stars.refundAsk, { deviceId: args.deviceId });
+      return answer;
+    } catch (e) {
+      await ctx.runMutation(internal.stars.refundAsk, { deviceId: args.deviceId });
+      throw e;
     }
-    return await askByTags(ctx, args.deviceId, text);
   },
 });
+
+async function suggestFirst(ctx: ActionCtx, deviceId: string, text: string) {
+  // Same ranking as the coach: top-1 grounded candidate from the caller's own edges.
+  const owner = await ctx.runQuery(internal.graphRank.coachContext, { deviceId });
+  if (owner.ownerUserId && owner.edgeCount > 0) {
+    const allowed = await aiAllowed(ctx, `device:${deviceId}`);
+    const [top]: Candidate[] = await ctx.runAction(internal.graphRank.rankForWish, {
+      ownerUserId: owner.ownerUserId,
+      wishText: text,
+      limit: 1,
+      useMemory: allowed,
+    });
+    if (top) {
+      // Same wording as the pre-ranking fallback (existing clients/tests rely on it).
+      const fallback = `In your wish network ${top.name} is tagged ${[...new Set(top.evidence.map((e) => e.tag))].join(", ")}.`;
+      const reason = !allowed
+        ? fallback
+        : await respond(
+            `A user is about to send this wish: "${text}". The well picked ${top.name} from their network. ` +
+              `What the user told the well about ${top.name}:\n${evidenceLines(top)}\n` +
+              `Write one short reason to the user (under 18 words) why ${top.name} is a good first pass. ` +
+              `Use only the facts above; do not invent anything.`,
+            fallback,
+          );
+      return { name: top.name, reason: clampText(reason, 200) || fallback };
+    }
+  }
+  return await askByTags(ctx, deviceId, text);
+}
 
 /** Pre-ranking fallback when nothing in the network matches: the most-tagged person. */
 async function askByTags(ctx: ActionCtx, deviceId: string, text: string) {
