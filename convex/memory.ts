@@ -80,7 +80,7 @@ export const ingest = internalAction({
       {
         id: edgeId,
         content: edge.reason ? `${edge.personName}: ${edge.reason} [${edge.tag}]` : `${edge.personName} [${edge.tag}]`,
-        metadata: { personKey: personKey(edge.personName), tag: edge.tag, source: edge.source },
+        metadata: { edgeId, personKey: personKey(edge.personName), tag: edge.tag, source: edge.source },
       },
       "ingest",
     );

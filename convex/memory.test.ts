@@ -71,7 +71,7 @@ describe("memory.ingest", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       id: edgeIds[0],
       content: " Amy  Lee: Plays drums [music]",
-      metadata: { personKey: "amy lee", tag: "music", source: "pick" },
+      metadata: { edgeId: edgeIds[0], personKey: "amy lee", tag: "music", source: "pick" },
     });
   });
 
