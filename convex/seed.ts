@@ -1,4 +1,5 @@
 import type { Id, TableNames } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import { avatarFor } from "./lib";
 
@@ -395,6 +396,8 @@ export const run = internalMutation({
       });
     }
 
+    // Fresh edge ids: re-index them in Supermemory (no-op without SUPERMEMORY_API_KEY).
+    await ctx.scheduler.runAfter(0, internal.memory.backfill, {});
     return { users: PEOPLE.length + 2, wishes: 6, miaEdges, freshEdges: 2 };
   },
 });
