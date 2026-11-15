@@ -8,11 +8,11 @@
 - **Frontend:** not deployed
 - **Convex deployment:** not deployed
 - **Components:** @convex-dev/rate-limiter
-- **Convex features:** schema, indexes, queries, mutations, actions, scheduler, realtime useQuery, Convex Auth, HTTP actions
+- **Convex features:** schema, indexes, queries, mutations, actions, scheduler, crons, realtime useQuery, Convex Auth, HTTP actions
 - **Auth:** Convex Auth (Google, native Apple, phone OTP, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-15T20:30:00Z
+- **Last updated:** 2026-11-15T21:10:00Z
 
 ## Log
 
@@ -71,3 +71,31 @@ unit tests (Twilio only with a mocked `fetch`) and a live demo-number smoke
 script against the dev deployment. Twilio hasn't been tested against the live
 service (`convex/phoneProvider.ts`, `convex/phoneAuth.ts`, `convex/sms.ts`,
 `convex/phoneLimits.ts`, `src/lib/phoneAuth.ts`).
+
+### 2026-11-15 - working tree
+Added the well's daily wish and the wish network. The well lines up the five
+kinds of friend it has mapped least, writes an absurd portrait of the person at
+the end and one clue per pass, and sends it through six people. Each pass
+records a tagged link the owner can see and delete under Me. The
+pass-on page explains what is remembered, shows how it works with live counts,
+and invites helpers to install and toss their own wish. Ask the well now reads
+the network to suggest who to send a wish to first. Convex features: crons,
+internal action, nested-field index (`convex/daily.ts`, `convex/edges.ts`,
+`convex/stats.ts`, `convex/crons.ts`, `src/components/NetworkMap.tsx`,
+`docs/daily-wish-design.md`).
+
+### 2026-11-15 - capy/wishwell-graph-api
+Merged the step1 security fixes into the daily wish and hardened its API the
+same way. Ask the well now checks the device id, caps the wish text and the
+network it sends to OpenAI, and falls back to the tag match once the rate
+limit is hit. Edges clamp names and tags on write, forgetting a person needs a
+name, and the daily wish looks up a player's hop with a (wish, holder) index
+(`convex/ai.ts`, `convex/daily.ts`, `convex/edges.ts`, `convex/lib.ts`,
+`convex/security.test.ts`).
+
+Seeded a demo ego graph for the coach: Mia has 12 people and 23 tagged edges
+with one-line reasons, and a second demo user (device id `dev_demo_fresh`) has
+2 edges, below the coach threshold. A live smoke script checks the graph, the
+reason rule on serious wishes, grounded coach suggestions and forgetting an
+edge against the dev deployment, then reseeds (`convex/seed.ts`,
+`convex/seed.test.ts`, `scripts/graph-smoke.mjs`, `docs/api/graph-coach.md`).

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { stepAt } from "./daily";
 import {
   LIMITS,
   MAX_PASSES,
@@ -8,10 +9,14 @@ import {
   avatarFor,
   clampText,
   cleanTags,
+  passDetails,
+  recordEdges,
   rippleSummary,
   userByDevice,
   wishHops,
+  wishModeOf,
 } from "./lib";
+import { wishMode } from "./graphShared";
 import { wishType } from "./schema";
 
 async function chainAbove(ctx: QueryCtx, hop: Doc<"hops">) {
@@ -68,11 +73,23 @@ const pageValidator = v.union(
       _id: v.id("wishes"),
       text: v.string(),
       type: wishType,
+      mode: wishMode,
       status: v.union(v.literal("traveling"), v.literal("found"), v.literal("granted"), v.literal("faded")),
       expiresAt: v.number(),
       creatorName: v.string(),
       creatorCity: v.string(),
       creatorAvatar: v.string(),
+      daily: v.union(
+        v.null(),
+        v.object({
+          tag: v.string(),
+          learns: v.string(),
+          hint: v.string(),
+          step: v.number(),
+          of: v.number(),
+          reasoning: v.string(),
+        }),
+      ),
     }),
     senderName: v.string(),
     chain: v.array(
@@ -136,11 +153,20 @@ export const page = query({
         _id: wish._id,
         text: wish.text,
         type: wish.type,
+        mode: wishModeOf(wish),
         status: wish.status,
         expiresAt: wish.expiresAt,
         creatorName: creator?.name ?? "Someone",
         creatorCity: creator?.city ?? "",
         creatorAvatar: creator?.avatar ?? avatarFor("?"),
+        daily: wish.daily
+          ? {
+              ...stepAt(wish.daily, hop.depth),
+              step: hop.depth,
+              of: wish.daily.steps.length,
+              reasoning: wish.daily.reasoning,
+            }
+          : null,
       },
       senderName: sender.name,
       chain: chain.map((h) => ({
@@ -192,24 +218,27 @@ export const act = mutation({
     if (hop.depth >= MAX_RIPPLES) throw new Error("This wish has traveled as far as it can");
     const name = clampText(args.name, LIMITS.name) || hop.holderName;
     const vouch = clampText(args.vouch, LIMITS.vouch);
-    if (!vouch) throw new Error("Vouch for the person who sent this to you");
+    const fromTheWell = !!wish.daily && !hop.parentHopId;
+    if (!vouch && !fromTheWell) throw new Error("Vouch for the person who sent this to you");
     await ctx.db.patch("hops", hop._id, {
       holderName: name,
       city: clampText(args.city, LIMITS.city) || undefined,
-      vouchForParent: vouch,
+      vouchForParent: vouch || undefined,
       action: args.action,
       actedAt: Date.now(),
     });
-    const sender = await senderOf(ctx, hop, wish);
-    await ctx.db.insert("vouches", {
-      aboutName: sender.name,
-      aboutUserId: sender.userId,
-      byName: name,
-      text: vouch,
-      tags: cleanTags(args.tags),
-      wishId: wish._id,
-      hopId: hop._id,
-    });
+    if (vouch) {
+      const sender = await senderOf(ctx, hop, wish);
+      await ctx.db.insert("vouches", {
+        aboutName: sender.name,
+        aboutUserId: sender.userId,
+        byName: name,
+        text: vouch,
+        tags: cleanTags(args.tags),
+        wishId: wish._id,
+        hopId: hop._id,
+      });
+    }
     return null;
   },
 });
@@ -218,6 +247,8 @@ export const passTo = mutation({
   args: {
     parentHopId: v.id("hops"),
     name: v.string(),
+    reason: v.optional(v.string()),
+    contact: v.optional(v.string()),
     tags: v.array(v.string()),
   },
   handler: async (ctx, args) => {
@@ -234,7 +265,9 @@ export const passTo = mutation({
     if (existing.length >= limit) throw new Error("You've passed this wish to " + limit + " already");
     const name = clampText(args.name, LIMITS.name);
     if (!viaGroup && !name) throw new Error("Who are you passing it to?");
-    return await ctx.db.insert("hops", {
+    // A group-chat pass names no one, so there is no pick to explain.
+    const details = viaGroup ? {} : passDetails(wishModeOf(wish), args);
+    const childId = await ctx.db.insert("hops", {
       wishId: wish._id,
       parentHopId: hop._id,
       depth: hop.depth + 1,
@@ -242,6 +275,18 @@ export const passTo = mutation({
       recipientTags: cleanTags(args.tags),
       viaGroup,
     });
+    if (!viaGroup) {
+      await recordEdges(ctx, {
+        owner: { userId: hop.holderUserId, name: hop.holderName },
+        personName: name,
+        tags: cleanTags(args.tags),
+        dailyTag: wish.daily && stepAt(wish.daily, hop.depth).tag,
+        ...details,
+        wishId: wish._id,
+        hopId: childId,
+      });
+    }
+    return childId;
   },
 });
 

@@ -150,6 +150,7 @@ describe("input limits", () => {
     const tags = Array.from({ length: 9 }, (_, i) => `tag${i}`.padEnd(50, "x"));
     const { hopIds } = await t.mutation(api.wishes.toss, {
       deviceId: "dev_mia",
+      mode: "fun",
       type: "local",
       text: "w".repeat(5000),
       name: "Mia",
@@ -158,6 +159,7 @@ describe("input limits", () => {
     });
     await t.mutation(api.wishes.toss, {
       deviceId: "dev_mia",
+      mode: "fun",
       type: "local",
       text: "again",
       name: "Mia",
@@ -226,5 +228,97 @@ describe("seed", () => {
     await t.mutation(internal.seed.run, {});
     expect(await t.run((ctx) => ctx.db.query("authAccounts").collect())).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("authSessions").collect())).toEqual([]);
+  });
+});
+
+describe("daily-wish API hardening", () => {
+  async function mia(t: ReturnType<typeof setup>) {
+    await t.mutation(api.users.ensure, { deviceId: "dev_mia" });
+    await t.mutation(api.users.updateProfile, { deviceId: "dev_mia", name: "Mia", city: "SF" });
+  }
+
+  test("edges written on toss and passTo clamp the name and tags", async () => {
+    const t = setup();
+    await mia(t);
+    const longName = "A".repeat(200);
+    const tags = Array.from({ length: 8 }, (_, i) => `${i}${"t".repeat(50)}`);
+    const { hopIds } = await t.mutation(api.wishes.toss, {
+      deviceId: "dev_mia",
+      mode: "fun",
+      type: "local",
+      text: "A local in Tokyo",
+      name: "Mia",
+      city: "SF",
+      recipients: [{ name: longName, tags }],
+    });
+    await t.mutation(api.hops.act, { hopId: hopIds[0], action: "pass", name: "Sam", city: "", vouch: "Mia rocks", tags: [] });
+    await t.mutation(api.hops.passTo, { parentHopId: hopIds[0], name: ` ${longName} `, tags });
+    const edges = await t.run((ctx) => ctx.db.query("edges").collect());
+    expect(edges.length).toBe(10);
+    for (const e of edges) {
+      expect(e.personName.length).toBe(60);
+      expect(e.tag.length).toBeLessThanOrEqual(30);
+    }
+  });
+
+  test("edges.forget is owner-scoped and rejects a blank name", async () => {
+    const t = setup();
+    await mia(t);
+    await t.mutation(api.wishes.toss, {
+      deviceId: "dev_mia",
+      mode: "fun",
+      type: "local",
+      text: "A local in Tokyo",
+      name: "Mia",
+      city: "SF",
+      recipients: [{ name: "Sam", tags: ["food"] }],
+    });
+    await t.mutation(api.users.ensure, { deviceId: "dev_eve" });
+    await t.mutation(api.edges.forget, { deviceId: "dev_eve", personName: "Sam" });
+    expect(await t.query(api.edges.mine, { deviceId: "dev_mia" })).toHaveLength(1);
+    await expect(t.mutation(api.edges.forget, { deviceId: "dev_mia", personName: "   " })).rejects.toThrow(/forget/);
+    await expect(t.mutation(api.edges.forget, { deviceId: "../", personName: "Sam" })).rejects.toThrow(
+      /Invalid device id/,
+    );
+  });
+
+  test("daily.today and daily.join validate their inputs", async () => {
+    const t = setup();
+    await expect(t.query(api.daily.today, { deviceId: "dev_mia", date: "x".repeat(500) })).rejects.toThrow(/date/);
+    await expect(t.query(api.daily.today, { deviceId: "../", date: "2026-11-15" })).rejects.toThrow(/Invalid device id/);
+    await expect(t.mutation(api.daily.join, { deviceId: "../" })).rejects.toThrow(/Invalid device id/);
+  });
+
+  test("askTheWell validates, caps the prompt and stops calling OpenAI once rate limited", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: "Sam | Sam knows food" }] }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const t = setup();
+    await mia(t);
+    await t.mutation(api.wishes.toss, {
+      deviceId: "dev_mia",
+      mode: "fun",
+      type: "local",
+      text: "A local in Tokyo",
+      name: "Mia",
+      city: "SF",
+      recipients: [{ name: "Sam", tags: ["food"] }],
+    });
+    await expect(t.action(api.ai.askTheWell, { deviceId: "../", text: "food" })).rejects.toThrow(/Invalid device id/);
+    expect(await t.action(api.ai.askTheWell, { deviceId: "dev_mia", text: "   " })).toBeNull();
+    const args = { deviceId: "dev_mia", text: "food ".repeat(1000) };
+    for (let i = 0; i < 25; i++) await t.action(api.ai.askTheWell, args);
+    expect(fetchMock).toHaveBeenCalledTimes(20);
+    expect(await t.action(api.ai.askTheWell, args)).toEqual({
+      name: "Sam",
+      reason: "In your wish network Sam is tagged food.",
+    });
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
+    expect(body.max_output_tokens).toBe(400);
+    expect(body.input.length).toBeLessThan(1000);
   });
 });

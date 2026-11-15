@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import { Avatar, Button, Card, Field, Muted, Title } from "@/components/ui";
 import { AccountCard } from "@/components/AccountCard";
+import { NetworkMap } from "@/components/NetworkMap";
 import { AUTH_ENABLED } from "@/lib/authFlag";
 import { useMe } from "@/lib/device";
 import { colors } from "@/lib/theme";
@@ -47,7 +48,8 @@ export default function Me() {
           <Button title="Save" onPress={() => deviceId && void updateProfile({ deviceId, name, city })} testID="me-save" />
         </Card>
         {AUTH_ENABLED ? <AccountCard /> : null}
-        <Muted>Badges, reputation, "How friends see you" and your wish network are coming next.</Muted>
+        {deviceId ? <NetworkMap deviceId={deviceId} /> : null}
+        <Muted>Badges, reputation and "How friends see you" are coming next.</Muted>
         {demoEnabled ? (
           <Button
             title="Use demo profile (Mia, SF)"
