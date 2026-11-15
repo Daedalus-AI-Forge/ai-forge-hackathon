@@ -3,32 +3,23 @@ import { useEffect, useState } from "react";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { glass } from "@/components/lv/home/glass";
 import { errorMessage } from "@/components/ui";
-import { lv } from "@/theme/tokens";
+import { countdown, nextUtcMidnight, useNow } from "@/lib/time";
+import { lv, night } from "@/theme/tokens";
 
 const useNativeDriver = Platform.OS !== "web";
 
-/** Today's boat from the well: an absurd portrait onboarded with a soft gold glow. */
+/**
+ * Today's boat, styled as the prototype's daily-challenge card: dark glass, a gold star,
+ * the time until the boat rolls over, and one gold action. Data stays on api.daily.*.
+ */
 export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; date: string; onOpen: (hopId: string) => void }) {
   const today = useQuery(api.daily.today, { deviceId, date });
   const join = useMutation(api.daily.join);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [glow] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glow, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver }),
-        Animated.timing(glow, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver }),
-      ]),
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [glow]);
   if (!today) return null;
 
-  const pushed = today.passedTo > 0;
   const play = async () => {
     if (busy || !today.open) return;
     setBusy(true);
@@ -44,14 +35,66 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
   };
 
   return (
+    <TodayBoatView
+      title={today.title}
+      hint={today.hint}
+      players={today.players}
+      open={today.open}
+      pushed={today.passedTo > 0}
+      busy={busy}
+      error={error}
+      onPress={() => void play()}
+    />
+  );
+}
+
+export type TodayBoatViewProps = {
+  title: string;
+  hint: string;
+  players: number;
+  open: boolean;
+  pushed: boolean;
+  busy: boolean;
+  error: string | null;
+  onPress: () => void;
+};
+
+/** The card itself, free of data loading (used by TodayBoatCard). */
+export function TodayBoatView({ title, hint, players, open, pushed, busy, error, onPress }: TodayBoatViewProps) {
+  const [glow] = useState(() => new Animated.Value(0));
+  const now = useNow(1000);
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glow, {
+          toValue: 1,
+          duration: 1900,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver,
+        }),
+        Animated.timing(glow, {
+          toValue: 0,
+          duration: 1900,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver,
+        }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [glow]);
+  return (
     <Animated.View
       style={
-        pushed || !today.open
+        pushed || !open
           ? null
           : {
               shadowColor: lv.gold,
-              shadowOpacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] }),
-              shadowRadius: 22,
+              shadowOpacity: glow.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.35, 0.75],
+              }),
+              shadowRadius: 24,
               shadowOffset: { width: 0, height: 6 },
               elevation: 8,
             }
@@ -60,22 +103,27 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
       <Pressable
         testID="today-boat"
         accessibilityRole="button"
-        disabled={pushed || busy || !today.open}
-        onPress={() => void play()}
-        style={({ pressed }) => [styles.card, glass.light, pushed && styles.cardPushed, pressed && { opacity: 0.85 }]}
+        accessibilityLabel={pushed ? "Today's boat, pushed" : `Today's boat: ${title}. Open it`}
+        disabled={pushed || busy || !open}
+        onPress={onPress}
+        style={({ pressed }) => [styles.card, pushed && styles.cardPushed, pressed && { opacity: 0.88 }]}
       >
+        <Text style={styles.label}>
+          <Text style={styles.star}>★ </Text>
+          {pushed ? "Today's boat · pushed" : `Today's boat · new one in ${countdown(nextUtcMidnight(now), now)}`}
+        </Text>
         {pushed ? (
-          <Text style={styles.pushed}>Pushed ✓ — it’s drifting</Text>
+          <Text style={styles.pushed}>It’s drifting. A new boat rises tomorrow.</Text>
         ) : (
           <>
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>Today’s boat</Text>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.hint}>Clue: {hint}</Text>
+            <View style={styles.footer}>
+              <Text style={styles.players}>{players} pushing today</Text>
+              <View style={styles.cta}>
+                <Text style={styles.ctaText}>{busy ? "Opening…" : "Open the boat"}</Text>
+              </View>
             </View>
-            <Text style={styles.title}>{today.title}</Text>
-            <Text style={styles.hint}>Clue: {today.hint}</Text>
-            <Text style={styles.players}>
-              {busy ? "Opening…" : `${today.players} pushing today · Tap to open ›`}
-            </Text>
           </>
         )}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -85,13 +133,52 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: lv.radiusXl, padding: 18, gap: 6 },
-  cardPushed: { opacity: 0.75 },
-  pill: { alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: lv.gold },
-  pillText: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.fg },
-  title: { fontSize: 22, fontWeight: "700", color: lv.fg, lineHeight: 28, marginTop: 4 },
-  hint: { fontSize: 15, color: lv.mutedFg, marginTop: 2 },
-  players: { fontSize: 12, color: lv.mutedFg, marginTop: 4 },
-  pushed: { fontSize: 15, fontWeight: "600", color: lv.mutedFg, paddingVertical: 6 },
-  error: { color: lv.destructive, fontSize: 13 },
+  card: {
+    borderRadius: lv.radiusXl,
+    padding: 20,
+    gap: 8,
+    backgroundColor: night.glassStrong,
+    borderWidth: 1,
+    borderColor: night.border,
+  },
+  cardPushed: { opacity: 0.8 },
+  label: {
+    fontSize: 13,
+    color: night.gold,
+    letterSpacing: 0.3,
+    fontVariant: ["tabular-nums"],
+  },
+  star: { color: night.gold },
+  title: {
+    fontSize: 26,
+    color: night.fg,
+    lineHeight: 31,
+    marginTop: 2,
+    fontFamily: night.serif,
+  },
+  hint: { fontSize: 15, color: night.mutedFg, lineHeight: 21 },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    gap: 12,
+  },
+  players: { fontSize: 13, color: night.mutedFg, flexShrink: 1 },
+  cta: {
+    height: 40,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: night.gold,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaText: { fontSize: 15, fontWeight: "600", color: night.goldFg },
+  pushed: {
+    fontSize: 17,
+    color: night.fg,
+    fontFamily: night.serif,
+    paddingVertical: 4,
+  },
+  error: { color: "#FF8A80", fontSize: 13 },
 });

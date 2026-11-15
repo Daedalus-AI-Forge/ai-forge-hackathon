@@ -36,3 +36,9 @@ export function rippleLine(ripples: number, holding: number, expiresAt: number, 
   const first = ripples === 0 ? "In the well" : `${ordinal(ripples)} ripple`;
   return `${first} · ${holding} holding it · ${left}`;
 }
+
+/** Start of the next UTC day: today's boat is keyed by the UTC date, so it rolls over here. */
+export function nextUtcMidnight(now: number) {
+  const d = new Date(now);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
+}
