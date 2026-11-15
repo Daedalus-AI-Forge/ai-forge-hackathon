@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { AUTH_ENABLED, AuthBridge, authStorage } from "@/lib/auth";
+import { AUTH_ENABLED, AuthBridge, SessionAuth, authStorage } from "@/lib/auth";
 import { convex } from "@/lib/convex";
 import { colors } from "@/lib/theme";
 
@@ -13,8 +13,10 @@ function Backend({ client, children }: { client: NonNullable<typeof convex>; chi
   if (!AUTH_ENABLED) return <ConvexProvider client={client}>{children}</ConvexProvider>;
   return (
     <ConvexAuthProvider client={client} storage={authStorage}>
-      <AuthBridge />
-      {children}
+      <SessionAuth client={client}>
+        <AuthBridge />
+        {children}
+      </SessionAuth>
     </ConvexAuthProvider>
   );
 }
