@@ -1,11 +1,8 @@
 import { Tabs, useRouter } from "expo-router";
-import { Text, type ColorValue } from "react-native";
 
-import { colors } from "@/lib/theme";
-
-function Glyph({ char, color }: { char: string; color: ColorValue }) {
-  return <Text style={{ fontSize: 20, color, fontWeight: "800" }}>{char}</Text>;
-}
+import { TabGlyph } from "@/components/lv/shell/TabGlyph";
+import { shellTabBarStyle, shellTabLabelStyle } from "@/components/lv/shell/tabBarStyle";
+import { lv } from "@/theme/tokens";
 
 export default function TabsLayout() {
   const router = useRouter();
@@ -13,19 +10,21 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.red,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: colors.cream, borderTopColor: colors.line },
-        sceneStyle: { backgroundColor: colors.cream },
+        tabBarActiveTintColor: lv.fg,
+        tabBarInactiveTintColor: lv.mutedFg,
+        tabBarStyle: shellTabBarStyle,
+        tabBarLabelStyle: shellTabLabelStyle,
+        tabBarItemStyle: { borderRadius: 999 },
+        sceneStyle: { backgroundColor: lv.bg },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "The well", tabBarButtonTestID: "tab-well", tabBarIcon: ({ color }) => <Glyph char="◎" color={color} /> }}
+        options={{ title: "Well", tabBarButtonTestID: "tab-well", tabBarIcon: ({ color, focused }) => <TabGlyph char="≋" color={color} focused={focused} /> }}
       />
       <Tabs.Screen
         name="new"
-        options={{ title: "Toss", tabBarButtonTestID: "tab-toss", tabBarIcon: ({ color }) => <Glyph char="+" color={color} /> }}
+        options={{ title: "Toss a wish", tabBarButtonTestID: "tab-toss", tabBarIcon: ({ color, focused }) => <TabGlyph char="⊕" color={color} focused={focused} /> }}
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
@@ -35,11 +34,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="wishes"
-        options={{ title: "My wishes", tabBarButtonTestID: "tab-wishes", tabBarIcon: ({ color }) => <Glyph char="✦" color={color} /> }}
+        options={{ title: "My wishes", tabBarButtonTestID: "tab-wishes", tabBarIcon: ({ color, focused }) => <TabGlyph char="✦" color={color} focused={focused} /> }}
       />
       <Tabs.Screen
         name="me"
-        options={{ title: "Me", tabBarButtonTestID: "tab-me", tabBarIcon: ({ color }) => <Glyph char="☺" color={color} /> }}
+        options={{ title: "Me", tabBarButtonTestID: "tab-me", tabBarIcon: ({ color, focused }) => <TabGlyph char="◯" color={color} focused={focused} /> }}
       />
     </Tabs>
   );
