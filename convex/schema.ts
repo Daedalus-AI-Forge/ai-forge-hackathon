@@ -31,6 +31,8 @@ export default defineSchema({
     showInLogs: v.optional(v.boolean()),
     deviceId: v.optional(v.string()),
     demoKey: v.optional(v.string()),
+    // Team demo member ("darren" | "louise" | "katie" | "dazi"), set by teamSeed.run.
+    teamKey: v.optional(v.string()),
     // Convex Auth profile fields (see authTables.users).
     image: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -42,12 +44,15 @@ export default defineSchema({
   })
     .index("by_deviceId", ["deviceId"])
     .index("by_demoKey", ["demoKey"])
+    .index("by_teamKey", ["teamKey"])
     // Index names required by Convex Auth (`phone` also serves phone sign-in).
     .index("email", ["email"])
     .index("phone", ["phone"]),
 
   wishes: defineTable({
     creatorId: v.id("users"),
+    // Set on the hidden graph-holder wish written by teamSeed.run (re-runs replace it).
+    teamKey: v.optional(v.string()),
     type: wishType,
     // "serious" (default when missing): each pass needs a reason. "fun": reason optional.
     mode: v.optional(v.union(v.literal("serious"), v.literal("fun"))),
