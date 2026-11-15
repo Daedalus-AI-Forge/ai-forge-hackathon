@@ -45,6 +45,8 @@ export default defineSchema({
   wishes: defineTable({
     creatorId: v.id("users"),
     type: wishType,
+    // "serious" (default when missing): each pass needs a reason. "fun": reason optional.
+    mode: v.optional(v.union(v.literal("serious"), v.literal("fun"))),
     text: v.string(),
     status: v.union(
       v.literal("traveling"),
@@ -129,7 +131,11 @@ export default defineSchema({
     source: v.union(v.literal("daily"), v.literal("pick")),
     wishId: v.id("wishes"),
     hopId: v.id("hops"),
+    // Graph + coach (docs/api/wishwell-graph-api.md): why the owner picked this person.
+    reason: v.optional(v.string()),
+    contact: v.optional(v.string()),
   })
     .index("by_ownerUserId", ["ownerUserId"])
+    .index("by_ownerUserId_and_personName", ["ownerUserId", "personName"])
     .index("by_tag", ["tag"]),
 });
