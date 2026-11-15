@@ -105,6 +105,20 @@ describe("firstScreen", () => {
     const s = await t.query(api.link.firstScreen, { hopId: benHop, deviceId: "dev_ben" });
     expect(s).toMatchObject({ state: "handled", handled: { action: "push", nowRipples: 3, lastCity: "New York" } });
   });
+
+  test("handled push lets the pusher resend: child hop, recipient name and vouch, only to that device", async () => {
+    const t = convexTest(schema, modules);
+    const { benHop } = await boatToBen(t);
+    await t.mutation(api.link.open, { hopId: benHop, deviceId: "dev_ben" });
+    const { childHopId } = await t.mutation(api.link.pushOne, { hopId: benHop, deviceId: "dev_ben", ...push });
+    const mine = await t.query(api.link.firstScreen, { hopId: benHop, deviceId: "dev_ben" });
+    expect(mine?.handled).toMatchObject({ action: "push", childHopId, childName: "Cara", vouch: push.vouch });
+    const other = await t.query(api.link.firstScreen, { hopId: benHop, deviceId: "dev_stranger" });
+    expect(other?.state).toBe("forwarded");
+    expect(other?.handled).toBeNull();
+    const anon = await t.query(api.link.firstScreen, { hopId: benHop });
+    expect(anon?.handled).toBeNull();
+  });
 });
 
 describe("pushOne", () => {
