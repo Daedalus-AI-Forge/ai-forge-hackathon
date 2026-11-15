@@ -10,6 +10,7 @@ import { Countdown, nextUtcMidnight } from "@/components/lv/daily/Countdown";
 import { DailyHero } from "@/components/lv/daily/DailyHero";
 import { useMe } from "@/lib/device";
 import { lv } from "@/theme/tokens";
+import { formScrollProps } from "@/components/keyboard";
 
 export default function DailyScreen() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function DailyScreen() {
   return (
     <ScrollView
       testID="daily-screen"
+      {...formScrollProps}
       style={styles.root}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 48 }]}
     >

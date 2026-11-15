@@ -5,12 +5,13 @@ import * as Linking from "expo-linking";
 import { Redirect, router } from "expo-router";
 import { openAuthSessionAsync } from "expo-web-browser";
 import { useEffect, useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { PhoneSignIn } from "@/components/PhoneSignIn";
 import { Button, ErrorText, Muted, errorMessage } from "@/components/ui";
 import { AUTH_ENABLED } from "@/lib/authFlag";
 import { colors, radius } from "@/lib/theme";
+import { formScrollProps } from "@/components/keyboard";
 
 /** Native returns to the app scheme; web returns to the current origin (must match SITE_URL). */
 function redirectTarget() {
@@ -81,7 +82,7 @@ function SignInScreen() {
   }
 
   return (
-    <View testID="sign-in-screen" style={styles.container}>
+    <ScrollView testID="sign-in-screen" style={styles.page} contentContainerStyle={styles.container} {...formScrollProps}>
       <View style={styles.hero}>
         <Text style={styles.title}>Keep your wishes</Text>
         <Muted style={styles.center}>
@@ -114,7 +115,7 @@ function SignInScreen() {
         <ErrorText error={error} />
         <Button title="Not now" variant="ghost" onPress={done} testID="sign-in-skip" />
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -124,7 +125,8 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 32, justifyContent: "center", backgroundColor: colors.cream, maxWidth: 430, width: "100%", alignSelf: "center" },
+  page: { flex: 1, backgroundColor: colors.cream },
+  container: { flexGrow: 1, padding: 24, gap: 32, justifyContent: "center", backgroundColor: colors.cream, maxWidth: 430, width: "100%", alignSelf: "center" },
   hero: { alignItems: "center", gap: 10 },
   title: { fontSize: 28, fontWeight: "800", color: colors.ink },
   center: { textAlign: "center" },

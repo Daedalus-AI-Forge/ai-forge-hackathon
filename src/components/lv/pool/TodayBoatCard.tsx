@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
@@ -15,7 +15,7 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
   const join = useMutation(api.daily.join);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const glow = useRef(new Animated.Value(0)).current;
+  const [glow] = useState(() => new Animated.Value(0));
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -65,11 +65,11 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
         style={({ pressed }) => [styles.card, glass.light, pushed && styles.cardPushed, pressed && { opacity: 0.85 }]}
       >
         {pushed ? (
-          <Text style={styles.pushed}>Pushed ✓ — it's drifting</Text>
+          <Text style={styles.pushed}>Pushed ✓ — it’s drifting</Text>
         ) : (
           <>
             <View style={styles.pill}>
-              <Text style={styles.pillText}>Today's boat</Text>
+              <Text style={styles.pillText}>Today’s boat</Text>
             </View>
             <Text style={styles.title}>{today.title}</Text>
             <Text style={styles.hint}>Clue: {today.hint}</Text>

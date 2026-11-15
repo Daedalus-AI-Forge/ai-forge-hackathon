@@ -2,12 +2,13 @@
 // Polish is capped at 3s; on timeout or error the visitor's own text stays.
 import { useAction } from "convex/react";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { DButton, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { withTimeout } from "@/lib/linkDraft";
 import { lv } from "@/theme/tokens";
+import { KEYBOARD_DONE_ID } from "@/components/keyboard";
 
 export const POLISH_TIMEOUT_MS = 3000;
 const MAX_WISH = 200;
@@ -61,6 +62,8 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
         placeholderTextColor={lv.mutedFg}
         maxLength={MAX_WISH}
         returnKeyType="done"
+        submitBehavior="blurAndSubmit"
+        inputAccessoryViewID={Platform.OS === "ios" ? KEYBOARD_DONE_ID : undefined}
         onSubmitEditing={() => trimmed && onContinue(trimmed)}
         style={styles.input}
         accessibilityLabel="Your wish"

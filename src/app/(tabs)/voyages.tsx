@@ -14,6 +14,7 @@ import { VOYAGE_STATUS } from "@/components/lv/voyages/voyageData";
 import { useMe } from "@/lib/device";
 import { rippleLine, useNow } from "@/lib/time";
 import { lv } from "@/theme/tokens";
+import { formScrollProps } from "@/components/keyboard";
 
 type Tab = "boats" | "coins";
 
@@ -36,7 +37,7 @@ export default function VoyagesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView testID="voyages-screen" contentContainerStyle={styles.container}>
+      <ScrollView testID="voyages-screen" {...formScrollProps} contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Where they drifted</Text>
           <Text style={styles.title}>Voyages</Text>

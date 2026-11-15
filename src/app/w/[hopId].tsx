@@ -13,6 +13,7 @@ import { DAvatar, DButton, DCard, DChips, DError, DField, Eyebrow, Glass, Sub } 
 import { useDeviceId, useMe } from "@/lib/device";
 import { countdown, useNow } from "@/lib/time";
 import { lv } from "@/theme/tokens";
+import { formScrollProps } from "@/components/keyboard";
 
 const HOW = ["friend", "coworker", "family", "roommate", "classmate", "neighbor"] as const;
 const HOW_LONG = ["under a year", "1–5 years", "5–10 years", "10+ years"] as const;
@@ -149,7 +150,7 @@ export default function PassOn() {
       testID="pass-on-screen"
       style={{ backgroundColor: lv.bg }}
       contentContainerStyle={[styles.container, { paddingTop: insets.top + 16 }]}
-      keyboardShouldPersistTaps="handled"
+      {...formScrollProps}
     >
       <Stack.Screen options={{ title: "A paper boat for you" }} />
 
