@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "Raincheck",
-    "slug": "raincheck",
+    "name": "Wishwell",
+    "slug": "wishwell",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "raincheck",
-    "userInterfaceStyle": "automatic",
+    "scheme": "wishwell",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.theaiforge.raincheck"
+      "bundleIdentifier": "com.theaiforge.wishwell"
     },
     "android": {
-      "package": "com.theaiforge.raincheck",
+      "package": "com.theaiforge.wishwell",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

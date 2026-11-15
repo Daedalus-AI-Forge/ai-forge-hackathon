@@ -1,4 +1,4 @@
-# Raincheck — Architecture & Sponsor Stack
+# Wishwell — Architecture & Sponsor Stack
 
 > YC Consumer Mobile Hackathon, 2026-11-15. Required stack: **Capy + Revyl + Convex**.
 
@@ -62,7 +62,7 @@ Auth 规则：后端一律用 `ctx.auth.getUserIdentity()`（用 `tokenIdentifie
 ## 今天的建议（PM 视角）
 
 - **Auth 先别做 Google/Apple 登录。** Native OAuth 要配 redirect + bundle id，容易卡 1–2 小时。先用 Convex Auth 的 **anonymous**（或 device id + 昵称）；demo 用两台 Revyl 设备分别扮演"我"和"朋友"。Google/Apple 登录列为 stretch goal。
-- **"朋友实时收到 raincheck" 是 Convex 原生能力**：`useQuery` 订阅就是 realtime，不用自己写 WebSocket，正好是核心 loop 的卖点。
+- **"朋友实时收到 wishwell" 是 Convex 原生能力**：`useQuery` 订阅就是 realtime，不用自己写 WebSocket，正好是核心 loop 的卖点。
 - **Retention 主题**：卡片 aging + 提醒用 crons/scheduler；push 可考虑 Convex 的 Expo push component（`@convex-dev/expo-push-notifications`，尚未在本项目验证，用前先确认）。
 - **OpenAI 只在 action 里调**，key 放 Convex env（`OPENAI_API_KEY`），不进 app bundle。
 

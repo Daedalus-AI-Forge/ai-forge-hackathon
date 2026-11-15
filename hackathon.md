@@ -1,6 +1,6 @@
 # Hackathon log
 
-- **Project:** Raincheck
+- **Project:** Wishwell
 - **Event:** YC Consumer Mobile Hack 2026-11-15
 - **What it does:** Not documented yet
 - **Live app:** not deployed
