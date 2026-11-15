@@ -20,11 +20,14 @@ export function CoachPanel({
   deviceId,
   wishText,
   onPick,
+  onSuggestions,
   pickedNames,
 }: {
   deviceId: string | null;
   wishText: string;
   onPick: (p: CoachPick) => void;
+  /** Called with the top suggestions each time the coach answers (the screen decides whether to prefill). */
+  onSuggestions?: (s: CoachPick[]) => void;
   pickedNames: string[];
 }) {
   const readiness = useQuery(api.graph.coachReady, deviceId ? { deviceId } : "skip");
@@ -46,6 +49,7 @@ export function CoachPanel({
       if (r.ready) {
         const suggestions = r.suggestions.slice(0, 3).map((x) => ({ name: x.name, why: x.why }));
         setResult({ message: r.message, suggestions });
+        onSuggestions?.(suggestions);
         setTurns([...nextTurns, { role: "coach", text: r.message }]);
       } else setResult(null);
     } catch (e) {

@@ -13,6 +13,7 @@ export function ShareLink({
   message,
   label,
   to,
+  onTextChange,
 }: {
   hopId: string;
   name: string;
@@ -20,12 +21,18 @@ export function ShareLink({
   label?: string;
   /** Picked phone (E.164) to pre-fill as the SMS recipient. */
   to?: string;
+  /** Mirrors edits so a parent flow (e.g. "Text all") sends the edited text. */
+  onTextChange?: (text: string) => void;
 }) {
   const [text, setText] = useState(message ?? "");
   const [note, setNote] = useState<string | null>(null);
   useEffect(() => {
     if (message && !text) setText(message);
   }, [message]);
+  const edit = (t: string) => {
+    setText(t);
+    onTextChange?.(t);
+  };
   const url = hopUrl(hopId);
   return (
     <DCard testID={`share-card-${hopId}`}>
@@ -41,7 +48,7 @@ export function ShareLink({
           <Text style={styles.muted}>AI is drafting your message…</Text>
         </View>
       ) : (
-        <DField value={text} onChangeText={setText} multiline style={{ minHeight: 96 }} testID={`share-message-${hopId}`} />
+        <DField value={text} onChangeText={edit} multiline style={{ minHeight: 96 }} testID={`share-message-${hopId}`} />
       )}
       <View style={styles.linkWell}>
         <Text testID={`share-link-${hopId}`} selectable numberOfLines={1} style={styles.link}>
