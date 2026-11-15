@@ -13,18 +13,23 @@ The second layer is not hidden. The pass-on page says what is remembered before 
 
 ## How the well designs a daily wish
 
-It works backwards from what it wants to know (`convex/daily.ts`).
+It works backwards from what it wants to know (`convex/daily.ts`). A daily wish travels through six people,
+so the well plans five passes, each with its own clue.
 
-1. **Pick the gap.** `PROBES` lists the kinds of friend the well wants to map (art scene, night owl, new in
-   town, career leap, knows everyone, food scout, outdoors, music). `leastMapped` counts existing edges per
-   tag and takes the one with the fewest, rotating ties by day.
-2. **Write the absurd wish for that gap.** The `generate` action gives the model the chosen tag and asks for
-   one absurd sentence about a TYPE of person that only that kind of friend would answer, a hint that nudges
-   who to pass it to without naming the tag, and a plain-language reason shown to players. Without an API key
-   the hand-written copy in `PROBES` is used.
-3. **Read the answer off the pass.** When a player passes the wish to a named friend, `hops.passTo` writes the
-   edge with the daily tag (`source: "daily"`) plus any tags the player picked themselves (`source: "pick"`).
-   The person is someone the player was willing to message, so the edge is a close tie by construction.
+1. **Line up the gaps.** `PROBES` lists the kinds of friend the well wants to map (art scene, night owl, new in
+   town, career leap, knows everyone, food scout, outdoors, music). `planChain` counts existing edges per tag
+   and takes the five least mapped, in order. The least mapped goes first, because the first ripple has the
+   most players. Ties rotate by day.
+2. **Write the portrait and the trail.** The `generate` action gives the model the ordered chain and asks for
+   one absurd sentence describing the single person at the end of it, one clue per pass that nudges the holder
+   toward that kind of friend without naming the tag, and a plain-language reason shown to players. Without an
+   API key the hand-written copy in `PROBES` is used.
+3. **Read the answers off the passes.** Each holder sees only their clue ("Clue 2 of 5"). When they pass the
+   wish to a named friend, `hops.passTo` writes the edge with that step's tag (`source: "daily"`) plus any
+   tags the passer picked themselves (`source: "pick"`). One wish that completes teaches the well five
+   different links for five different people. The sixth person sees "End of the trail. Is this you?".
+
+Every edge is someone the passer was willing to message, so it is a close tie by construction.
 
 Tags are limited to interests and habits. The prompt and the list both exclude anything a person could mind
 being tagged with: health, money, beliefs, appearance, dating.

@@ -59,9 +59,10 @@ credentials don't exist (`convex/auth.ts`, `convex/authUsers.ts`,
 `docs/auth-setup.md`).
 
 ### 2026-11-15 - working tree
-Added the well's daily wish and the wish network. The well picks the kind of
-friend it has mapped least, writes an absurd wish only that friend would answer,
-and each pass records a tagged link the owner can see and delete under Me. The
+Added the well's daily wish and the wish network. The well lines up the five
+kinds of friend it has mapped least, writes an absurd portrait of the person at
+the end and one clue per pass, and sends it through six people. Each pass
+records a tagged link the owner can see and delete under Me. The
 pass-on page explains what is remembered, shows how it works with live counts,
 and invites helpers to install and toss their own wish. Ask the well now reads
 the network to suggest who to send a wish to first. Convex features: crons,

@@ -22,7 +22,7 @@ export function DailyWishCard({ deviceId }: { deviceId: string }) {
       <Text testID="daily-wish-title" style={styles.title}>
         {today.title}
       </Text>
-      <Muted>{today.hint}</Muted>
+      <Muted>Six people, five clues. Clue 1: {today.hint}</Muted>
       {today.passedTo > 0 ? (
         <Text style={styles.done}>
           You passed it to {today.passedTo} {today.passedTo === 1 ? "friend" : "friends"}. The well added them to your wish network.

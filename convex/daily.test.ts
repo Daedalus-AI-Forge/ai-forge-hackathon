@@ -25,12 +25,17 @@ test("passing the daily wish tags the friend in the owner's network, and they ca
   const hopId = await t.mutation(api.daily.join, { deviceId: "dev_mia" });
   expect(await t.mutation(api.daily.join, { deviceId: "dev_mia" })).toBe(hopId);
   const page = await t.query(api.hops.page, { hopId });
-  expect(page?.wish.daily?.tag).toBe(preview.tag);
+  expect(page?.wish.daily).toMatchObject({ tag: preview.tag, step: 1, of: 5 });
   expect(page?.wish.text).toBe(preview.title);
 
   // First hop comes from the well, so no vouch is needed.
   await t.mutation(api.hops.act, { hopId, action: "pass", name: "Mia", city: "SF", vouch: "", tags: [] });
-  await t.mutation(api.hops.passTo, { parentHopId: hopId, name: "Amy", tags: ["music"] });
+  const amyHop = await t.mutation(api.hops.passTo, { parentHopId: hopId, name: "Amy", tags: ["music"] });
+
+  // Amy is ripple 2: she gets the next clue, a different circle from Mia's.
+  const amyPage = await t.query(api.hops.page, { hopId: amyHop });
+  expect(amyPage?.wish.daily).toMatchObject({ step: 2, of: 5 });
+  expect(amyPage?.wish.daily?.tag).not.toBe(preview.tag);
 
   const map = await t.query(api.edges.mine, { deviceId: "dev_mia" });
   expect(map).toHaveLength(1);
@@ -96,4 +101,22 @@ test("stats count real hops", async () => {
     ],
   });
   expect(await t.query(api.stats.summary, {})).toMatchObject({ people: 2, passes: 2, vouches: 0 });
+});
+
+test("six people follow five different clues, and the sixth is the end of the trail", async () => {
+  const t = convexTest(schema, modules);
+  await player(t, "dev_mia", "Mia");
+  let hopId = await t.mutation(api.daily.join, { deviceId: "dev_mia" });
+  const tags = [];
+  for (const [i, next] of ["Amy", "Ben", "Priya", "Sam", "Yui"].entries()) {
+    const page = await t.query(api.hops.page, { hopId });
+    expect(page?.wish.daily?.step).toBe(i + 1);
+    tags.push(page!.wish.daily!.tag);
+    await t.mutation(api.hops.act, { hopId, action: "pass", name: page!.hop.holderName, city: "SF", vouch: i ? "A friend." : "", tags: [] });
+    hopId = await t.mutation(api.hops.passTo, { parentHopId: hopId, name: next, tags: [] });
+  }
+  expect(new Set(tags).size).toBe(5);
+  const end = await t.query(api.hops.page, { hopId });
+  expect(end).toMatchObject({ canPass: false, hop: { depth: 6 } });
+  expect(end!.wish.daily!.step).toBeGreaterThan(end!.wish.daily!.of);
 });

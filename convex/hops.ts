@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { stepAt } from "./daily";
 import { MAX_PASSES, MAX_RIPPLES, avatarFor, recordEdges, rippleSummary, wishHops } from "./lib";
 
 async function chainAbove(ctx: QueryCtx, hop: Doc<"hops">) {
@@ -70,7 +71,14 @@ export const page = query({
         creatorName: creator?.name ?? "Someone",
         creatorCity: creator?.city ?? "",
         creatorAvatar: creator?.avatar ?? avatarFor("?"),
-        daily: wish.daily ?? null,
+        daily: wish.daily
+          ? {
+              ...stepAt(wish.daily, hop.depth),
+              step: hop.depth,
+              of: wish.daily.steps.length,
+              reasoning: wish.daily.reasoning,
+            }
+          : null,
       },
       senderName: sender.name,
       chain: chain.map((h) => ({
@@ -164,7 +172,7 @@ export const passTo = mutation({
         owner: { userId: hop.holderUserId, name: hop.holderName },
         personName: args.name.trim(),
         tags: args.tags,
-        dailyTag: wish.daily?.tag,
+        dailyTag: wish.daily && stepAt(wish.daily, hop.depth).tag,
         wishId: wish._id,
         hopId: childId,
       });

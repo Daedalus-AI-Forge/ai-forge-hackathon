@@ -59,14 +59,12 @@ export default defineSchema({
     tier: v.optional(
       v.union(v.literal("gold"), v.literal("silver"), v.literal("bronze"), v.literal("red")),
     ),
-    // Set on the platform's daily wish (convex/daily.ts). `tag` is the kind of
-    // friend the well wants to learn about; the rest is shown to players.
+    // Set on the platform's daily wish (convex/daily.ts). One step per pass:
+    // `tag` is the kind of friend the well learns about on that pass, `hint` the clue.
     daily: v.optional(
       v.object({
         date: v.string(),
-        tag: v.string(),
-        learns: v.string(),
-        hint: v.string(),
+        steps: v.array(v.object({ tag: v.string(), learns: v.string(), hint: v.string() })),
         reasoning: v.string(),
       }),
     ),
