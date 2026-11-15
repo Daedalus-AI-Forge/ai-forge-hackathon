@@ -1,14 +1,14 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, radius } from "@/lib/theme";
+import { lv } from "@/theme/tokens";
 
 export type Tier = "gold" | "silver" | "bronze" | "red";
 
 const TIERS: Record<Tier, { label: string; bg: string; fg: string }> = {
-  gold: { label: "Gold wish", bg: "#FBEFC7", fg: "#8A6A00" },
-  silver: { label: "Silver wish", bg: "#ECEDEF", fg: "#5B5F66" },
-  bronze: { label: "Bronze wish", bg: "#F6E0CC", fg: "#8A4B14" },
-  red: { label: "Red wish", bg: colors.redSoft, fg: colors.red },
+  gold: { label: "Gold wish", bg: lv.gold, fg: lv.fg },
+  silver: { label: "Silver wish", bg: lv.silver, fg: lv.fg },
+  bronze: { label: "Bronze wish", bg: lv.bronze, fg: lv.fg },
+  red: { label: "Red wish", bg: lv.thread, fg: lv.threadFg },
 };
 
 export function TierBadge({ tier, label, testID }: { tier: Tier; label?: string; testID?: string }) {
@@ -21,6 +21,6 @@ export function TierBadge({ tier, label, testID }: { tier: Tier; label?: string;
 }
 
 const styles = StyleSheet.create({
-  chip: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
-  text: { fontSize: 12, fontWeight: "800" },
+  chip: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
+  text: { fontSize: 11, fontWeight: "600" },
 });

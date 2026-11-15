@@ -1,0 +1,88 @@
+import { Pressable, StyleSheet, Text, View } from "react-native";
+
+import { lv } from "@/theme/tokens";
+
+import { LvAvatar, LvCard, LvField } from "./parts";
+
+export const TAGS = ["music", "travel", "food", "sports", "tech", "outdoors", "art", "knows everyone"] as const;
+
+export type Person = { name: string; reason: string; contact: string; tags: string[] };
+export const emptyPerson = (): Person => ({ name: "", reason: "", contact: "", tags: [] });
+
+export function RecipientCard({
+  index,
+  person,
+  onChange,
+  onRemove,
+  reasonError,
+}: {
+  index: number;
+  person: Person;
+  onChange: (p: Person) => void;
+  onRemove?: () => void;
+  reasonError: string | null;
+}) {
+  const toggle = (tag: string) =>
+    onChange({
+      ...person,
+      tags: person.tags.includes(tag) ? person.tags.filter((t) => t !== tag) : [...person.tags, tag].slice(-3),
+    });
+  return (
+    <LvCard testID={`toss-person-card-${index}`}>
+      <View style={s.head}>
+        <LvAvatar name={person.name || String(index + 1)} size={40} />
+        <View style={{ flex: 1 }}>
+          <LvField
+            testID={`toss-person-${index}`}
+            value={person.name}
+            placeholder="Their name"
+            onChangeText={(name) => onChange({ ...person, name })}
+          />
+        </View>
+        {onRemove ? (
+          <Pressable testID={`toss-remove-person-${index}`} onPress={onRemove} hitSlop={10}>
+            <Text style={s.remove}>✕</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <LvField
+        testID={`toss-reason-${index}`}
+        value={person.reason}
+        placeholder="Why them? One line"
+        onChangeText={(reason) => onChange({ ...person, reason })}
+      />
+      {reasonError ? (
+        <Text testID={`toss-reason-error-${index}`} style={s.err}>
+          {reasonError}
+        </Text>
+      ) : null}
+      <LvField
+        testID={`toss-contact-${index}`}
+        value={person.contact}
+        placeholder="Phone or @handle (optional)"
+        autoCapitalize="none"
+        onChangeText={(contact) => onChange({ ...person, contact })}
+      />
+      <View style={s.tags}>
+        {TAGS.map((tag) => {
+          const on = person.tags.includes(tag);
+          return (
+            <Pressable key={tag} onPress={() => toggle(tag)} style={[s.tag, on && s.tagOn]}>
+              <Text style={[s.tagText, on && { color: lv.primaryFg }]}>{tag}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </LvCard>
+  );
+}
+
+const s = StyleSheet.create({
+  head: { flexDirection: "row", alignItems: "center", gap: 12 },
+  remove: { fontSize: 16, color: lv.mutedFg, paddingHorizontal: 4 },
+  err: { fontSize: 13, color: lv.thread, marginTop: -4 },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: lv.secondary },
+  tagOn: { backgroundColor: lv.primary },
+  tagText: { fontSize: 12, fontWeight: "500", color: lv.fg },
+});

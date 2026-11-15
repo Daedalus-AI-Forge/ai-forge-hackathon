@@ -4,9 +4,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { TierBadge } from "@/components/TierBadge";
-import { Card } from "@/components/ui";
-import { colors, mono, radius } from "@/lib/theme";
 import { countdown, useNow } from "@/lib/time";
+import { lv } from "@/theme/tokens";
 
 /** The branches of one wish racing to the right person. Fewer ripples wins. */
 export function BranchRace({
@@ -25,9 +24,9 @@ export function BranchRace({
   if (!race || race.branches.length === 0) return null;
   const traveling = race.status === "traveling";
   return (
-    <Card testID={"branch-race-" + wishId}>
+    <View testID={"branch-race-" + wishId} style={styles.card}>
       <View style={styles.head}>
-        <Text style={styles.title}>{title ?? (race.branches.length > 1 ? "Branches racing" : "One branch traveling")}</Text>
+        <Text style={styles.eyebrow}>{title ?? (race.branches.length > 1 ? "Branches racing" : "One branch traveling")}</Text>
         {traveling && showCountdown ? (
           <Text testID="branch-race-countdown" style={styles.countdown}>
             {countdown(race.expiresAt, now)}
@@ -50,25 +49,27 @@ export function BranchRace({
           <TierBadge tier={b.tier} label={b.tier.charAt(0).toUpperCase() + b.tier.slice(1)} testID={"branch-tier-" + i} />
         </View>
       ))}
-    </Card>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  title: { fontSize: 17, fontWeight: "800", color: colors.ink },
-  countdown: { fontFamily: mono, fontSize: 18, fontWeight: "800", color: colors.ink },
-  hint: { fontSize: 13, color: colors.muted },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 10,
-    borderRadius: radius.card / 2,
-    backgroundColor: colors.cream,
+  card: {
+    backgroundColor: lv.card,
+    borderRadius: lv.radius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: lv.border,
+    padding: 16,
+    gap: 8,
+    ...lv.shadow,
   },
-  leadingRow: { borderWidth: 2, borderColor: colors.red, backgroundColor: colors.redSoft },
-  label: { fontSize: 15, fontWeight: "800", color: colors.ink },
-  leading: { color: colors.red },
-  meta: { fontSize: 13, color: colors.muted, fontWeight: "600" },
+  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.mutedFg },
+  countdown: { fontFamily: lv.font.mono, fontSize: 18, fontWeight: "700", color: lv.fg, letterSpacing: 0.5 },
+  hint: { fontSize: 13, color: lv.mutedFg },
+  row: { flexDirection: "row", alignItems: "center", gap: 10, padding: 10, borderRadius: lv.radiusSm, backgroundColor: lv.muted },
+  leadingRow: { borderWidth: 1.5, borderColor: lv.thread, backgroundColor: lv.accent },
+  label: { fontSize: 15, fontWeight: "600", color: lv.fg },
+  leading: { color: lv.thread },
+  meta: { fontSize: 12, color: lv.mutedFg },
 });

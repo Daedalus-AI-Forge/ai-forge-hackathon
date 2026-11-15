@@ -1,43 +1,32 @@
 import { useMutation } from "convex/react";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { Button, Card, ErrorText, Muted, errorMessage } from "@/components/ui";
+import { errorMessage } from "@/components/ui";
 import { useMe } from "@/lib/device";
-import { colors } from "@/lib/theme";
+import { lv } from "@/theme/tokens";
 
-/** Stars and wishes, plus "Trade 2 stars for 1 wish". Self-contained so the Me tab can drop it in. */
+/** Stars: "Trade 2 stars for 1 wish". Self-contained so the Me tab can drop it in. */
 export function StarsCard() {
   const { deviceId, user } = useMe();
   const trade = useMutation(api.stars.tradeForWish);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const stars = user?.stars ?? 0;
+  const disabled = busy || stars < 2 || !deviceId;
   return (
-    <Card testID="stars-card">
-      <View style={styles.row}>
-        <View style={styles.stat}>
-          <Text testID="stars-count" style={styles.num}>
-            ★ {stars}
-          </Text>
-          <Muted>stars</Muted>
-        </View>
-        <View style={styles.stat}>
-          <Text testID="wishes-count" style={styles.num}>
-            {user?.wishesLeft ?? 0}
-          </Text>
-          <Muted>wishes left</Muted>
-        </View>
-      </View>
-      <Muted>Earn stars by helping a wish come true. Spend 1 to ask the well, or trade 2 for a wish.</Muted>
-      <ErrorText error={error} />
-      <Button
+    <View testID="stars-card" style={styles.card}>
+      <Text style={styles.eyebrow}>Stars</Text>
+      <Text testID="stars-count" style={styles.num}>
+        {stars} ⭐
+      </Text>
+      <Text style={styles.hint}>Earn stars by helping a wish come true. Spend 1 to ask the well, or trade 2 for a wish.</Text>
+      {error ? <Text style={styles.err}>{error}</Text> : null}
+      <Pressable
         testID="stars-trade"
-        title="Trade 2 stars for 1 wish"
-        variant="secondary"
-        busy={busy}
-        disabled={stars < 2 || !deviceId}
+        accessibilityRole="button"
+        disabled={disabled}
         onPress={async () => {
           if (!deviceId) return;
           setBusy(true);
@@ -50,13 +39,28 @@ export function StarsCard() {
             setBusy(false);
           }
         }}
-      />
-    </Card>
+        style={[styles.btn, disabled && { opacity: 0.5 }]}
+      >
+        <Text style={styles.btnText}>Trade 2 stars for 1 wish</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 12 },
-  stat: { flex: 1, alignItems: "center" },
-  num: { fontSize: 28, fontWeight: "800", color: colors.red },
+  card: {
+    backgroundColor: lv.card,
+    borderRadius: lv.radius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: lv.border,
+    padding: 16,
+    gap: 8,
+    ...lv.shadow,
+  },
+  eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", color: lv.mutedFg },
+  num: { fontSize: 24, fontWeight: "700", color: lv.fg },
+  hint: { fontSize: 13, lineHeight: 18, color: lv.mutedFg },
+  err: { fontSize: 13, color: lv.destructive },
+  btn: { height: 44, borderRadius: 999, backgroundColor: lv.primary, alignItems: "center", justifyContent: "center" },
+  btnText: { color: lv.primaryFg, fontSize: 15, fontWeight: "600" },
 });

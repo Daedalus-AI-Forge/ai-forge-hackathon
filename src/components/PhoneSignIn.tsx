@@ -1,11 +1,15 @@
+import { useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button, ErrorText, Field, Muted } from "@/components/ui";
-import { phoneAuthErrorMessage, phoneFromParts, RESEND_SECONDS, usePhoneAuth } from "@/lib/phoneAuth";
+import { api } from "@/convex/_generated/api";
+import { phoneAuthErrorData, phoneAuthErrorMessage, phoneFromParts, RESEND_SECONDS, usePhoneAuth } from "@/lib/phoneAuth";
 import { colors } from "@/lib/theme";
 
 type Busy = "send" | "verify" | null;
+
+const DEMO_HINT = "Demo: +1 555 555 0100 · code 000000";
 
 /**
  * "Continue with phone": number → SMS code → signed in. Calls `onDone` after a
@@ -14,6 +18,8 @@ type Busy = "send" | "verify" | null;
  */
 export function PhoneSignIn({ onDone, disabled }: { onDone: () => void; disabled?: boolean }) {
   const { sendCode, verifyCode } = usePhoneAuth();
+  // Release builds hide __DEV__ hints; a demo deployment still needs its demo number shown.
+  const demo = useQuery(api.users.demoEnabled) === true || __DEV__;
   const [open, setOpen] = useState(false);
   const [countryCode, setCountryCode] = useState("1");
   const [number, setNumber] = useState("");
@@ -40,7 +46,9 @@ export function PhoneSignIn({ onDone, disabled }: { onDone: () => void; disabled
       setCode("");
       setResendIn(RESEND_SECONDS);
     } catch (e) {
-      setError(phoneAuthErrorMessage(e));
+      // No SMS provider for real numbers on a demo deployment: point at the demo number.
+      const notConfigured = phoneAuthErrorData(e)?.code === "NOT_CONFIGURED";
+      setError(notConfigured && demo ? `${phoneAuthErrorMessage(e)}. ${DEMO_HINT}` : phoneAuthErrorMessage(e));
     } finally {
       setBusy(null);
     }
@@ -114,7 +122,7 @@ export function PhoneSignIn({ onDone, disabled }: { onDone: () => void; disabled
             />
           </View>
         </View>
-        {__DEV__ ? <Muted style={styles.hint}>Demo: +1 555 555 0100 · code 000000</Muted> : null}
+        {demo ? <Muted style={styles.hint}>{DEMO_HINT}</Muted> : null}
         <Button
           title="Send code"
           busy={busy === "send"}

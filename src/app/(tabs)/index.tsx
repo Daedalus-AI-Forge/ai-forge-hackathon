@@ -1,18 +1,18 @@
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
 import { BranchRace } from "@/components/BranchRace";
-import { DailyWishCard } from "@/components/DailyWishCard";
-import { Pool } from "@/components/Pool";
-import { Button, Muted } from "@/components/ui";
-import { TierBadge } from "@/components/TierBadge";
-import { HelpCard } from "@/components/WishCard";
+import { DailyRow } from "@/components/lv/home/DailyRow";
+import { FriendWishCard } from "@/components/lv/home/FriendWishCard";
+import { glass } from "@/components/lv/home/glass";
+import { Well } from "@/components/lv/home/Well";
+import { Avatar } from "@/components/ui";
 import { useMe } from "@/lib/device";
-import { colors, mono } from "@/lib/theme";
 import { countdown, rippleLine, useNow } from "@/lib/time";
+import { lv } from "@/theme/tokens";
 
 export default function TheWell() {
   const router = useRouter();
@@ -25,53 +25,91 @@ export default function TheWell() {
   if (!home) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.red} />
+        <ActivityIndicator color={lv.thread} />
       </View>
     );
   }
   const wish = home.activeWish;
+  const user = home.user;
+  const credits = user.wishesLeft;
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView testID="well-screen" contentContainerStyle={styles.container}>
-        <Text style={styles.brand}>Wishwell</Text>
-        <Pool testID="well-pool" holders={wish?.holders ?? []} />
-        {wish ? (
-          <View style={styles.wishBlock}>
-            <Text testID="well-wish-text" style={styles.wishText}>
-              {wish.text}
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={glass.eyebrow}>
+              {credits} wish{credits === 1 ? "" : "es"} · {user.stars} ⭐
             </Text>
-            <Text testID="well-stats" style={styles.stats}>
-              {rippleLine(wish.ripples, wish.holding, wish.expiresAt, now)}
-            </Text>
-            <Text testID="well-countdown" style={styles.countdown}>
-              {countdown(wish.expiresAt, now)}
-            </Text>
-            {wish.tier ? <TierBadge tier={wish.tier} testID="well-tier" /> : null}
+            <Text style={styles.brand}>Wishwell</Text>
           </View>
-        ) : (
-          <View style={styles.wishBlock}>
-            <Text style={styles.wishText}>The well is calm.</Text>
-            <Muted style={{ textAlign: "center" }}>Toss a wish and watch it ripple through your friends.</Muted>
-          </View>
-        )}
+          <Pressable accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push("/me")}>
+            <Avatar name={user.name} color={user.avatar} size={36} />
+          </Pressable>
+        </View>
+
+        <View style={styles.wellBox}>
+          <Well testID="well-pool" holders={wish?.holders ?? []} size={320} />
+          {wish ? (
+            <View style={[styles.wellCaption, glass.light]}>
+              <Text testID="well-wish-text" style={styles.wishText} numberOfLines={1}>
+                {wish.text}
+              </Text>
+              <Text testID="well-stats" style={styles.stats} numberOfLines={1}>
+                {rippleLine(wish.ripples, wish.holding, wish.expiresAt, now)}
+              </Text>
+              <Text testID="well-countdown" style={styles.countdown}>
+                {countdown(wish.expiresAt, now)}
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.wellCaption, styles.wellCaptionEmpty, glass.light]}>
+              <Text style={styles.still}>The water is still. Make a wish.</Text>
+            </View>
+          )}
+        </View>
+
+        <Pressable
+          testID="toss-button"
+          accessibilityRole="button"
+          onPress={() => router.push("/toss")}
+          style={({ pressed }) => [styles.toss, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
+        >
+          <Text style={styles.tossText}>Toss a wish</Text>
+        </Pressable>
         {wish && deviceId ? <BranchRace deviceId={deviceId} wishId={wish._id} showCountdown={false} /> : null}
-        <Button testID="toss-button" title="Toss a wish" onPress={() => router.push("/toss")} />
         {demoEnabled && !wish && home.helpCards.length === 0 && deviceId ? (
-          <Button
+          <Pressable
             testID="use-demo-profile"
-            title="Try it with demo wishes"
-            variant="ghost"
+            accessibilityRole="button"
             onPress={() => void claimDemo({ deviceId })}
-          />
+            style={styles.demo}
+          >
+            <Text style={styles.demoText}>Try it with demo wishes</Text>
+          </Pressable>
         ) : null}
-        {deviceId ? <DailyWishCard deviceId={deviceId} /> : null}
+
+        {deviceId ? (
+          <View style={[styles.group, glass.light]}>
+            <DailyRow deviceId={deviceId} />
+          </View>
+        ) : null}
+
         {home.helpCards.length > 0 ? (
           <View style={{ gap: 12 }}>
-            <Text style={styles.section}>Friends' wishes you can help</Text>
+            <Text style={[glass.eyebrow, { paddingHorizontal: 4 }]}>
+              Help one step · {home.helpCards.length} waiting
+            </Text>
             {home.helpCards.map((c) => (
               <View key={c.hopId} style={{ gap: 8 }}>
-                <HelpCard hopId={c.hopId} creatorName={c.creatorName} text={c.text} depth={c.depth} expiresAt={c.expiresAt} />
+                <FriendWishCard
+                  hopId={c.hopId}
+                  creatorName={c.creatorName}
+                  text={c.text}
+                  depth={c.depth}
+                  expiresAt={c.expiresAt}
+                  type={c.type}
+                />
                 {deviceId && c.branches > 1 ? (
                   <BranchRace deviceId={deviceId} wishId={c._id} title={`${c.creatorName}'s branches racing`} />
                 ) : null}
@@ -85,12 +123,42 @@ export default function TheWell() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.cream },
-  container: { padding: 20, gap: 18, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 40 },
-  brand: { fontSize: 22, fontWeight: "800", color: colors.red, textAlign: "center" },
-  wishBlock: { alignItems: "center", gap: 6 },
-  wishText: { fontSize: 20, fontWeight: "700", color: colors.ink, textAlign: "center", lineHeight: 26 },
-  stats: { fontSize: 15, color: colors.muted, fontWeight: "600" },
-  countdown: { fontFamily: mono, fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: 1 },
-  section: { fontSize: 18, fontWeight: "800", color: colors.ink },
+  safe: { flex: 1, backgroundColor: lv.bg },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: lv.bg },
+  container: { paddingHorizontal: 20, paddingTop: 16, gap: 20, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 40 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  brand: { fontSize: 34, fontWeight: "700", color: lv.fg, letterSpacing: -0.5, fontFamily: lv.font.display },
+  wellBox: { paddingTop: 8, paddingBottom: 12, alignItems: "center" },
+  wellCaption: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: -12,
+    borderRadius: lv.radius,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  wellCaptionEmpty: { left: 24, right: 24 },
+  wishText: { fontSize: 15, fontWeight: "600", color: lv.fg },
+  stats: { fontSize: 12, color: lv.mutedFg, marginTop: 2 },
+  countdown: { fontFamily: lv.font.mono, fontSize: 18, fontWeight: "700", color: lv.fg, marginTop: 2, letterSpacing: 0.5 },
+  still: { fontSize: 14, color: lv.mutedFg },
+  toss: {
+    marginTop: 16,
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: lv.thread,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: lv.thread,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  tossText: { color: lv.threadFg, fontSize: 17, fontWeight: "600" },
+  demo: { alignItems: "center", paddingVertical: 8 },
+  demoText: { color: lv.mutedFg, fontSize: 15, fontWeight: "600" },
+  group: { borderRadius: 24, overflow: "hidden" },
 });
