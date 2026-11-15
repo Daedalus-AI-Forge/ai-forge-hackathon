@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { formScrollProps } from "@/components/keyboard";
 import { layout, lv } from "@/theme/tokens";
 
 import { Backdrop } from "./Backdrop";
@@ -63,10 +64,8 @@ export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.
         testID={testID}
         style={styles.scroll}
         contentContainerStyle={[styles.content, { maxWidth, paddingTop: top, paddingBottom: bottom }, contentStyle]}
+        {...formScrollProps}
         contentInsetAdjustmentBehavior={nativeHeader ? "automatic" : "never"}
-        automaticallyAdjustKeyboardInsets
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
         scrollEventThrottle={32}
         onScroll={nativeHeader ? undefined : onScroll}
       >

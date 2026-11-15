@@ -52,7 +52,7 @@ export function Shell({
 }) {
   const at = DOTS.indexOf(step);
   return (
-    <Screen testID={testID} maxWidth={480}>
+    <Screen testID={testID} maxWidth={480} contentStyle={styles.column}>
       {step !== "first" ? (
         <NavBar
           left={onBack ? <BackButton onPress={onBack} testID="link-back" /> : null}
@@ -71,6 +71,7 @@ export function Shell({
 }
 
 const styles = StyleSheet.create({
+  column: { gap: 18 },
   dots: { flexDirection: "row", alignItems: "center", gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: lv.fillStrong },
   dotDone: { backgroundColor: lv.thread },

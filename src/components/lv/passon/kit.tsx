@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import { Glass as GlassSurface, GlassCard, Icon, type IconName } from "@/components/ios";
+import { keyboardInputProps } from "@/components/keyboard";
 import { lv, shadows, type } from "@/theme/tokens";
 
 /**
@@ -24,7 +25,8 @@ import { lv, shadows, type } from "@/theme/tokens";
 type Variant = "thread" | "ink" | "ghost" | "tinted" | "plain" | "glass";
 type Size = "sm" | "md" | "lg";
 
-const HEIGHT: Record<Size, number> = { sm: 36, md: 44, lg: 52 };
+// sm stays compact but gets a hit slop, so every button has at least a 44-pt target.
+const HEIGHT: Record<Size, number> = { sm: 40, md: 48, lg: 54 };
 const FONT: Record<Size, number> = { sm: 15, md: 16, lg: 17 };
 const FG: Record<Variant, string> = {
   thread: lv.threadFg,
@@ -100,6 +102,7 @@ export function DButton({
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: !!busy }}
       onPress={inactive ? undefined : onPress}
+      hitSlop={size === "sm" ? 4 : undefined}
       style={({ pressed }) => [
         s.btn,
         { height: HEIGHT[size] },
@@ -125,10 +128,10 @@ export function Glass({ children, style, testID }: { children: ReactNode; style?
   );
 }
 
-/** Content card for forms and dense text: the same glass, a little more opaque. */
+/** Content card for forms and dense text: the same glass, a little more opaque, with roomier rows. */
 export function DCard({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
   return (
-    <GlassCard variant="thick" testID={testID} style={style}>
+    <GlassCard variant="thick" testID={testID} style={[s.formCard, style]}>
       {children}
     </GlassCard>
   );
@@ -143,19 +146,28 @@ export function Sub({ children, style }: { children: ReactNode; style?: StylePro
 }
 
 /**
- * iOS text field: gray fill, no border; a thin red ring while focused.
- * Pass `grow` only for fields side by side in a row, so they share it equally
- * (in a column it would collapse the field on web).
+ * iOS text field: gray fill with a faint outline; a red ring while focused.
+ * The wrapper never flexes by default: in a column it takes its content's height (a `flexBasis: 0`
+ * wrapper collapses to 0px on react-native-web). Side by side in a row, pass `grow`
+ * (or `containerStyle={{ flex: 1 }}`) so the fields share the row.
  */
-export function DField({ label, onFocus, onBlur, grow = false, ...props }: TextInputProps & { label?: string; grow?: boolean }) {
+export function DField({
+  label,
+  onFocus,
+  onBlur,
+  grow = false,
+  containerStyle,
+  ...props
+}: TextInputProps & { label?: string; grow?: boolean; containerStyle?: StyleProp<ViewStyle> }) {
   const [focused, setFocused] = useState(false);
   return (
-    <View style={[s.fieldWrap, grow && s.fieldGrow]}>
+    <View style={[s.fieldWrap, grow && s.fieldGrow, containerStyle]}>
       {label ? <Text style={s.label}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={lv.tertiaryFg}
         selectionColor={lv.thread}
-        {...props}
+        accessibilityLabel={label}
+        {...keyboardInputProps(props)}
         onFocus={(e) => {
           setFocused(true);
           onFocus?.(e);
@@ -227,7 +239,20 @@ export function DTag({ label, tone = "thread", testID }: { label: string; tone?:
 }
 
 export function DError({ error }: { error: string | null }) {
-  return error ? <Text style={s.error}>{error}</Text> : null;
+  return error ? (
+    <Text style={s.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+      {error}
+    </Text>
+  ) : null;
+}
+
+/** Quiet line under a disabled primary button saying what is still missing. */
+export function DHint({ children, testID }: { children: ReactNode; testID?: string }) {
+  return children ? (
+    <Text style={s.hint} testID={testID} accessibilityLiveRegion="polite">
+      {children}
+    </Text>
+  ) : null;
 }
 
 export function DAvatar({ name, color, size = 28 }: { name: string; color: string; size?: number }) {
@@ -249,31 +274,33 @@ export const s = StyleSheet.create({
   pressed: { opacity: 0.78, transform: [{ scale: 0.98 }] },
   eyebrow: { ...type.eyebrow, color: lv.mutedFg },
   sub: { ...type.subheadline, color: lv.mutedFg },
-  label: { ...type.footnote, fontWeight: "500", color: lv.mutedFg, paddingHorizontal: 4 },
-  fieldWrap: { gap: 6 },
+  label: { ...type.subheadline, fontWeight: "600", color: lv.fg, paddingHorizontal: 4 },
+  formCard: { gap: 16 },
+  fieldWrap: { gap: 8, alignSelf: "stretch" },
   fieldGrow: { flexGrow: 1, flexBasis: 0 },
   field: {
-    minHeight: 44,
+    minHeight: 50,
     borderRadius: lv.radiusSm,
     borderCurve: "continuous",
     backgroundColor: lv.fill,
     borderWidth: 1,
-    borderColor: "transparent",
+    borderColor: lv.border,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 17,
+    lineHeight: 22,
     color: lv.fg,
     outlineWidth: 0,
   },
-  fieldMulti: { minHeight: 88, textAlignVertical: "top", paddingTop: 12 },
+  fieldMulti: { minHeight: 96, textAlignVertical: "top", paddingTop: 12 },
   fieldFocused: { backgroundColor: "rgba(255,255,255,0.85)", borderColor: lv.thread },
-  fieldOff: { color: lv.mutedFg },
+  fieldOff: { color: lv.mutedFg, backgroundColor: lv.fillStrong },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
-    minHeight: 34,
+    minHeight: 38,
     justifyContent: "center",
     borderRadius: 999,
-    paddingHorizontal: 14,
+    paddingHorizontal: 15,
     backgroundColor: lv.fill,
   },
   chipOn: { backgroundColor: lv.fg },
@@ -282,6 +309,7 @@ export const s = StyleSheet.create({
   chipTextOn: { color: lv.primaryFg, fontWeight: "600" },
   tag: { alignSelf: "flex-start", flexShrink: 1, height: 24, justifyContent: "center", borderRadius: 999, paddingHorizontal: 10 },
   tagText: { ...type.caption1, fontWeight: "600" },
-  error: { ...type.footnote, color: lv.destructive },
+  error: { ...type.subheadline, color: lv.destructive },
+  hint: { ...type.footnote, color: lv.mutedFg, textAlign: "center" },
   avatar: { alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.9)" },
 });

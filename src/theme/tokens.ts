@@ -20,6 +20,7 @@ export const lv = {
   accent: "#FBE5E2", // opaque thread tint
   border: "rgba(60,60,67,0.14)", // hairline on glass
   separator: "rgba(60,60,67,0.18)",
+  fieldBorder: "rgba(60,60,67,0.22)", // input/chip outline where a fill alone isn't enough
   fill: "rgba(118,118,128,0.12)", // iOS tertiarySystemFill: fields, chips, tracks
   fillStrong: "rgba(120,120,128,0.2)", // iOS systemFill
   threadTint: "rgba(229,72,63,0.12)",

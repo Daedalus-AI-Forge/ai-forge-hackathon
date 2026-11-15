@@ -5,6 +5,8 @@ import { Platform, StyleSheet, Switch, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { ContactPickButton } from "@/components/ContactPickButton";
+import { ContactSuggestions } from "@/components/ContactSuggestions";
 import { BackButton, CenterScreen, Glass as Surface, NavBar, Screen } from "@/components/ios";
 import { ShareLink } from "@/components/ShareLink";
 import { WellHint } from "@/components/WellHint";
@@ -64,6 +66,10 @@ export default function PassOn() {
   const [contactSaved, setContactSaved] = useState(false);
   const [showNameAndCity, setShowNameAndCity] = useState(true);
   const [nextName, setNextName] = useState("");
+  // Picked from Contacts, kept on this device only: pre-fills the SMS recipient for that boat.
+  const [nextPhone, setNextPhone] = useState<string | null>(null);
+  const [nextNameFocused, setNextNameFocused] = useState(false);
+  const [phones, setPhones] = useState<Record<string, string>>({});
   const [nextReason, setNextReason] = useState("");
   const [nextTags, setNextTags] = useState<string[]>([]);
   const [lastTags, setLastTags] = useState<string[]>([]);
@@ -163,12 +169,6 @@ export default function PassOn() {
                 </Text>
               </View>
             </View>
-
-            {wish.daily ? (
-              <Text testID="pass-on-clue" style={styles.clueLine}>
-                Clue {Math.min(wish.daily.step, wish.daily.of)}/{wish.daily.of}: {wish.daily.hint}
-              </Text>
-            ) : null}
 
             {data.chain.length > 0 ? (
               <View style={styles.chainWrap}>
@@ -412,7 +412,7 @@ export default function PassOn() {
           </Surface>
 
           {data.children.map((c) => (
-            <ShareLink key={c.hopId} hopId={c.hopId} name={c.name} message={messages[c.hopId] ?? c.passMessage} label={`Send ${c.name} their boat`} />
+            <ShareLink key={c.hopId} hopId={c.hopId} name={c.name} message={messages[c.hopId] ?? c.passMessage} label={`Send ${c.name} their boat`} to={phones[c.hopId]} />
           ))}
 
           {canAddMore ? (
@@ -428,8 +428,30 @@ export default function PassOn() {
                 testID="pass-next-name"
                 value={nextName}
                 onChangeText={setNextName}
+                onFocus={() => setNextNameFocused(true)}
+                onBlur={() => setNextNameFocused(false)}
                 placeholder={action === "group" ? "Climbing crew" : `Friend ${data.children.length + 1}`}
               />
+              {action !== "group" ? (
+                <ContactSuggestions
+                  testID="contact-suggest-pass"
+                  query={nextName}
+                  focused={nextNameFocused}
+                  onPick={({ name: picked, phone }) => {
+                    setNextName(picked);
+                    setNextPhone(phone);
+                  }}
+                />
+              ) : null}
+              {action !== "group" ? (
+                <ContactPickButton
+                  testID="contact-pick-pass"
+                  onPick={({ name: picked, phone }) => {
+                    if (picked) setNextName(picked);
+                    setNextPhone(phone);
+                  }}
+                />
+              ) : null}
               {serious ? (
                 <DField
                   testID="pass-next-reason"
@@ -462,6 +484,8 @@ export default function PassOn() {
                       ...(serious ? { reason: nextReason.trim() } : {}),
                     });
                     setLastTags(nextTags);
+                    if (nextPhone) setPhones((prev) => ({ ...prev, [childId]: nextPhone }));
+                    setNextPhone(null);
                     setNextName("");
                     setNextReason("");
                     setNextTags([]);
@@ -571,7 +595,6 @@ const styles = StyleSheet.create({
   mono: { fontFamily: lv.font.mono, fontSize: 12, color: lv.fg, fontVariant: ["tabular-nums"] },
   wishText: { ...type.title2, color: lv.fg },
   sourceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  clueLine: { ...type.footnote, color: lv.mutedFg },
   chainWrap: { gap: 10 },
   chainRow: { flexDirection: "row", alignItems: "stretch", gap: 10 },
   avatarCol: { width: 28, alignItems: "center" },

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { Platform, StyleSheet, Text } from "react-native";
 
 import { CenterScreen } from "@/components/ios";
+import { KeyboardDoneBar } from "@/components/keyboard";
 import { AUTH_ENABLED, AuthBridge, SessionAuth, authStorage } from "@/lib/auth";
 import { convex } from "@/lib/convex";
 import { lv, type } from "@/theme/tokens";
@@ -64,6 +65,7 @@ export default function RootLayout() {
         <Stack.Screen name="daily" options={{ headerShown: false, title: "Today's wish" }} />
       </Stack>
       <StatusBar style="dark" />
+      <KeyboardDoneBar />
     </Backend>
   );
 }

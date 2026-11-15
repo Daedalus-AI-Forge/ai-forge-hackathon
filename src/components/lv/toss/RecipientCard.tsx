@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { ContactPickButton } from "@/components/ContactPickButton";
+import { ContactSuggestions } from "@/components/ContactSuggestions";
 import { Icon } from "@/components/ios";
 import { lv, type } from "@/theme/tokens";
 
@@ -7,7 +10,11 @@ import { LvAvatar, LvCard, LvField } from "./parts";
 
 export const TAGS = ["music", "travel", "food", "sports", "tech", "outdoors", "art", "knows everyone"] as const;
 
-export type Person = { name: string; reason: string; contact: string; tags: string[] };
+/**
+ * `phone` is the number picked from Contacts. It stays on this device (state only, never sent to
+ * the backend) and only pre-fills the SMS recipient on the share step.
+ */
+export type Person = { name: string; reason: string; contact: string; tags: string[]; phone?: string };
 export const emptyPerson = (): Person => ({ name: "", reason: "", contact: "", tags: [] });
 
 export function RecipientCard({
@@ -23,6 +30,7 @@ export function RecipientCard({
   onRemove?: () => void;
   reasonError: string | null;
 }) {
+  const [nameFocused, setNameFocused] = useState(false);
   const toggle = (tag: string) =>
     onChange({
       ...person,
@@ -38,6 +46,8 @@ export function RecipientCard({
             value={person.name}
             placeholder="Their name"
             onChangeText={(name) => onChange({ ...person, name })}
+            onFocus={() => setNameFocused(true)}
+            onBlur={() => setNameFocused(false)}
           />
         </View>
         {onRemove ? (
@@ -53,6 +63,16 @@ export function RecipientCard({
           </Pressable>
         ) : null}
       </View>
+      <ContactSuggestions
+        testID={`contact-suggest-toss-${index}`}
+        query={person.name}
+        focused={nameFocused}
+        onPick={({ name, phone }) => onChange({ ...person, name, phone: phone ?? undefined })}
+      />
+      <ContactPickButton
+        testID={`contact-pick-toss-${index}`}
+        onPick={({ name, phone }) => onChange({ ...person, name: name || person.name, phone: phone ?? undefined })}
+      />
       <LvField
         testID={`toss-reason-${index}`}
         value={person.reason}

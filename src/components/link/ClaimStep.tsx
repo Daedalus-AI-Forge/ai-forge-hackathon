@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "re
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DButton, DCard, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { DButton, DCard, DError, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { phoneFromParts } from "@/lib/phoneNumber";
 import { lv, type } from "@/theme/tokens";
 
@@ -148,6 +148,15 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
     kind !== "real" ||
     (questions !== null && questions.every((_, i) => (answers[i] ?? "").trim()) && verified);
   const canSubmit = intro.trim().length > 0 && realReady && !uploading;
+  const claimMissing = canSubmit
+    ? null
+    : uploading
+      ? "Uploading your photo…"
+      : !intro.trim()
+        ? "Write a quick intro to claim it."
+        : questions !== null && !questions.every((_, i) => (answers[i] ?? "").trim())
+          ? "Answer the questions above."
+          : "Verify your phone to claim it.";
 
   return (
     <DCard testID="claim-step">
@@ -209,7 +218,6 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
           )}
           <View style={styles.row}>
             <DField
-              grow
               label="Your phone"
               value={phone}
               onChangeText={(t) => {
@@ -220,10 +228,13 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
               keyboardType="phone-pad"
               autoComplete="tel"
               testID="claim-phone"
+              containerStyle={styles.grow}
             />
             <DButton
               title={codeSent ? "Resend" : "Send code"}
               variant="ink"
+              size="sm"
+              style={styles.codeBtn}
               busy={sending}
               disabled={fullPhone.replace(/\D/g, "").length < 8}
               onPress={onSendCode}
@@ -233,7 +244,6 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
           {codeSent ? (
             <View style={styles.row}>
               <DField
-                grow
                 label="6-digit code"
                 value={code}
                 onChangeText={(t) => {
@@ -245,10 +255,13 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
                 maxLength={6}
                 editable={!verified}
                 testID="claim-code"
+                containerStyle={styles.grow}
               />
               <DButton
                 title={verified ? "Verified" : "Verify"}
                 variant="ink"
+                size="sm"
+                style={styles.codeBtn}
                 busy={verifying}
                 disabled={verified || !isSixDigitCode(code.trim())}
                 onPress={onVerify}
@@ -260,15 +273,19 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
       )}
 
       <DError error={error} />
-      <DButton title="Claim this boat" onPress={onSubmit} busy={busy} disabled={!canSubmit} testID="claim-submit" />
+      <DButton title="Claim this boat" size="lg" onPress={onSubmit} busy={busy} disabled={!canSubmit} testID="claim-submit" />
+      <DHint testID="claim-missing">{busy ? null : claimMissing}</DHint>
     </DCard>
   );
 }
 
 const styles = StyleSheet.create({
   title: { ...type.title3, color: lv.fg },
-  section: { gap: 12 },
+  section: { gap: 16 },
   row: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
+  grow: { flex: 1 },
+  // Same height as the field next to it so the row reads as one control.
+  codeBtn: { height: 50 },
   toggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 44 },
   toggleText: { ...type.body, color: lv.fg, flexShrink: 1 },
 });

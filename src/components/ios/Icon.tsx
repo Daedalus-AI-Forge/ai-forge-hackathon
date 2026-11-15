@@ -22,6 +22,7 @@ const ICONS = {
   check: { sf: "checkmark", glyph: "✓" },
   plus: { sf: "plus", glyph: "+" },
   group: { sf: "person.2.fill", glyph: "👥" },
+  contact: { sf: "person.crop.circle.badge.plus", glyph: "＋" },
   boat: { sf: "sailboat.fill", glyph: "⛵︎" },
 } as const satisfies Record<string, { sf: SFName; glyph: string; scale?: number }>;
 

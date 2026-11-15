@@ -6,7 +6,10 @@ import { ActivityIndicator, Linking, Platform, Share, StyleSheet, Text, View } f
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DButton, DCard, DChips, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { DButton, DCard, DChips, DError, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { ContactPickButton } from "@/components/ContactPickButton";
+import { ContactSuggestions } from "@/components/ContactSuggestions";
+import { smsHref } from "@/lib/contactPick";
 import { copyLink } from "@/lib/links";
 import type { FirstScreen } from "@/lib/linkApi.types";
 import { lv, type } from "@/theme/tokens";
@@ -30,7 +33,10 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
 
   const [hint, setHint] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [relation, setRelation] = useState<string | null>(null);
+  // Picked from Contacts (native only), kept in state: pre-fills the Messages recipient.
+  const [phone, setPhone] = useState<string | null>(null);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [relation, setRelation] = useState<string | null>("friend");
   const [reason, setReason] = useState("");
   const [vouch, setVouch] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
@@ -54,8 +60,20 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
   const wishText = screen?.boat.text ?? "";
   const formReady = name.trim().length > 0 && relation !== null && reason.trim().length > 0;
 
+  const missing = !name.trim()
+    ? "Add their name first."
+    : !relation
+      ? "Pick how you know them."
+      : !reason.trim()
+        ? "Add one line on why them."
+        : null;
+
   async function onWriteVouch() {
-    if (!relation) return;
+    // Never a dead button: say what's missing instead of silently ignoring the tap.
+    if (missing || !relation) {
+      setError(missing);
+      return;
+    }
     setError(null);
     setWriting(true);
     try {
@@ -129,15 +147,14 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
   }
 
   // Open the visitor's own Messages app with the AI draft prefilled. We never send anything:
-  // the person reviews it, picks the recipient and taps Send themselves.
+  // the person reviews it (recipient pre-filled if they picked a contact) and taps Send themselves.
   async function onOpenMessages() {
     if (!childHopId || message === null) return;
     const webOrigin = Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : null;
     const url = ogShareUrl(childHopId, process.env.EXPO_PUBLIC_CONVEX_SITE_URL, webOrigin);
-    const body = encodeURIComponent(`${message.trim()}\n${url}`);
-    // iOS expects `sms:&body=`, Android `sms:?body=`.
+    // iOS expects `sms:<to>&body=`, Android `sms:<to>?body=`.
     const isAndroid = Platform.OS === "android" || (typeof navigator !== "undefined" && /android/i.test(navigator.userAgent ?? ""));
-    const smsUrl = isAndroid ? `sms:?body=${body}` : `sms:&body=${body}`;
+    const smsUrl = smsHref(`${message.trim()}\n${url}`, phone ?? undefined, isAndroid ? "android" : "ios");
     setError(null);
     try {
       await Linking.openURL(smsUrl);
@@ -194,7 +211,23 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
     <DCard testID="push-step">
       <Eyebrow>Push it to one person</Eyebrow>
       {hint ? <Text style={styles.hint}>{hint}</Text> : <ActivityIndicator color={lv.thread} />}
-      <DField label="Their name" value={name} onChangeText={setName} placeholder="Ben" maxLength={60} testID="push-name" />
+      <DField label="Their name" value={name} onChangeText={setName} placeholder="Ben" maxLength={60} testID="push-name" onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)} />
+      <ContactSuggestions
+        testID="contact-suggest-push"
+        query={name}
+        focused={nameFocused}
+        onPick={({ name: picked, phone: p }) => {
+          setName(picked);
+          setPhone(p);
+        }}
+      />
+      <ContactPickButton
+        testID="contact-pick-push"
+        onPick={({ name: picked, phone: p }) => {
+          if (picked) setName(picked);
+          setPhone(p);
+        }}
+      />
       <DChips label="They are my…" options={RELATIONS} value={relation} onChange={setRelation} testIDPrefix="push-relation" />
       <DField
         label="Why them, in one line"
@@ -205,16 +238,29 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
         testID="push-reason"
       />
       {vouch === null ? (
-        <DButton title="Write the vouch" variant="ink" onPress={onWriteVouch} busy={writing} disabled={!formReady} testID="push-write-vouch" />
+        <>
+          <DButton title="Write the vouch" variant="ink" size="lg" onPress={onWriteVouch} busy={writing} testID="push-write-vouch" />
+          {error ? null : <DHint testID="push-missing">{missing}</DHint>}
+        </>
       ) : (
         <>
           <DField label="Your vouch (edit freely)" value={vouch} onChangeText={setVouch} multiline maxLength={400} testID="push-vouch" />
-          <DButton title="Rewrite" variant="ghost" size="sm" onPress={onWriteVouch} busy={writing} disabled={!formReady} testID="push-rewrite" />
+          <DButton title="Rewrite" variant="ghost" size="sm" onPress={onWriteVouch} busy={writing} testID="push-rewrite" />
         </>
       )}
       <DError error={error} />
       {vouch !== null ? (
-        <DButton title={`Push to ${name.trim() || "them"}`} onPress={onPush} busy={pushing} disabled={!formReady || !vouch.trim()} testID="push-submit" />
+        <>
+          <DButton
+            title={`Push to ${name.trim() || "them"}`}
+            size="lg"
+            onPress={onPush}
+            busy={pushing}
+            disabled={!formReady || !vouch.trim()}
+            testID="push-submit"
+          />
+          <DHint>{missing ?? (vouch.trim() ? null : "Write a line of vouch first.")}</DHint>
+        </>
       ) : null}
     </DCard>
   );
@@ -227,6 +273,6 @@ function webShareFn(): ((d: ShareData) => Promise<void>) | null {
 
 const styles = StyleSheet.create({
   title: { ...type.title3, color: lv.fg },
-  hint: { ...type.callout, color: lv.mutedFg, fontStyle: "italic" },
+  hint: { ...type.body, lineHeight: 24, color: lv.mutedFg, fontStyle: "italic" },
   row: { flexDirection: "row", gap: 8, alignItems: "center" },
 });

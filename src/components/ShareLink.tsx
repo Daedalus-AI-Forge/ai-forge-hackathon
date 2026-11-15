@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { DButton, DCard, DField } from "@/components/lv/passon/kit";
+import { phoneTail } from "@/lib/contactPick";
 import { copyLink, hopUrl, shareLink, smsLink } from "@/lib/links";
 import { lv, type } from "@/theme/tokens";
 
@@ -11,11 +12,14 @@ export function ShareLink({
   name,
   message,
   label,
+  to,
 }: {
   hopId: string;
   name: string;
   message: string | null;
   label?: string;
+  /** Picked phone (E.164) to pre-fill as the SMS recipient. */
+  to?: string;
 }) {
   const [text, setText] = useState(message ?? "");
   const [note, setNote] = useState<string | null>(null);
@@ -26,6 +30,11 @@ export function ShareLink({
   return (
     <DCard testID={`share-card-${hopId}`}>
       <Text style={styles.to}>{label ?? `For ${name}`}</Text>
+      {to ? (
+        <Text style={styles.muted} testID={`share-sms-to-${hopId}`}>
+          SMS goes to the number ending {phoneTail(to)}
+        </Text>
+      ) : null}
       {message === null && !text ? (
         <View style={styles.drafting}>
           <ActivityIndicator color={lv.thread} />
@@ -51,7 +60,7 @@ export function ShareLink({
             if (result === "copied") setNote("Copied! Paste it in your chat.");
           }}
         />
-        <DButton title="SMS" variant="ghost" style={styles.btn} testID={`share-sms-${hopId}`} onPress={() => smsLink(text, url)} />
+        <DButton title="SMS" variant="ghost" style={styles.btn} testID={`share-sms-${hopId}`} onPress={() => smsLink(text, url, to)} />
         <DButton
           title="Copy link"
           variant="ghost"

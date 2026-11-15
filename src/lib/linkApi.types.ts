@@ -19,7 +19,15 @@ export type FirstScreen = {
   /** False when this device's contact already used its free wish. */
   freeWishAvailable: boolean;
   /** Set when state === "handled": what this visitor did and where the boat is now. */
-  handled: { action: "claim" | "push"; nowRipples: number; lastCity: string | null } | null;
+  handled: {
+    action: "claim" | "push";
+    nowRipples: number;
+    lastCity: string | null;
+    /** Push only, pushing device only: the hop it created, so an unsent message can be resent. */
+    childHopId?: string;
+    childName?: string;
+    vouch?: string;
+  } | null;
 };
 
 export type FinishResult = {

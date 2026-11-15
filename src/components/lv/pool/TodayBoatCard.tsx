@@ -1,10 +1,10 @@
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { Glass, Icon } from "@/components/ios";
-import { DButton, DTag } from "@/components/lv/passon/kit";
+import { DTag } from "@/components/lv/passon/kit";
 import { errorMessage } from "@/components/ui";
 import { layout, lv, type } from "@/theme/tokens";
 
@@ -16,7 +16,7 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
   const join = useMutation(api.daily.join);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const glow = useRef(new Animated.Value(0)).current;
+  const [glow] = useState(() => new Animated.Value(0));
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -64,7 +64,8 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
         testID="today-boat"
         disabled={!live || busy}
         onPress={() => void play()}
-        accessibilityLabel={pushed ? "Today's boat, pushed" : `Today's boat: ${today.title}`}
+        accessibilityLabel={pushed ? "Today’s boat, pushed" : `Today’s boat: ${today.title}`}
+        accessibilityHint={pushed ? undefined : "Opens today’s boat"}
         style={styles.card}
       >
         {pushed ? (
@@ -72,24 +73,23 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
             <View style={styles.check}>
               <Icon name="check" size={14} color={lv.threadFg} weight="bold" />
             </View>
-            <Text style={styles.pushed}>Pushed — it's drifting</Text>
+            <Text style={styles.pushed}>Pushed — it’s drifting</Text>
           </View>
         ) : (
           <View style={[styles.body, !today.open && styles.dim]}>
-            <DTag label="Today's boat" tone="gold" />
+            <DTag label="Today’s boat" tone="gold" />
             <Text style={styles.title}>{today.title}</Text>
             <Text style={styles.hint}>Clue: {today.hint}</Text>
-            <Text style={styles.players}>{today.players} pushing today</Text>
-            <DButton
-              title="Open"
-              variant="thread"
-              size="lg"
-              busy={busy}
-              disabled={!today.open}
-              testID="today-boat-open"
-              onPress={() => void play()}
-              style={styles.open}
-            />
+            {/* The whole card opens the boat; the Pool keeps a single primary button. */}
+            <View style={styles.footer}>
+              <Text style={styles.players}>{busy ? "Opening…" : `${today.players} pushing today`}</Text>
+              {today.open && !busy ? (
+                <View style={styles.open}>
+                  <Text style={styles.openText}>Tap to open</Text>
+                  <Icon name="forward" size={12} color={lv.thread} weight="bold" />
+                </View>
+              ) : null}
+            </View>
           </View>
         )}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -105,8 +105,10 @@ const styles = StyleSheet.create({
   dim: { opacity: 0.55 },
   title: { ...type.title2, color: lv.fg, marginTop: 6 },
   hint: { ...type.subheadline, color: lv.mutedFg },
-  players: { ...type.footnote, color: lv.mutedFg },
-  open: { marginTop: 10 },
+  footer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 },
+  players: { ...type.footnote, color: lv.mutedFg, flexShrink: 1 },
+  open: { flexDirection: "row", alignItems: "center", gap: 4, height: 30, paddingHorizontal: 12, borderRadius: 999, backgroundColor: lv.threadTint },
+  openText: { ...type.footnote, fontWeight: "600", color: lv.thread },
   pushedRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 2 },
   check: { width: 24, height: 24, borderRadius: 12, backgroundColor: lv.thread, alignItems: "center", justifyContent: "center" },
   pushed: { ...type.headline, color: lv.mutedFg },

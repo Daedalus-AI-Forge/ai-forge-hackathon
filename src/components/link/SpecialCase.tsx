@@ -7,6 +7,8 @@ import { DButton, DCard, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import type { FirstScreen } from "@/lib/linkApi.types";
 import { lv, type } from "@/theme/tokens";
 
+import { ResendCard } from "./push/ResendCard";
+
 export type SpecialCaseProps = { screen: FirstScreen; onFreeWish: () => void };
 
 function BoatCard({ screen }: { screen: FirstScreen }) {
@@ -51,6 +53,16 @@ export function SpecialCase({ screen, onFreeWish }: SpecialCaseProps) {
       title = h?.action === "claim" ? "You said \"it's me\"" : "You pushed this boat on";
       const where = h?.lastCity ? ` It's now near ${h.lastCity}.` : "";
       body = h ? `It has drifted ${h.nowRipples} hop${h.nowRipples === 1 ? "" : "s"} so far.${where}` : null;
+      // Opening Messages doesn't mean they tapped Send: keep the message one tap away.
+      extra =
+        h?.action === "push" && h.childHopId ? (
+          <ResendCard
+            childHopId={h.childHopId}
+            childName={h.childName ?? ""}
+            vouch={h.vouch ?? ""}
+            wishText={screen.boat?.text ?? ""}
+          />
+        ) : null;
       break;
     }
     case "forwarded":

@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { errorMessage } from "@/components/ui";
-import { DButton, DChips, DError, DField, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
+import { DButton, DChips, DError, DField, DHint, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
 import type { FinishResult } from "@/lib/linkApi.types";
 import { lv, type } from "@/theme/tokens";
 import { CONTACT_REQUIRED, type ContactKind, validateContact } from "./end/logic";
@@ -47,7 +47,7 @@ export function ContactStep({ hopId, deviceId, wishText, onDone }: ContactStepPr
       <Eyebrow>Almost there</Eyebrow>
       <Text style={styles.h1}>Where should we tell you?</Text>
       <Sub>{CONTACT_REQUIRED}.</Sub>
-      <Glass>
+      <Glass style={styles.card}>
         <DChips
           testIDPrefix="contact-kind"
           options={["Phone", "Email"]}
@@ -74,6 +74,7 @@ export function ContactStep({ hopId, deviceId, wishText, onDone }: ContactStepPr
         />
         <DError error={error} />
         <DButton testID="contact-submit" size="lg" title="Set my wish sailing" onPress={submit} busy={busy} disabled={!value.trim()} />
+        {value.trim() ? null : <DHint>{kind === "phone" ? "Add your phone number to continue." : "Add your email to continue."}</DHint>}
         <Text style={styles.fine}>We only use this to tell you when your boat or wish lands. No spam.</Text>
       </Glass>
     </View>
@@ -82,5 +83,6 @@ export function ContactStep({ hopId, deviceId, wishText, onDone }: ContactStepPr
 
 const styles = StyleSheet.create({
   h1: { ...type.title1, color: lv.fg },
-  fine: { ...type.caption1, color: lv.mutedFg, textAlign: "center" },
+  card: { gap: 16 },
+  fine: { ...type.footnote, color: lv.mutedFg, textAlign: "center" },
 });

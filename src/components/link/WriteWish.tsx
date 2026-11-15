@@ -5,7 +5,7 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { DButton, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { DButton, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { withTimeout } from "@/lib/linkDraft";
 import { lv, type } from "@/theme/tokens";
 
@@ -42,7 +42,7 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
   }
 
   return (
-    <View style={{ gap: 14 }} testID="link-wish-step">
+    <View style={{ gap: 18 }} testID="link-wish-step">
       <View style={{ gap: 8 }}>
         <Eyebrow>Your free wish</Eyebrow>
         <Text style={styles.h1}>What kind of person do you wish you knew?</Text>
@@ -86,6 +86,7 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
         disabled={!trimmed || polishing}
         testID="link-wish-continue"
       />
+      {!trimmed && !polishing ? <DHint>Write one line to continue, or skip it below.</DHint> : null}
       <DButton title="Not now, just help" variant="plain" size="sm" onPress={onSkip} testID="link-skip-wish" style={styles.skip} />
     </View>
   );
@@ -93,7 +94,7 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
 
 const styles = StyleSheet.create({
   h1: { ...type.title1, color: lv.fg },
-  input: { minHeight: 52 },
+  input: { minHeight: 56 },
   row: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
   note: { ...type.footnote, color: lv.mutedFg, flexShrink: 1 },
   skip: { alignSelf: "center" },
