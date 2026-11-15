@@ -1,11 +1,11 @@
 // Special-case first screens for a link (PRD "special cases" table). The free wish stays reachable.
 import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { DButton, DCard, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import type { FirstScreen } from "@/lib/linkApi.types";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 export type SpecialCaseProps = { screen: FirstScreen; onFreeWish: () => void };
 
@@ -14,8 +14,8 @@ function BoatCard({ screen }: { screen: FirstScreen }) {
   return (
     <DCard testID="special-boat">
       <Eyebrow>{screen.boat.kind === "daily" ? "Today's boat" : `${screen.boat.creatorName}'s wish`}</Eyebrow>
-      <Text style={{ fontSize: 17, color: lv.fg, lineHeight: 24 }}>"{screen.boat.text}"</Text>
-      <Text style={{ fontSize: 13, color: lv.mutedFg }}>
+      <Text style={styles.boat}>"{screen.boat.text}"</Text>
+      <Text style={styles.meta}>
         {screen.ripples} hop{screen.ripples === 1 ? "" : "s"}
       </Text>
     </DCard>
@@ -39,7 +39,7 @@ export function SpecialCase({ screen, onFreeWish }: SpecialCaseProps) {
       title = "This boat already found its person";
       body = "Someone said \"it's me\" before you got here.";
       extra = screen.wishId ? (
-        <DButton testID="special-ending" variant="ghost" title="See how it ended" onPress={() => router.push(`/e/${screen.wishId}`)} />
+        <DButton testID="special-ending" variant="glass" title="See how it ended" onPress={() => router.push(`/e/${screen.wishId}`)} />
       ) : null;
       break;
     case "expired":
@@ -60,7 +60,7 @@ export function SpecialCase({ screen, onFreeWish }: SpecialCaseProps) {
     case "missing":
       return (
         <View style={{ gap: 14 }} testID="special-missing">
-          <Text style={{ fontSize: 26, fontWeight: "700", color: lv.fg }}>We couldn't find this boat</Text>
+          <Text style={styles.h1}>We couldn't find this boat</Text>
           <Sub>The link may be incomplete. Ask the friend who sent it to share it again.</Sub>
         </View>
       );
@@ -71,7 +71,7 @@ export function SpecialCase({ screen, onFreeWish }: SpecialCaseProps) {
   return (
     <View style={{ gap: 14 }} testID={`special-${screen.state}`}>
       {screen.senderName ? <Eyebrow>From {screen.senderName}</Eyebrow> : null}
-      <Text style={{ fontSize: 26, fontWeight: "700", color: lv.fg }}>{title}</Text>
+      <Text style={styles.h1}>{title}</Text>
       {body ? <Sub>{body}</Sub> : null}
       <BoatCard screen={screen} />
       {extra}
@@ -79,3 +79,9 @@ export function SpecialCase({ screen, onFreeWish }: SpecialCaseProps) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  h1: { ...type.title1, color: lv.fg },
+  boat: { ...type.body, color: lv.fg },
+  meta: { ...type.footnote, color: lv.mutedFg },
+});

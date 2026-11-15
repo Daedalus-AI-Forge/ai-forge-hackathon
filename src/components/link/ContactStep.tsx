@@ -1,14 +1,14 @@
 // Screen 4: leave a phone number or email (required) so we can tell the visitor when their wish lands.
 import { useMutation } from "convex/react";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { errorMessage } from "@/components/ui";
 import { DButton, DChips, DError, DField, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
 import type { FinishResult } from "@/lib/linkApi.types";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 import { CONTACT_REQUIRED, type ContactKind, validateContact } from "./end/logic";
 
 export type ContactStepProps = { hopId: string; deviceId: string; wishText: string | null; onDone: (r: FinishResult) => void };
@@ -45,7 +45,7 @@ export function ContactStep({ hopId, deviceId, wishText, onDone }: ContactStepPr
   return (
     <View style={{ gap: 14 }} testID="contact-step">
       <Eyebrow>Almost there</Eyebrow>
-      <Text style={{ fontSize: 26, fontWeight: "700", color: lv.fg }}>Where should we tell you?</Text>
+      <Text style={styles.h1}>Where should we tell you?</Text>
       <Sub>{CONTACT_REQUIRED}.</Sub>
       <Glass>
         <DChips
@@ -74,8 +74,13 @@ export function ContactStep({ hopId, deviceId, wishText, onDone }: ContactStepPr
         />
         <DError error={error} />
         <DButton testID="contact-submit" size="lg" title="Set my wish sailing" onPress={submit} busy={busy} disabled={!value.trim()} />
-        <Text style={{ fontSize: 12, color: lv.mutedFg }}>We only use this to tell you when your boat or wish lands. No spam.</Text>
+        <Text style={styles.fine}>We only use this to tell you when your boat or wish lands. No spam.</Text>
       </Glass>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  h1: { ...type.title1, color: lv.fg },
+  fine: { ...type.caption1, color: lv.mutedFg, textAlign: "center" },
+});

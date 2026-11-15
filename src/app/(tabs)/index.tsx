@@ -2,21 +2,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { glass } from "@/components/lv/home/glass";
+import { CenterScreen, LargeTitle, Screen } from "@/components/ios";
+import { DButton } from "@/components/lv/passon/kit";
 import { BoatCard } from "@/components/lv/pool/BoatCard";
 import { CoinsFloor, type PoolCoin } from "@/components/lv/pool/CoinsFloor";
 import { ProgressDots } from "@/components/lv/pool/ProgressDots";
 import { TodayBoatCard } from "@/components/lv/pool/TodayBoatCard";
 import { VoyageLogCard, type VoyageLog } from "@/components/lv/pool/VoyageLogCard";
 import { Water } from "@/components/lv/pool/Water";
-import { SHELL_TAB_CLEARANCE } from "@/components/lv/shell/tabBarStyle";
 import { Avatar, errorMessage } from "@/components/ui";
 import { useMe } from "@/lib/device";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 const ONBOARDED_KEY = "wishwell.onboarded";
 const LOG_DISMISS_KEY = "wishwell.logDismissed";
@@ -66,13 +65,7 @@ export default function ThePool() {
     };
   }, [date]);
 
-  if (!home || !deviceId) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={lv.thread} />
-      </View>
-    );
-  }
+  if (!home || !deviceId) return <CenterScreen />;
 
   const user = home.user;
   const wishesLeft = user.wishesLeft;
@@ -106,110 +99,75 @@ export default function ThePool() {
   const primary = friends.length > 0 || todayUnpushed ? "push" : wishesLeft > 0 ? "toss" : "none";
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView testID="well-screen" contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={glass.eyebrow}>
-              {wishesLeft} coin{wishesLeft === 1 ? "" : "s"} · {progress}/5 boats
-            </Text>
-            <Text style={styles.brand}>Wishwell</Text>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push("/me")}>
-            <Avatar name={user.name} color={user.avatar} size={36} />
+    <Screen tab testID="well-screen">
+      <LargeTitle
+        eyebrow={`${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${progress}/5 boats`}
+        title="Wishwell"
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Profile"
+            onPress={() => router.push("/me")}
+            hitSlop={8}
+            style={({ pressed }) => [styles.avatar, pressed && { transform: [{ scale: 0.94 }] }]}
+          >
+            <Avatar name={user.name} color={user.avatar} size={40} />
           </Pressable>
+        }
+      />
+
+      {voyageLog && !logDismissed ? (
+        <VoyageLogCard log={voyageLog as VoyageLog} onDismiss={() => void AsyncStorage.setItem(LOG_DISMISS_KEY, date).then(() => setLogDismissed(true))} />
+      ) : null}
+
+      <Water>
+        {friends.map((c) => (
+          <BoatCard
+            key={c.hopId}
+            hopId={c.hopId}
+            creatorName={c.creatorName}
+            text={c.text}
+            depth={c.depth}
+            expiresAt={c.expiresAt}
+          />
+        ))}
+        {today ? <TodayBoatCard deviceId={deviceId} date={date} onOpen={(hopId) => router.push({ pathname: "/w/[hopId]", params: { hopId } })} /> : null}
+      </Water>
+
+      {coins.length > 0 ? <CoinsFloor coins={coins} /> : null}
+
+      <ProgressDots progress={progress} wishesLeft={wishesLeft} />
+
+      {primary === "push" ? (
+        <DButton testID="primary-action" title="Push today's boat" size="lg" busy={busy} onPress={pushBoat} />
+      ) : primary === "toss" ? (
+        <View testID="toss-button">
+          <DButton testID="primary-action" title="Toss a coin" size="lg" onPress={() => router.push("/toss")} />
         </View>
+      ) : (
+        <Text testID="pool-done" style={styles.done}>
+          Come back tomorrow morning for your voyage log
+        </Text>
+      )}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        {voyageLog && !logDismissed ? (
-          <VoyageLogCard log={voyageLog as VoyageLog} onDismiss={() => void AsyncStorage.setItem(LOG_DISMISS_KEY, date).then(() => setLogDismissed(true))} />
-        ) : null}
-
-        <Water>
-          {friends.map((c) => (
-            <BoatCard
-              key={c.hopId}
-              hopId={c.hopId}
-              creatorName={c.creatorName}
-              text={c.text}
-              depth={c.depth}
-              expiresAt={c.expiresAt}
-            />
-          ))}
-          {today ? <TodayBoatCard deviceId={deviceId} date={date} onOpen={(hopId) => router.push({ pathname: "/w/[hopId]", params: { hopId } })} /> : null}
-        </Water>
-
-        {coins.length > 0 ? <CoinsFloor coins={coins} /> : null}
-
-        <ProgressDots progress={progress} wishesLeft={wishesLeft} />
-
-        {primary === "push" ? (
-          <Pressable
-            testID="primary-action"
-            accessibilityRole="button"
-            disabled={busy}
-            onPress={pushBoat}
-            style={({ pressed }) => [styles.primary, (pressed || busy) && styles.primaryPressed]}
-          >
-            <Text style={styles.primaryText}>{busy ? "Opening…" : "Push today's boat"}</Text>
-          </Pressable>
-        ) : primary === "toss" ? (
-          <View testID="toss-button">
-            <Pressable testID="primary-action" accessibilityRole="button" onPress={() => router.push("/toss")} style={({ pressed }) => [styles.primary, pressed && styles.primaryPressed]}>
-              <Text style={styles.primaryText}>Toss a coin</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Text testID="pool-done" style={styles.done}>
-            Come back tomorrow morning for your voyage log
-          </Text>
-        )}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        {demoEnabled && friends.length === 0 && deviceId ? (
-          <Pressable
-            testID="use-demo-profile"
-            accessibilityRole="button"
-            onPress={() => void claimDemo({ deviceId })}
-            style={styles.demo}
-          >
-            <Text style={styles.demoText}>Try it with demo wishes</Text>
-          </Pressable>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      {demoEnabled && friends.length === 0 && deviceId ? (
+        <DButton
+          testID="use-demo-profile"
+          title="Try it with demo wishes"
+          variant="plain"
+          size="sm"
+          style={styles.demo}
+          onPress={() => void claimDemo({ deviceId })}
+        />
+      ) : null}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: lv.bg },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: lv.bg },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 20,
-    maxWidth: 430,
-    width: "100%",
-    alignSelf: "center",
-    paddingBottom: SHELL_TAB_CLEARANCE,
-  },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  brand: { fontSize: 34, fontWeight: "700", color: lv.fg, letterSpacing: -0.5, fontFamily: lv.font.display },
-  primary: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: lv.thread,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: lv.thread,
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  primaryPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
-  primaryText: { color: lv.threadFg, fontSize: 17, fontWeight: "600" },
-  done: { fontSize: 14, color: lv.mutedFg, textAlign: "center", paddingVertical: 14 },
-  error: { color: lv.destructive, fontSize: 13, textAlign: "center" },
-  demo: { alignItems: "center", paddingVertical: 8 },
-  demoText: { color: lv.mutedFg, fontSize: 15, fontWeight: "600" },
+  avatar: { borderRadius: 999, boxShadow: "0px 4px 12px rgba(28,24,20,0.14)" },
+  done: { ...type.footnote, color: lv.mutedFg, textAlign: "center", paddingVertical: 14 },
+  error: { ...type.footnote, color: lv.destructive, textAlign: "center" },
+  demo: { alignSelf: "center" },
 });

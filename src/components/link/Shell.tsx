@@ -1,8 +1,9 @@
 // Wizard frame for the link page: background, back arrow, step dots, centered column.
 // Also holds the pure step transitions so the route stays a thin composer.
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
+import { BackButton, NavBar, Screen } from "@/components/ios";
 import type { LinkStep } from "@/lib/linkDraft";
 import { lv } from "@/theme/tokens";
 
@@ -51,42 +52,27 @@ export function Shell({
 }) {
   const at = DOTS.indexOf(step);
   return (
-    <ScrollView
-      testID={testID}
-      style={styles.page}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.column}>
-        {step !== "first" ? (
-          <View style={styles.topBar}>
-            {onBack ? (
-              <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} testID="link-back">
-                <Text style={styles.back}>←</Text>
-              </Pressable>
-            ) : (
-              <View style={{ width: 22 }} />
-            )}
+    <Screen testID={testID} maxWidth={480}>
+      {step !== "first" ? (
+        <NavBar
+          left={onBack ? <BackButton onPress={onBack} testID="link-back" /> : null}
+          center={
             <View style={styles.dots} accessibilityLabel={`Step ${at + 1} of ${DOTS.length}`}>
               {DOTS.map((d, i) => (
-                <View key={d} style={[styles.dot, i <= at && { backgroundColor: lv.thread }]} />
+                <View key={d} style={[styles.dot, i <= at && styles.dotDone, i === at && styles.dotNow]} />
               ))}
             </View>
-            <View style={{ width: 22 }} />
-          </View>
-        ) : null}
-        {children}
-      </View>
-    </ScrollView>
+          }
+        />
+      ) : null}
+      {children}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: lv.bg },
-  content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40, alignItems: "center" },
-  column: { width: "100%", maxWidth: 480, gap: 14 },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
-  back: { fontSize: 22, color: lv.fg },
-  dots: { flexDirection: "row", gap: 6 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: lv.border },
+  dots: { flexDirection: "row", alignItems: "center", gap: 6 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: lv.fillStrong },
+  dotDone: { backgroundColor: lv.thread },
+  dotNow: { width: 18 },
 });

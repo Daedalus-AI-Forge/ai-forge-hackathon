@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DButton, DCard, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { phoneFromParts } from "@/lib/phoneNumber";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 import { cleanError, isSixDigitCode } from "./claim/errors";
 import { canPickPhoto, pickPhotoWeb, uploadPhoto } from "./claim/photo";
@@ -182,7 +182,8 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
             <Switch
               value={showNameAndCity}
               onValueChange={setShowNameAndCity}
-              trackColor={{ true: lv.thread, false: lv.border }}
+              trackColor={{ true: lv.thread, false: lv.fillStrong }}
+              ios_backgroundColor={lv.fillStrong}
               testID="claim-show-name"
             />
           </Pressable>
@@ -208,6 +209,7 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
           )}
           <View style={styles.row}>
             <DField
+              grow
               label="Your phone"
               value={phone}
               onChangeText={(t) => {
@@ -222,8 +224,6 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
             <DButton
               title={codeSent ? "Resend" : "Send code"}
               variant="ink"
-              size="sm"
-              style={styles.codeBtn}
               busy={sending}
               disabled={fullPhone.replace(/\D/g, "").length < 8}
               onPress={onSendCode}
@@ -233,6 +233,7 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
           {codeSent ? (
             <View style={styles.row}>
               <DField
+                grow
                 label="6-digit code"
                 value={code}
                 onChangeText={(t) => {
@@ -248,8 +249,6 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
               <DButton
                 title={verified ? "Verified" : "Verify"}
                 variant="ink"
-                size="sm"
-                style={styles.codeBtn}
                 busy={verifying}
                 disabled={verified || !isSixDigitCode(code.trim())}
                 onPress={onVerify}
@@ -267,10 +266,9 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 20, fontWeight: "700", color: lv.fg },
+  title: { ...type.title3, color: lv.fg },
   section: { gap: 12 },
   row: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
-  codeBtn: { marginBottom: 4 },
-  toggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  toggleText: { color: lv.fg, fontSize: 15 },
+  toggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 44 },
+  toggleText: { ...type.body, color: lv.fg, flexShrink: 1 },
 });

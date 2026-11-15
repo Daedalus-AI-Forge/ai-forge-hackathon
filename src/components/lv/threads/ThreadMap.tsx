@@ -15,11 +15,14 @@ export function ThreadMap({
   compact = false,
   highlightName,
   testID,
+  radius = lv.radiusMd,
 }: {
   holders: Holder[];
   compact?: boolean;
   highlightName?: string;
   testID?: string;
+  /** Corner radius; pass the container's inner radius so corners stay concentric. */
+  radius?: number;
 }) {
   const [width, setWidth] = useState(0);
   const height = compact ? 112 : Math.max(160, width * 0.5);
@@ -58,7 +61,7 @@ export function ThreadMap({
   const stroke = compact ? 3 : 2.5;
 
   return (
-    <View testID={testID} onLayout={onLayout} style={[styles.box, { height }]}>
+    <View testID={testID} onLayout={onLayout} style={[styles.box, { height, borderRadius: radius }]}>
       {width > 0 ? (
         <>
           <Image
@@ -109,7 +112,7 @@ export function ThreadMap({
 }
 
 const styles = StyleSheet.create({
-  box: { overflow: "hidden", borderRadius: lv.radiusSm, backgroundColor: lv.muted, width: "100%" },
+  box: { overflow: "hidden", borderCurve: "continuous", backgroundColor: "#E9E6E1", width: "100%" },
   label: {
     position: "absolute",
     width: 20,

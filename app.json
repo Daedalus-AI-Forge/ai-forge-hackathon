@@ -31,7 +31,8 @@
       "expo-status-bar",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

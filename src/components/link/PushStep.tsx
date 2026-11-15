@@ -9,7 +9,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { DButton, DCard, DChips, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { copyLink } from "@/lib/links";
 import type { FirstScreen } from "@/lib/linkApi.types";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 import { cleanError } from "./claim/errors";
 import { fallbackShareMessage, ogShareUrl, withTimeout } from "./push/shareCopy";
@@ -171,6 +171,7 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
           <>
             <DButton
               title="Open in Messages"
+              size="lg"
               onPress={onOpenMessages}
               disabled={message === null || !message.trim()}
               testID="push-open-messages"
@@ -225,7 +226,7 @@ function webShareFn(): ((d: ShareData) => Promise<void>) | null {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 20, fontWeight: "700", color: lv.fg },
-  hint: { fontSize: 16, color: lv.mutedFg, fontStyle: "italic" },
+  title: { ...type.title3, color: lv.fg },
+  hint: { ...type.callout, color: lv.mutedFg, fontStyle: "italic" },
   row: { flexDirection: "row", gap: 8, alignItems: "center" },
 });

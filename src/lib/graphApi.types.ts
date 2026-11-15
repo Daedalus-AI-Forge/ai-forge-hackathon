@@ -19,6 +19,21 @@ export type NetworkLink = {
 
 export type MyNetwork = { me: { name: string }; nodes: NetworkNode[]; links: NetworkLink[] };
 
+export type CommunityNode = {
+  key: string;
+  name: string;
+  personKeys: string[];
+  edgeIds: Id<"edges">[];
+  kind: "user" | "contact";
+};
+export type CommunityLink = { key: string; source: string; target: string };
+export type CommunityNetwork = {
+  meKey: string;
+  nodes: CommunityNode[];
+  links: CommunityLink[];
+  truncated: boolean;
+};
+
 export type CoachReady = { ready: boolean; edgeCount: number; threshold: number };
 
 export type CoachTurn = { role: "user" | "coach"; text: string };

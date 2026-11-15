@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Glass } from "@/components/lv/passon/kit";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 /** Shown on Today's boat: this ripple's clue, and in plain words what the well learns from the pass. */
 export function WellHint({
@@ -37,8 +37,8 @@ export function WellHint({
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.thread },
-  hint: { fontSize: 17, fontWeight: "700", color: lv.fg, lineHeight: 23 },
-  why: { fontSize: 14, fontWeight: "600", color: lv.thread },
-  body: { fontSize: 13.5, color: lv.mutedFg, lineHeight: 19 },
+  label: { ...type.eyebrow, color: lv.thread },
+  hint: { ...type.headline, color: lv.fg },
+  why: { ...type.subheadline, fontWeight: "600", color: lv.thread },
+  body: { ...type.footnote, color: lv.mutedFg },
 });

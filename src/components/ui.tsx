@@ -1,17 +1,11 @@
+// Legacy primitives (sign-in, account, a few older screens), now drawn with the shared kit so
+// they match the rest of the app.
 import type { ReactNode } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type StyleProp,
-  type TextInputProps,
-  type ViewStyle,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from "react-native";
 
-import { colors, radius } from "@/lib/theme";
+import { GlassCard } from "@/components/ios";
+import { DButton, DField } from "@/components/lv/passon/kit";
+import { lv, type } from "@/theme/tokens";
 
 export function Button({
   title,
@@ -30,43 +24,25 @@ export function Button({
   testID?: string;
   style?: StyleProp<ViewStyle>;
 }) {
-  const inactive = disabled || busy;
   return (
-    <Pressable
+    <DButton
+      title={title}
+      onPress={onPress}
+      variant={variant === "primary" ? "thread" : variant === "secondary" ? "glass" : "plain"}
+      size="lg"
+      disabled={disabled}
+      busy={busy}
       testID={testID}
-      accessibilityRole="button"
-      onPress={inactive ? undefined : onPress}
-      style={({ pressed }) => [
-        styles.button,
-        variant === "primary" && styles.primary,
-        variant === "secondary" && styles.secondary,
-        variant === "ghost" && styles.ghost,
-        inactive && { opacity: 0.5 },
-        pressed && { transform: [{ scale: 0.98 }] },
-        style,
-      ]}
-    >
-      {busy ? (
-        <ActivityIndicator color={variant === "primary" ? "#fff" : colors.red} />
-      ) : (
-        <Text
-          style={[
-            styles.buttonText,
-            variant === "primary" ? { color: "#fff" } : { color: variant === "ghost" ? colors.muted : colors.red },
-          ]}
-        >
-          {title}
-        </Text>
-      )}
-    </Pressable>
+      style={style}
+    />
   );
 }
 
 export function Card({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
   return (
-    <View testID={testID} style={[styles.card, style]}>
+    <GlassCard testID={testID} style={style}>
       {children}
-    </View>
+    </GlassCard>
   );
 }
 
@@ -84,10 +60,12 @@ export function Chip({
   return (
     <Pressable
       testID={testID}
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
       onPress={onPress}
-      style={[styles.chip, selected && { backgroundColor: colors.red, borderColor: colors.red }]}
+      style={[styles.chip, selected && styles.chipOn]}
     >
-      <Text style={[styles.chipText, selected && { color: "#fff" }]}>{label}</Text>
+      <Text style={[styles.chipText, selected && styles.chipTextOn]}>{label}</Text>
     </Pressable>
   );
 }
@@ -118,13 +96,8 @@ export function ChipRow({
   );
 }
 
-export function Field({ label, ...props }: TextInputProps & { label?: string }) {
-  return (
-    <View style={{ gap: 6 }}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <TextInput placeholderTextColor="#B0A796" {...props} style={[styles.input, props.multiline && { minHeight: 84, textAlignVertical: "top" }, props.style]} />
-    </View>
-  );
+export function Field(props: TextInputProps & { label?: string }) {
+  return <DField {...props} />;
 }
 
 export function Avatar({ name, color, size = 36 }: { name: string; color: string; size?: number }) {
@@ -138,12 +111,10 @@ export function Avatar({ name, color, size = 36 }: { name: string; color: string
         alignItems: "center",
         justifyContent: "center",
         borderWidth: 2,
-        borderColor: "#fff",
+        borderColor: "rgba(255,255,255,0.92)",
       }}
     >
-      <Text style={{ color: "#fff", fontWeight: "800", fontSize: size * 0.42 }}>
-        {(name.trim()[0] ?? "?").toUpperCase()}
-      </Text>
+      <Text style={{ color: "#fff", fontWeight: "700", fontSize: size * 0.42 }}>{(name.trim()[0] ?? "?").toUpperCase()}</Text>
     </View>
   );
 }
@@ -152,13 +123,13 @@ export function Title({ children }: { children: ReactNode }) {
   return <Text style={styles.title}>{children}</Text>;
 }
 
-export function Muted({ children, style }: { children: ReactNode; style?: StyleProp<import("react-native").TextStyle> }) {
+export function Muted({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
   return <Text style={[styles.muted, style]}>{children}</Text>;
 }
 
 export function ErrorText({ error }: { error: string | null }) {
   if (!error) return null;
-  return <Text style={{ color: colors.red, fontSize: 14 }}>{error}</Text>;
+  return <Text style={styles.error}>{error}</Text>;
 }
 
 export function errorMessage(e: unknown) {
@@ -168,49 +139,12 @@ export function errorMessage(e: unknown) {
 }
 
 const styles = StyleSheet.create({
-  button: {
-    minHeight: 52,
-    borderRadius: radius.pill,
-    paddingHorizontal: 22,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primary: { backgroundColor: colors.red },
-  secondary: { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.red },
-  ghost: { backgroundColor: "transparent" },
-  buttonText: { fontSize: 17, fontWeight: "700" },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: radius.card,
-    padding: 18,
-    gap: 10,
-    shadowColor: "#7A5C2E",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: colors.line,
-    backgroundColor: colors.card,
-  },
-  chipText: { fontSize: 15, color: colors.ink, fontWeight: "600" },
+  chip: { minHeight: 34, justifyContent: "center", paddingHorizontal: 14, borderRadius: 999, backgroundColor: lv.fill },
+  chipOn: { backgroundColor: lv.fg },
+  chipText: { ...type.subheadline, fontWeight: "500", color: lv.fg },
+  chipTextOn: { color: lv.primaryFg, fontWeight: "600" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  label: { fontSize: 14, color: colors.muted, fontWeight: "600" },
-  input: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: colors.line,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 17,
-    color: colors.ink,
-  },
-  title: { fontSize: 26, fontWeight: "800", color: colors.ink },
-  muted: { fontSize: 15, color: colors.muted, lineHeight: 21 },
+  title: { ...type.title1, color: lv.fg },
+  muted: { ...type.subheadline, color: lv.mutedFg },
+  error: { ...type.footnote, color: lv.destructive },
 });
