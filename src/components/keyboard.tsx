@@ -45,9 +45,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: "#F4F1EA",
+    backgroundColor: "rgba(246,246,248,0.97)",
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#D9D3C7",
+    borderTopColor: lv.separator,
   },
-  done: { fontSize: 16, fontWeight: "700", color: lv.fg },
+  done: { fontSize: 17, fontWeight: "600", color: lv.thread },
 });

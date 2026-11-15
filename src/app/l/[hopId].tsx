@@ -3,10 +3,11 @@
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { CenterScreen } from "@/components/ios";
 import { ClaimStep } from "@/components/link/ClaimStep";
 import { ContactStep } from "@/components/link/ContactStep";
 import { DoneStep } from "@/components/link/DoneStep";
@@ -19,7 +20,7 @@ import { DButton, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { useDeviceId } from "@/lib/device";
 import type { FinishResult, FirstScreen as FirstScreenData, LinkEvent } from "@/lib/linkApi.types";
 import { type LinkStep, clearDraft, loadDraft, saveDraft } from "@/lib/linkDraft";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 export default function LinkPage() {
   const { hopId } = useLocalSearchParams<{ hopId: string }>();
@@ -91,10 +92,9 @@ export default function LinkPage() {
 
   if (!deviceId || !hydrated || screen === undefined) {
     return (
-      <View style={styles.center} testID="link-loading">
+      <CenterScreen testID="link-loading">
         {header}
-        <ActivityIndicator color={lv.fg} />
-      </View>
+      </CenterScreen>
     );
   }
 
@@ -176,7 +176,7 @@ export default function LinkPage() {
             onPress={() => setChoice("push")}
             testID="link-push-one"
           />
-          <Sub style={{ textAlign: "center", fontSize: 13 }}>Either way, your free wish sets sail when you're done.</Sub>
+          <Sub style={styles.footnote}>Either way, your free wish sets sail when you're done.</Sub>
         </View>
       ) : null}
       {step === "handle" && choice === "claim" ? (
@@ -206,6 +206,6 @@ export default function LinkPage() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: lv.bg },
-  h1: { fontSize: 26, lineHeight: 32, fontWeight: "700", color: lv.fg },
+  h1: { ...type.title1, color: lv.fg },
+  footnote: { ...type.footnote, textAlign: "center" },
 });

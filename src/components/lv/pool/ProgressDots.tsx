@@ -1,11 +1,11 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { night } from "@/theme/tokens";
+import { night, type } from "@/theme/tokens";
 
 /** Five dots (gold on the night pool): how many boats until the next coin, and whether a coin is waiting. */
 export function ProgressDots({ progress, wishesLeft }: { progress: number; wishesLeft: number }) {
   return (
-    <View testID="boat-progress" style={styles.wrap}>
+    <View testID="boat-progress" style={styles.wrap} accessibilityLabel={`${progress} of 5 boats toward your next coin`}>
       <View style={styles.dots}>
         {[0, 1, 2, 3, 4].map((i) => (
           <View key={i} style={[styles.dot, i < progress && styles.dotOn]} />
@@ -20,17 +20,10 @@ export function ProgressDots({ progress, wishesLeft }: { progress: number; wishe
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", gap: 10 },
+  wrap: { alignItems: "center", gap: 10, paddingTop: 4 },
   dots: { flexDirection: "row", gap: 8 },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: night.border,
-  },
-  dotOn: { backgroundColor: night.gold, borderColor: night.goldBright },
-  line: { fontSize: 13, color: night.mutedFg },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.14)" },
+  dotOn: { backgroundColor: night.gold },
+  line: { ...type.footnote, color: night.mutedFg, textAlign: "center" },
   have: { color: night.gold, fontWeight: "600" },
 });

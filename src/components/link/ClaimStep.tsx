@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DButton, DCard, DError, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { phoneFromParts } from "@/lib/phoneNumber";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 import { cleanError, isSixDigitCode } from "./claim/errors";
 import { canPickPhoto, pickPhotoWeb, uploadPhoto } from "./claim/photo";
@@ -191,7 +191,8 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
             <Switch
               value={showNameAndCity}
               onValueChange={setShowNameAndCity}
-              trackColor={{ true: lv.thread, false: lv.border }}
+              trackColor={{ true: lv.thread, false: lv.fillStrong }}
+              ios_backgroundColor={lv.fillStrong}
               testID="claim-show-name"
             />
           </Pressable>
@@ -279,12 +280,12 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 20, fontWeight: "700", color: lv.fg },
-  section: { gap: 18 },
+  title: { ...type.title3, color: lv.fg },
+  section: { gap: 16 },
   row: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
   grow: { flex: 1 },
   // Same height as the field next to it so the row reads as one control.
-  codeBtn: { height: 52 },
-  toggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  toggleText: { color: lv.fg, fontSize: 15 },
+  codeBtn: { height: 50 },
+  toggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 44 },
+  toggleText: { ...type.body, color: lv.fg, flexShrink: 1 },
 });

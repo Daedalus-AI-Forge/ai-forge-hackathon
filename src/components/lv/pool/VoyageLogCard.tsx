@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { glass } from "@/components/lv/home/glass";
-import { lv } from "@/theme/tokens";
+import { Glass, Icon } from "@/components/ios";
+import { layout, lv, type } from "@/theme/tokens";
 
 export type VoyageLog = {
   hopId: string;
@@ -20,23 +20,25 @@ export function VoyageLogCard({ log, onDismiss }: { log: VoyageLog; onDismiss: (
   const route = log.cities.filter((c): c is string => !!c);
   const people = `${log.people} ${log.people === 1 ? "person" : "people"}`;
   return (
-    <Pressable
+    <Glass
       testID="voyage-log"
-      accessibilityRole="button"
       onPress={() => router.push({ pathname: "/boat/[hopId]", params: { hopId: log.hopId } })}
-      style={({ pressed }) => [styles.card, glass.light, pressed && { opacity: 0.85 }]}
+      style={styles.card}
     >
       <View style={styles.head}>
-        <Text style={glass.eyebrow}>⛵︎ Voyage log</Text>
+        <View style={styles.eyebrowRow}>
+          <Icon name="boat" size={13} color={lv.thread} />
+          <Text style={styles.eyebrow}>Voyage log</Text>
+        </View>
         <Pressable
           testID="voyage-log-dismiss"
           accessibilityRole="button"
           accessibilityLabel="Dismiss voyage log"
           hitSlop={12}
           onPress={onDismiss}
-          style={styles.dismiss}
+          style={({ pressed }) => [styles.dismiss, pressed && { opacity: 0.6 }]}
         >
-          <Text style={styles.dismissText}>✕</Text>
+          <Icon name="close" size={11} color={lv.mutedFg} weight="bold" />
         </Pressable>
       </View>
       <Text style={styles.body}>
@@ -48,7 +50,7 @@ export function VoyageLogCard({ log, onDismiss }: { log: VoyageLog; onDismiss: (
           {route.map((city, i) => (
             <View key={`${city}-${i}`} style={styles.routeStep}>
               {i > 0 ? <View style={styles.dash} /> : null}
-              <Text style={styles.routeCity}>{city}</Text>
+              <Text style={[styles.routeCity, i === route.length - 1 && styles.routeLast]}>{city}</Text>
             </View>
           ))}
         </View>
@@ -59,28 +61,29 @@ export function VoyageLogCard({ log, onDismiss }: { log: VoyageLog; onDismiss: (
             It found <Text style={styles.bold}>{log.found.name}</Text>
             {log.found.city ? ` in ${log.found.city}` : ""}: “{log.found.story}”
           </Text>
-          <Text style={styles.hop}>You're only {people} apart.</Text>
+          <Text style={styles.meta}>You're only {people} apart.</Text>
         </View>
       ) : (
-        <Text style={styles.hop}>It's still drifting.</Text>
+        <Text style={styles.meta}>It's still drifting.</Text>
       )}
-      {log.fastest != null ? <Text style={styles.fastest}>Fastest line today: {log.fastest} hops</Text> : null}
-    </Pressable>
+      {log.fastest != null ? <Text style={styles.meta}>Fastest line today: {log.fastest} hops</Text> : null}
+    </Glass>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: lv.radiusXl, padding: 16, gap: 8 },
+  card: { padding: layout.cardPadding, gap: 8 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  dismiss: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  dismissText: { color: lv.mutedFg, fontSize: 14, fontWeight: "600" },
-  body: { fontSize: 15, color: lv.fg, lineHeight: 21 },
-  bold: { fontWeight: "700" },
-  route: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
-  routeStep: { flexDirection: "row", alignItems: "center", gap: 6 },
-  dash: { width: 14, height: 2, backgroundColor: lv.thread, borderRadius: 1 },
-  routeCity: { fontSize: 12, color: lv.mutedFg },
-  found: { gap: 2 },
-  hop: { fontSize: 13, color: lv.mutedFg },
-  fastest: { fontSize: 12, color: lv.mutedFg },
+  eyebrowRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  eyebrow: { ...type.eyebrow, color: lv.thread },
+  dismiss: { width: 26, height: 26, borderRadius: 13, backgroundColor: lv.fill, alignItems: "center", justifyContent: "center" },
+  body: { ...type.subheadline, color: lv.fg },
+  bold: { fontWeight: "600" },
+  route: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", rowGap: 6 },
+  routeStep: { flexDirection: "row", alignItems: "center" },
+  dash: { width: 14, height: 2, backgroundColor: lv.thread, borderRadius: 1, marginHorizontal: 6 },
+  routeCity: { ...type.footnote, color: lv.mutedFg },
+  routeLast: { color: lv.fg, fontWeight: "600" },
+  found: { gap: 4 },
+  meta: { ...type.footnote, color: lv.mutedFg },
 });

@@ -1,17 +1,18 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { Glass, Icon } from "@/components/ios";
 import { errorMessage } from "@/components/ui";
 import { countdown, nextUtcMidnight, useNow } from "@/lib/time";
-import { lv, night } from "@/theme/tokens";
+import { layout, lv, night, type } from "@/theme/tokens";
 
 const useNativeDriver = Platform.OS !== "web";
 
 /**
- * Today's boat, styled as the prototype's daily-challenge card: dark glass, a gold star,
- * the time until the boat rolls over, and one gold action. Data stays on api.daily.*.
+ * Today's boat on the night pool, styled as the prototype's daily-challenge card: dark glass, a gold
+ * star, the time until the boat rolls over, and a gold "open" cue. Data stays on api.daily.*.
  */
 export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; date: string; onOpen: (hopId: string) => void }) {
   const today = useQuery(api.daily.today, { deviceId, date });
@@ -61,124 +62,90 @@ export type TodayBoatViewProps = {
 
 /** The card itself, free of data loading (used by TodayBoatCard). */
 export function TodayBoatView({ title, hint, players, open, pushed, busy, error, onPress }: TodayBoatViewProps) {
-  const [glow] = useState(() => new Animated.Value(0));
+  const live = !pushed && open;
   const now = useNow(1000);
+  const [glow] = useState(() => new Animated.Value(0));
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, {
-          toValue: 1,
-          duration: 1900,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver,
-        }),
-        Animated.timing(glow, {
-          toValue: 0,
-          duration: 1900,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver,
-        }),
+        Animated.timing(glow, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver }),
+        Animated.timing(glow, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver }),
       ]),
     );
     anim.start();
     return () => anim.stop();
   }, [glow]);
+
   return (
     <Animated.View
-      style={
-        pushed || !open
-          ? null
-          : {
-              shadowColor: lv.gold,
-              shadowOpacity: glow.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.35, 0.75],
-              }),
+      style={[
+        styles.halo,
+        live
+          ? {
+              shadowColor: night.gold,
+              shadowOpacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.75] }),
               shadowRadius: 24,
               shadowOffset: { width: 0, height: 6 },
               elevation: 8,
             }
-      }
+          : null,
+      ]}
     >
-      <Pressable
+      <Glass
         testID="today-boat"
-        accessibilityRole="button"
-        accessibilityLabel={pushed ? "Today's boat, pushed" : `Today's boat: ${title}. Open it`}
-        disabled={pushed || busy || !open}
+        variant="dark"
+        disabled={!live || busy}
         onPress={onPress}
-        style={({ pressed }) => [styles.card, pushed && styles.cardPushed, pressed && { opacity: 0.88 }]}
+        accessibilityLabel={pushed ? "Today’s boat, pushed" : `Today’s boat: ${title}`}
+        accessibilityHint={pushed ? undefined : "Opens today’s boat"}
+        style={styles.card}
       >
         <Text style={styles.label}>
-          <Text style={styles.star}>★ </Text>
-          {pushed ? "Today's boat · pushed" : `Today's boat · new one in ${countdown(nextUtcMidnight(now), now)}`}
+          ★ {pushed ? "Today’s boat · pushed" : `Today’s boat · new one in ${countdown(nextUtcMidnight(now), now)}`}
         </Text>
         {pushed ? (
-          <Text style={styles.pushed}>It’s drifting. A new boat rises tomorrow.</Text>
+          <View style={styles.pushedRow}>
+            <View style={styles.check}>
+              <Icon name="check" size={14} color={night.goldFg} weight="bold" />
+            </View>
+            <Text style={styles.pushed}>It’s drifting. A new boat rises tomorrow.</Text>
+          </View>
         ) : (
-          <>
+          <View style={[styles.body, !open && styles.dim]}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.hint}>Clue: {hint}</Text>
+            {/* The whole card opens the boat; the Pool keeps a single primary button. */}
             <View style={styles.footer}>
-              <Text style={styles.players}>{players} pushing today</Text>
-              <View style={styles.cta}>
-                <Text style={styles.ctaText}>{busy ? "Opening…" : "Open the boat"}</Text>
-              </View>
+              <Text style={styles.players}>{busy ? "Opening…" : `${players} pushing today`}</Text>
+              {open && !busy ? (
+                <View style={styles.open}>
+                  <Text style={styles.openText}>Tap to open</Text>
+                  <Icon name="forward" size={12} color={night.goldFg} weight="bold" />
+                </View>
+              ) : null}
             </View>
-          </>
+          </View>
         )}
         {error ? <Text style={styles.error}>{error}</Text> : null}
-      </Pressable>
+      </Glass>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: lv.radiusXl,
-    padding: 20,
-    gap: 8,
-    backgroundColor: night.glassStrong,
-    borderWidth: 1,
-    borderColor: night.border,
-  },
-  cardPushed: { opacity: 0.8 },
-  label: {
-    fontSize: 13,
-    color: night.gold,
-    letterSpacing: 0.3,
-    fontVariant: ["tabular-nums"],
-  },
-  star: { color: night.gold },
-  title: {
-    fontSize: 26,
-    color: night.fg,
-    lineHeight: 31,
-    marginTop: 2,
-    fontFamily: night.serif,
-  },
-  hint: { fontSize: 15, color: night.mutedFg, lineHeight: 21 },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-    gap: 12,
-  },
-  players: { fontSize: 13, color: night.mutedFg, flexShrink: 1 },
-  cta: {
-    height: 40,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    backgroundColor: night.gold,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ctaText: { fontSize: 15, fontWeight: "600", color: night.goldFg },
-  pushed: {
-    fontSize: 17,
-    color: night.fg,
-    fontFamily: night.serif,
-    paddingVertical: 4,
-  },
-  error: { color: "#FF8A80", fontSize: 13 },
+  halo: { borderRadius: lv.radiusXl },
+  card: { padding: layout.cardPadding + 4, gap: 8 },
+  label: { ...type.footnote, color: night.gold, fontVariant: ["tabular-nums"] },
+  body: { gap: 6 },
+  dim: { opacity: 0.55 },
+  title: { fontSize: 26, lineHeight: 31, color: night.fg, fontFamily: night.serif },
+  hint: { ...type.subheadline, color: night.mutedFg },
+  footer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 },
+  players: { ...type.footnote, color: night.mutedFg, flexShrink: 1 },
+  open: { flexDirection: "row", alignItems: "center", gap: 4, height: 32, paddingHorizontal: 14, borderRadius: 999, backgroundColor: night.gold },
+  openText: { ...type.footnote, fontWeight: "600", color: night.goldFg },
+  pushedRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 2 },
+  check: { width: 24, height: 24, borderRadius: 12, backgroundColor: night.gold, alignItems: "center", justifyContent: "center" },
+  pushed: { fontSize: 17, lineHeight: 22, color: night.fg, fontFamily: night.serif, flexShrink: 1 },
+  error: { ...type.footnote, color: "#FF8A80" },
 });

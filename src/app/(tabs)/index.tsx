@@ -3,20 +3,20 @@ import { useMutation, useQuery } from "convex/react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ImageBackground, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { CenterScreen, LargeTitle, Screen } from "@/components/ios";
+import { DButton } from "@/components/lv/passon/kit";
 import { BoatCard } from "@/components/lv/pool/BoatCard";
 import { CoinsFloor, type PoolCoin } from "@/components/lv/pool/CoinsFloor";
 import { ProgressDots } from "@/components/lv/pool/ProgressDots";
 import { TodayBoatCard } from "@/components/lv/pool/TodayBoatCard";
 import { VoyageLogCard, type VoyageLog } from "@/components/lv/pool/VoyageLogCard";
 import { NightPool } from "@/components/lv/pool/NightPool";
-import { SHELL_TAB_CLEARANCE } from "@/components/lv/shell/tabBarStyle";
 import { Avatar, errorMessage } from "@/components/ui";
 import { useMe } from "@/lib/device";
-import { night, poolImages } from "@/theme/tokens";
+import { layout, night, poolImages, type } from "@/theme/tokens";
 
 const ONBOARDED_KEY = "wishwell.onboarded";
 const LOG_DISMISS_KEY = "wishwell.logDismissed";
@@ -36,7 +36,7 @@ export default function ThePool() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { width } = useWindowDimensions();
-  const poolSize = Math.min(width, 430) - 40 - 16 - 24;
+  const poolSize = Math.min(width, layout.maxWidth) - layout.margin * 2 - 16 - 24;
 
   // The pool is a night scene: light status bar while it is on screen, the app default elsewhere.
   useFocusEffect(
@@ -76,13 +76,7 @@ export default function ThePool() {
     };
   }, [date]);
 
-  if (!home || !deviceId) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={night.gold} />
-      </View>
-    );
-  }
+  if (!home || !deviceId) return <CenterScreen />;
 
   const user = home.user;
   const wishesLeft = user.wishesLeft;
@@ -106,147 +100,104 @@ export default function ThePool() {
   const pushBoat = () => {
     if (busy) return;
     if (friends.length > 0) {
-      router.push({
-        pathname: "/w/[hopId]",
-        params: { hopId: friends[0].hopId, start: "pass" },
-      });
+      router.push({ pathname: "/w/[hopId]", params: { hopId: friends[0].hopId, start: "pass" } });
     } else {
       void openToday();
     }
   };
 
-  const coins: PoolCoin[] = (mine ?? [])
-    .filter((w) => w.status === "traveling" || w.status === "found" || w.status === "granted")
-    .slice(0, 3);
+  const coins: PoolCoin[] = (mine ?? []).filter((w) => w.status === "traveling" || w.status === "found" || w.status === "granted").slice(0, 3);
   const primary = friends.length > 0 || todayUnpushed ? "push" : wishesLeft > 0 ? "toss" : "none";
 
   return (
-    <View style={styles.root}>
+    <Screen tab testID="well-screen" backdrop={<NightBackdrop />}>
+      <LargeTitle
+        eyebrowColor={night.mutedFg}
+        eyebrow={`${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${progress}/5 boats`}
+        title={<Text style={styles.brand}>Wishwell</Text>}
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Profile"
+            onPress={() => router.push("/me")}
+            hitSlop={8}
+            style={({ pressed }) => [styles.avatar, pressed && { transform: [{ scale: 0.94 }] }]}
+          >
+            <Avatar name={user.name} color={user.avatar} size={40} />
+          </Pressable>
+        }
+      />
+
+      {voyageLog && !logDismissed ? (
+        <VoyageLogCard log={voyageLog as VoyageLog} onDismiss={() => void AsyncStorage.setItem(LOG_DISMISS_KEY, date).then(() => setLogDismissed(true))} />
+      ) : null}
+
+      <NightPool size={poolSize} coins={coins.length} />
+
+      <View style={styles.boats}>
+        {friends.map((c) => (
+          <BoatCard
+            key={c.hopId}
+            hopId={c.hopId}
+            creatorName={c.creatorName}
+            text={c.text}
+            depth={c.depth}
+            expiresAt={c.expiresAt}
+          />
+        ))}
+        {today ? <TodayBoatCard deviceId={deviceId} date={date} onOpen={(hopId) => router.push({ pathname: "/w/[hopId]", params: { hopId } })} /> : null}
+      </View>
+
+      {coins.length > 0 ? <CoinsFloor coins={coins} /> : null}
+
+      <ProgressDots progress={progress} wishesLeft={wishesLeft} />
+
+      {primary === "push" ? (
+        <DButton testID="primary-action" title="Push today's boat" variant="gold" size="lg" busy={busy} onPress={pushBoat} />
+      ) : primary === "toss" ? (
+        <View testID="toss-button">
+          <DButton testID="primary-action" title="Toss a coin" variant="gold" size="lg" onPress={() => router.push("/toss")} />
+        </View>
+      ) : (
+        <Text testID="pool-done" style={styles.done}>
+          Come back tomorrow morning for your voyage log
+        </Text>
+      )}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {demoEnabled && friends.length === 0 && deviceId ? (
+        <DButton
+          testID="use-demo-profile"
+          title="Try it with demo wishes"
+          variant="plain"
+          size="sm"
+          style={styles.demo}
+          onPress={() => void claimDemo({ deviceId })}
+        />
+      ) : null}
+    </Screen>
+  );
+}
+
+/** The teammates' night garden behind the pool: the fountain, dimmed so text and glass stay legible. */
+function NightBackdrop() {
+  return (
+    <View style={[StyleSheet.absoluteFill, styles.night]}>
       <ImageBackground source={poolImages.fountain} style={StyleSheet.absoluteFill} resizeMode="cover" imageStyle={styles.fountain}>
         <View style={[StyleSheet.absoluteFill, styles.dim]} />
-        <View style={styles.scrimTop} />
       </ImageBackground>
-      <SafeAreaView style={styles.safe} edges={["top"]}>
-        <ScrollView testID="well-screen" contentContainerStyle={styles.container}>
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.eyebrow}>
-                {wishesLeft} coin{wishesLeft === 1 ? "" : "s"} · {progress}/5 boats
-              </Text>
-              <Text style={styles.brand}>Wishwell</Text>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push("/me")}>
-              <Avatar name={user.name} color={user.avatar} size={36} />
-            </Pressable>
-          </View>
-
-          {voyageLog && !logDismissed ? (
-            <VoyageLogCard
-              log={voyageLog as VoyageLog}
-              onDismiss={() => void AsyncStorage.setItem(LOG_DISMISS_KEY, date).then(() => setLogDismissed(true))}
-            />
-          ) : null}
-
-          <NightPool size={poolSize} coins={coins.length} />
-
-          <View style={styles.boats}>
-            {friends.map((c) => (
-              <BoatCard key={c.hopId} hopId={c.hopId} creatorName={c.creatorName} text={c.text} depth={c.depth} expiresAt={c.expiresAt} />
-            ))}
-            {today ? (
-              <TodayBoatCard
-                deviceId={deviceId}
-                date={date}
-                onOpen={(hopId) => router.push({ pathname: "/w/[hopId]", params: { hopId } })}
-              />
-            ) : null}
-          </View>
-
-          {coins.length > 0 ? <CoinsFloor coins={coins} /> : null}
-
-          <ProgressDots progress={progress} wishesLeft={wishesLeft} />
-
-          {primary === "push" ? (
-            <Pressable
-              testID="primary-action"
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={pushBoat}
-              style={({ pressed }) => [styles.primary, (pressed || busy) && styles.primaryPressed]}
-            >
-              <Text style={styles.primaryText}>{busy ? "Opening…" : "Push today's boat"}</Text>
-            </Pressable>
-          ) : primary === "toss" ? (
-            <View testID="toss-button">
-              <Pressable
-                testID="primary-action"
-                accessibilityRole="button"
-                onPress={() => router.push("/toss")}
-                style={({ pressed }) => [styles.primary, pressed && styles.primaryPressed]}
-              >
-                <Text style={styles.primaryText}>Toss a coin</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Text testID="pool-done" style={styles.done}>
-              Come back tomorrow morning for your voyage log
-            </Text>
-          )}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {demoEnabled && friends.length === 0 && deviceId ? (
-            <Pressable
-              testID="use-demo-profile"
-              accessibilityRole="button"
-              onPress={() => void claimDemo({ deviceId })}
-              style={styles.demo}
-            >
-              <Text style={styles.demoText}>Try it with demo wishes</Text>
-            </Pressable>
-          ) : null}
-        </ScrollView>
-      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: night.deep },
+  night: { backgroundColor: night.deep, pointerEvents: "none" },
   fountain: { opacity: 0.55, width: "100%", height: "100%" },
   dim: { backgroundColor: "rgba(7,20,26,0.5)" },
-  scrimTop: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 180,
-    backgroundColor: "rgba(7,20,26,0.35)",
-  },
-  safe: { flex: 1 },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: night.deep,
-  },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 20,
-    maxWidth: 430,
-    width: "100%",
-    alignSelf: "center",
-    paddingBottom: SHELL_TAB_CLEARANCE,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  eyebrow: { fontSize: 13, color: night.mutedFg, letterSpacing: 0.2 },
   brand: {
     fontSize: 46,
     lineHeight: 52,
+    fontWeight: "400",
     color: night.fg,
     fontFamily: night.serif,
     textShadowColor: "rgba(233,199,102,0.55)",
@@ -254,30 +205,8 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
   },
   boats: { gap: 14 },
-  primary: {
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: night.gold,
-    borderWidth: 1,
-    borderColor: night.goldBright,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: night.gold,
-    shadowOpacity: 0.55,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  primaryPressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },
-  primaryText: { color: night.goldFg, fontSize: 18, fontWeight: "600" },
-  done: {
-    fontSize: 15,
-    color: night.mutedFg,
-    textAlign: "center",
-    paddingVertical: 14,
-    fontFamily: night.serif,
-  },
-  error: { color: "#FF8A80", fontSize: 13, textAlign: "center" },
-  demo: { alignItems: "center", paddingVertical: 8 },
-  demoText: { color: night.mutedFg, fontSize: 15, fontWeight: "600" },
+  avatar: { borderRadius: 999, boxShadow: "0px 4px 12px rgba(0,0,0,0.3)" },
+  done: { ...type.footnote, color: night.mutedFg, textAlign: "center", paddingVertical: 14 },
+  error: { ...type.footnote, color: "#FF8A80", textAlign: "center" },
+  demo: { alignSelf: "center" },
 });

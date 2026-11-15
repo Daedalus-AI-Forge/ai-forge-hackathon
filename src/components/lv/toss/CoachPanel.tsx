@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 
 import { api } from "@/convex/_generated/api";
 import { errorMessage } from "@/components/ui";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 import { Eyebrow, LvAvatar, LvButton, LvCard } from "./parts";
 
@@ -20,11 +20,14 @@ export function CoachPanel({
   deviceId,
   wishText,
   onPick,
+  onSuggestions,
   pickedNames,
 }: {
   deviceId: string | null;
   wishText: string;
   onPick: (p: CoachPick) => void;
+  /** Called with the top suggestions each time the coach answers (the screen decides whether to prefill). */
+  onSuggestions?: (s: CoachPick[]) => void;
   pickedNames: string[];
 }) {
   const readiness = useQuery(api.graph.coachReady, deviceId ? { deviceId } : "skip");
@@ -46,6 +49,7 @@ export function CoachPanel({
       if (r.ready) {
         const suggestions = r.suggestions.slice(0, 3).map((x) => ({ name: x.name, why: x.why }));
         setResult({ message: r.message, suggestions });
+        onSuggestions?.(suggestions);
         setTurns([...nextTurns, { role: "coach", text: r.message }]);
       } else setResult(null);
     } catch (e) {
@@ -155,11 +159,11 @@ export function CoachPanel({
 }
 
 const s = StyleSheet.create({
-  msg: { fontSize: 16, lineHeight: 22, color: lv.fg, fontWeight: "500" },
-  hint: { fontSize: 14, lineHeight: 20, color: lv.mutedFg },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6 },
-  name: { fontSize: 15, fontWeight: "600", color: lv.fg },
-  why: { fontSize: 12, color: lv.mutedFg, marginTop: 2 },
-  add: { fontSize: 13, fontWeight: "600", color: lv.thread },
-  err: { fontSize: 13, color: lv.destructive },
+  msg: { ...type.callout, fontWeight: "500", color: lv.fg },
+  hint: { ...type.subheadline, color: lv.mutedFg },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6, minHeight: 52 },
+  name: { ...type.subheadline, fontWeight: "600", color: lv.fg },
+  why: { ...type.caption1, color: lv.mutedFg, marginTop: 2 },
+  add: { ...type.subheadline, fontWeight: "600", color: lv.thread },
+  err: { ...type.footnote, color: lv.destructive },
 });

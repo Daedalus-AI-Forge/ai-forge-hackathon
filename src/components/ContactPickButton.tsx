@@ -4,7 +4,7 @@ import { StyleSheet, Text } from "react-native";
 
 import { DButton } from "@/components/lv/passon/kit";
 import { choosePhone, toE164 } from "@/lib/contactPick";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 export type PickedContact = { name: string; phone: string | null };
 
@@ -71,7 +71,7 @@ export function ContactPickButton({ onPick, testID = "contact-pick" }: { onPick:
 
   return (
     <>
-      <DButton title="Pick from contacts" variant="ghost" size="sm" busy={busy} onPress={onPress} testID={testID} />
+      <DButton title="Pick from contacts" icon="contact" variant="ghost" size="sm" busy={busy} onPress={onPress} testID={testID} />
       {note ? (
         <Text style={s.note} testID={`${testID}-note`}>
           {note}
@@ -81,4 +81,4 @@ export function ContactPickButton({ onPick, testID = "contact-pick" }: { onPick:
   );
 }
 
-const s = StyleSheet.create({ note: { fontSize: 13, color: lv.mutedFg } });
+const s = StyleSheet.create({ note: { ...type.footnote, color: lv.mutedFg, paddingHorizontal: 4 } });

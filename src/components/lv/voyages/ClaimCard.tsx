@@ -10,7 +10,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cleanError } from "@/components/link/claim/errors";
 import { withTimeout } from "@/components/link/push/shareCopy";
 import { DButton, DCard, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 export type PendingClaim = {
   hopId: Id<"hops">;
@@ -139,9 +139,9 @@ export function ClaimCard({
 }
 
 const s = StyleSheet.create({
-  title: { fontSize: 18, fontWeight: "600", color: lv.fg, lineHeight: 24 },
-  wish: { fontSize: 13, color: lv.mutedFg, lineHeight: 19 },
-  quote: { fontSize: 15, color: lv.fg, lineHeight: 21, fontStyle: "italic" },
-  answer: { fontSize: 14, color: lv.fg, lineHeight: 20 },
-  actions: { gap: 8, marginTop: 4 },
+  title: { ...type.headline, color: lv.fg },
+  wish: { ...type.footnote, color: lv.mutedFg },
+  quote: { ...type.subheadline, color: lv.fg, fontStyle: "italic" },
+  answer: { ...type.subheadline, color: lv.fg },
+  actions: { gap: 10, marginTop: 4 },
 });

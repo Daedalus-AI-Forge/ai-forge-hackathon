@@ -9,7 +9,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { DButton, DCard, DError, DField, Sub } from "@/components/lv/passon/kit";
 import { smsHref } from "@/lib/contactPick";
 import { copyLink } from "@/lib/links";
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 import { fallbackShareMessage, ogShareUrl, withTimeout } from "./shareCopy";
 
@@ -128,6 +128,6 @@ export function ResendCard({ childHopId, childName, vouch, wishText }: ResendCar
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 20, fontWeight: "700", color: lv.fg },
+  title: { ...type.title3, color: lv.fg },
   row: { flexDirection: "row", gap: 8, alignItems: "center" },
 });

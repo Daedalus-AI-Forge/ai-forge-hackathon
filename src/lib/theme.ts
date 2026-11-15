@@ -1,14 +1,17 @@
 import { Platform } from "react-native";
 
+import { lv } from "@/theme/tokens";
+
+// Legacy palette names, now mapped onto the shared tokens so older screens match the rest.
 export const colors = {
-  cream: "#FBF6EC",
-  card: "#FFFFFF",
-  ink: "#1D1A16",
-  muted: "#7A7166",
-  line: "#E8DFCF",
-  red: "#E63946",
-  redSoft: "#FCE3E5",
-  water: "#EFE7D6",
+  cream: lv.bg,
+  card: lv.card,
+  ink: lv.fg,
+  muted: lv.mutedFg,
+  line: lv.border,
+  red: lv.thread,
+  redSoft: lv.accent,
+  water: lv.muted,
 };
 
 export const mono = Platform.select({
@@ -17,4 +20,4 @@ export const mono = Platform.select({
   default: "ui-monospace, SFMono-Regular, Menlo, monospace",
 });
 
-export const radius = { card: 20, pill: 999 };
+export const radius = { card: lv.radiusXl, pill: 999 };

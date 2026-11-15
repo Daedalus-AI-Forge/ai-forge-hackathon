@@ -1,21 +1,20 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform, StyleSheet, Switch, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ContactPickButton } from "@/components/ContactPickButton";
 import { ContactSuggestions } from "@/components/ContactSuggestions";
+import { BackButton, CenterScreen, Glass as Surface, NavBar, Screen } from "@/components/ios";
 import { ShareLink } from "@/components/ShareLink";
 import { WellHint } from "@/components/WellHint";
 import { errorMessage } from "@/components/ui";
-import { DAvatar, DButton, DCard, DChips, DError, DField, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
+import { DAvatar, DButton, DCard, DChips, DError, DField, DTag, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
 import { useDeviceId, useMe } from "@/lib/device";
 import { countdown, useNow } from "@/lib/time";
-import { lv } from "@/theme/tokens";
-import { formScrollProps } from "@/components/keyboard";
+import { lv, type } from "@/theme/tokens";
 
 const HOW = ["friend", "coworker", "family", "roommate", "classmate", "neighbor"] as const;
 const HOW_LONG = ["under a year", "1–5 years", "5–10 years", "10+ years"] as const;
@@ -26,15 +25,13 @@ type Mode = "view" | "its_me" | "me" | "vouch" | "pass" | "done";
 
 function Header({ eyebrow, title, sub, onBack }: { eyebrow?: string; title: string; sub?: string; onBack?: () => void }) {
   return (
-    <View style={{ paddingTop: 4, gap: 8 }}>
-      {onBack ? (
-        <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} testID="pass-back">
-          <Text style={styles.back}>←</Text>
-        </Pressable>
-      ) : null}
-      {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <Text style={styles.h1}>{title}</Text>
-      {sub ? <Sub>{sub}</Sub> : null}
+    <View style={styles.header}>
+      {onBack ? <NavBar left={<BackButton onPress={onBack} testID="pass-back" />} /> : null}
+      <View style={styles.headerText}>
+        {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
+        <Text style={styles.h1}>{title}</Text>
+        {sub ? <Sub>{sub}</Sub> : null}
+      </View>
     </View>
   );
 }
@@ -54,7 +51,6 @@ export default function PassOn() {
   const draftVouch = useAction(api.ai.draftVouch);
   const draftMessage = useAction(api.ai.draftPassMessage);
   const now = useNow();
-  const insets = useSafeAreaInsets();
 
   const [mode, setMode] = useState<Mode>("view");
   const [action, setAction] = useState<"pass" | "group">("pass");
@@ -123,19 +119,13 @@ export default function PassOn() {
     setMode(m);
   };
 
-  if (data === undefined) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={lv.thread} />
-      </View>
-    );
-  }
+  if (data === undefined) return <CenterScreen />;
   if (data === null) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.h1}>This link has faded.</Text>
-        <Sub>Ask whoever sent it for a fresh one.</Sub>
-      </View>
+      <CenterScreen>
+        <Text style={[styles.h1, styles.centerText]}>This link has faded.</Text>
+        <Sub style={styles.centerText}>Ask whoever sent it for a fresh one.</Sub>
+      </CenterScreen>
     );
   }
 
@@ -152,12 +142,7 @@ export default function PassOn() {
   const doneKind = actedAs ?? (hop.action === "its_me" ? "its_me" : null);
 
   return (
-    <ScrollView
-      testID="pass-on-screen"
-      style={{ backgroundColor: lv.bg }}
-      contentContainerStyle={[styles.container, { paddingTop: insets.top + 16 }]}
-      {...formScrollProps}
-    >
+    <Screen testID="pass-on-screen">
       <Stack.Screen options={{ title: "A paper boat for you" }} />
 
       {mode === "view" || (!open && mode !== "done") ? (
@@ -165,7 +150,7 @@ export default function PassOn() {
           <Text style={styles.hero}>
             A paper boat{"\n"}drifted to you.
           </Text>
-          <Sub>
+          <Sub style={styles.heroSub}>
             {data.chain.length > 0
               ? `${data.senderName} pushed it to you.`
               : fromTheWell
@@ -176,11 +161,7 @@ export default function PassOn() {
           <Glass testID="pass-on-wish">
             <Text style={styles.wishText}>{wish.text}</Text>
             <View style={styles.sourceRow}>
-              <View style={[styles.sourcePill, wish.daily ? styles.sourceGold : styles.sourceThread]}>
-                <Text style={[styles.sourceText, !wish.daily && { color: lv.threadFg }]}>
-                  {wish.daily ? "Today's boat" : `${wish.creatorName}'s real wish`}
-                </Text>
-              </View>
+              <DTag label={wish.daily ? "Today's boat" : `${wish.creatorName}'s real wish`} tone={wish.daily ? "gold" : "threadSolid"} />
               <View style={styles.row}>
                 <View style={[styles.dot, !open && { backgroundColor: lv.mutedFg }]} />
                 <Text testID="pass-on-countdown" style={styles.mono}>
@@ -223,7 +204,7 @@ export default function PassOn() {
                 </Text>
               </View>
             ) : (
-              <View style={{ gap: 8, marginTop: 6 }}>
+              <View style={styles.actions}>
                 <View style={styles.grid}>
                   <DButton testID="pass-its-me" title="That's me" variant="ink" style={{ flex: 1 }} onPress={() => go("its_me")} />
                   <DButton
@@ -239,9 +220,9 @@ export default function PassOn() {
                 </View>
                 <DButton
                   testID="pass-group"
-                  title="👥  Push to a group chat"
+                  title="Push to a group chat"
+                  icon="group"
                   variant="ghost"
-                  size="sm"
                   onPress={() => {
                     setAction("group");
                     go("me");
@@ -274,17 +255,18 @@ export default function PassOn() {
                   testID="its-me-intro"
                 />
                 <View style={styles.pair}>
-                  <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" containerStyle={{ flex: 1 }} />
-                  <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" containerStyle={{ flex: 1 }} />
+                  <DField grow placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" />
+                  <DField grow placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" />
                 </View>
                 <View style={styles.toggleRow}>
+                  <Text style={styles.toggleLabel}>Show my name and city in their voyage log</Text>
                   <Switch
                     testID="its-me-show"
                     value={showNameAndCity}
                     onValueChange={setShowNameAndCity}
-                    trackColor={{ true: lv.thread, false: lv.mutedFg }}
+                    trackColor={{ true: lv.thread, false: lv.fillStrong }}
+                    ios_backgroundColor={lv.fillStrong}
                   />
-                  <Text style={styles.toggleLabel}>Show my name and city in their voyage log</Text>
                 </View>
                 <DError error={error} />
                 <DButton
@@ -319,8 +301,8 @@ export default function PassOn() {
                   testID="its-me-contact"
                 />
                 <View style={styles.pair}>
-                  <DField placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" containerStyle={{ flex: 1 }} />
-                  <DField placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" containerStyle={{ flex: 1 }} />
+                  <DField grow placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" />
+                  <DField grow placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" />
                 </View>
                 <DError error={error} />
                 <DButton
@@ -349,8 +331,8 @@ export default function PassOn() {
           <Header eyebrow="Step 1 of 3" title="Who are you?" onBack={() => go("view")} />
           <DCard>
             <View style={styles.pair}>
-              <DField placeholder="Your name" value={name} onChangeText={setName} testID="pass-name" containerStyle={{ flex: 1 }} />
-              <DField placeholder="Where are you?" value={city} onChangeText={setCity} testID="pass-city" containerStyle={{ flex: 1 }} />
+              <DField grow placeholder="Your name" value={name} onChangeText={setName} testID="pass-name" />
+              <DField grow placeholder="Where are you?" value={city} onChangeText={setCity} testID="pass-city" />
             </View>
             <DError error={fromTheWell ? error : null} />
           </DCard>
@@ -422,12 +404,12 @@ export default function PassOn() {
         <View style={{ gap: 16 }}>
           <Header eyebrow="Step 3 of 3" title={action === "group" ? "Share to a group chat" : "Push it to someone"} />
 
-          <View style={styles.clue}>
+          <Surface variant="dark" style={styles.clue}>
             <Text style={styles.clueEyebrow}>{wish.daily ? "Today's boat" : `${wish.creatorName}'s real wish`}</Text>
             <Text style={styles.clueText}>{wish.text}</Text>
             <Text style={styles.clueJog}>· Who do you know who'd light up at this?</Text>
             <Text style={styles.clueJog}>· Or who knows everyone who might?</Text>
-          </View>
+          </Surface>
 
           {data.children.map((c) => (
             <ShareLink key={c.hopId} hopId={c.hopId} name={c.name} message={messages[c.hopId] ?? c.passMessage} label={`Send ${c.name} their boat`} to={phones[c.hopId]} />
@@ -535,7 +517,7 @@ export default function PassOn() {
 
       {mode === "done" ? (
         doneKind === "its_me" ? (
-          <View style={{ gap: 14, paddingTop: 8 }}>
+          <View style={styles.doneWrap}>
             <Eyebrow>{wish.daily ? "That's me" : "Sent"}</Eyebrow>
             <DCard testID="pass-on-done">
               <Text style={styles.cardTitle}>
@@ -549,12 +531,14 @@ export default function PassOn() {
             </DCard>
           </View>
         ) : (
-          <View style={{ gap: 14, paddingTop: 8 }}>
+          <View style={styles.doneWrap}>
             <Eyebrow>Done for today</Eyebrow>
-            <View testID="pass-on-done" style={styles.prophecy}>
+            <View>
               <View style={styles.orb} />
-              <Text style={styles.prophecyText}>🔮 It might drift toward {firstTag}.</Text>
-              <Text style={styles.prophecySub}>Tomorrow morning your voyage log shows where it went.</Text>
+              <Surface testID="pass-on-done" variant="dark" radius={30} style={styles.prophecy}>
+                <Text style={styles.prophecyText}>🔮 It might drift toward {firstTag}.</Text>
+                <Text style={styles.prophecySub}>Tomorrow morning your voyage log shows where it went.</Text>
+              </Surface>
             </View>
             {user ? (
               <DCard>
@@ -573,7 +557,7 @@ export default function PassOn() {
                   <Text style={styles.saved}>✓ Got it. We'll send the ending to {contact}.</Text>
                 ) : (
                   <View style={styles.pair}>
-                    <DField value={contact} onChangeText={setContact} placeholder="Phone, WeChat or Instagram" testID="done-contact" />
+                    <DField grow value={contact} onChangeText={setContact} placeholder="Phone, WeChat or Instagram" testID="done-contact" />
                     <DButton
                       testID="done-save-contact"
                       title="Tell me"
@@ -595,51 +579,58 @@ export default function PassOn() {
           </View>
         )
       ) : null}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24, backgroundColor: lv.bg },
-  container: { paddingHorizontal: 20, paddingTop: 24, gap: 16, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 56 },
-  hero: { fontSize: 34, fontWeight: "700", lineHeight: 40, letterSpacing: -0.5, color: lv.fg, marginTop: 12 },
-  h1: { fontSize: 30, fontWeight: "700", lineHeight: 33, letterSpacing: -0.5, color: lv.fg },
-  back: { fontSize: 22, color: lv.mutedFg },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
+  centerText: { textAlign: "center" },
+  header: { gap: 12 },
+  headerText: { gap: 6 },
+  hero: { ...type.largeTitle, color: lv.fg, marginTop: 8 },
+  heroSub: { marginTop: -6 },
+  h1: { ...type.title1, color: lv.fg },
+  row: { flexDirection: "row", alignItems: "center", gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: lv.thread },
-  mono: { fontFamily: lv.font.mono, fontSize: 12, color: lv.fg },
-  wishText: { fontSize: 22, fontWeight: "700", lineHeight: 27, color: lv.fg },
-  sourceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  sourcePill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, alignSelf: "flex-start" },
-  sourceGold: { backgroundColor: lv.gold },
-  sourceThread: { backgroundColor: lv.thread },
-  sourceText: { fontSize: 12, fontWeight: "600", color: lv.fg },
+  mono: { fontFamily: lv.font.mono, fontSize: 12, color: lv.fg, fontVariant: ["tabular-nums"] },
+  wishText: { ...type.title2, color: lv.fg },
+  sourceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   chainWrap: { gap: 10 },
-  chainRow: { flexDirection: "row", alignItems: "stretch", marginBottom: 10 },
+  chainRow: { flexDirection: "row", alignItems: "stretch", gap: 10 },
   avatarCol: { width: 28, alignItems: "center" },
-  avatarStem: { width: 1, flex: 1, backgroundColor: lv.thread, marginTop: 3 },
-  chainText: { flex: 1, gap: 2, paddingTop: 4 },
-  vouchBy: { fontSize: 12, color: lv.mutedFg },
+  avatarStem: { width: 1.5, flex: 1, minHeight: 10, backgroundColor: lv.thread, marginVertical: 3, borderRadius: 1 },
+  chainText: { flex: 1, gap: 2, paddingTop: 4, paddingBottom: 12 },
+  vouchBy: { ...type.footnote, color: lv.mutedFg },
   vouchName: { color: lv.fg, fontWeight: "600" },
-  vouchText: { fontSize: 13.5, lineHeight: 18, color: lv.fg },
-  closed: { borderRadius: 12, backgroundColor: lv.muted, padding: 12 },
-  closedText: { fontSize: 14, color: lv.fg, lineHeight: 20 },
-  grid: { flexDirection: "row", gap: 8 },
-  pair: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
-  cardTitle: { fontSize: 14, fontWeight: "500", color: lv.fg },
-  toggleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  toggleLabel: { flex: 1, fontSize: 14, color: lv.fg, lineHeight: 19 },
-  clue: { borderRadius: 24, backgroundColor: lv.fg, padding: 16, gap: 4 },
-  clueEyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase", color: lv.bg, opacity: 0.6 },
-  clueText: { fontSize: 18, fontWeight: "700", lineHeight: 24, color: lv.bg, marginBottom: 6 },
-  clueJog: { fontSize: 13, color: lv.bg, opacity: 0.8 },
-  hint: { fontSize: 12, color: lv.mutedFg, textAlign: "center" },
-  prophecy: { overflow: "hidden", borderRadius: 28, backgroundColor: lv.fg, padding: 24, gap: 8, ...lv.shadow },
-  orb: { position: "absolute", right: -48, top: -48, width: 160, height: 160, borderRadius: 80, backgroundColor: lv.gold, opacity: 0.35 },
-  prophecyText: { fontSize: 24, fontWeight: "700", lineHeight: 28, letterSpacing: -0.4, color: lv.bg },
-  prophecySub: { fontSize: 15, color: lv.bg, opacity: 0.75 },
+  vouchText: { ...type.subheadline, color: lv.fg },
+  closed: { borderRadius: lv.radiusSm, borderCurve: "continuous", backgroundColor: lv.fill, padding: 12 },
+  closedText: { ...type.subheadline, color: lv.fg },
+  actions: { gap: 10, marginTop: 6 },
+  grid: { flexDirection: "row", gap: 10 },
+  pair: { flexDirection: "row", gap: 10, alignItems: "flex-end" },
+  cardTitle: { ...type.headline, color: lv.fg },
+  toggleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  toggleLabel: { flex: 1, ...type.subheadline, color: lv.fg },
+  clue: { padding: 18, gap: 4 },
+  clueEyebrow: { ...type.eyebrow, color: "rgba(255,255,255,0.6)" },
+  clueText: { ...type.title3, fontWeight: "700", color: "#FFFFFF", marginBottom: 6 },
+  clueJog: { ...type.footnote, color: "rgba(255,255,255,0.8)" },
+  hint: { ...type.footnote, color: lv.mutedFg, textAlign: "center" },
+  doneWrap: { gap: 14, paddingTop: 8 },
+  prophecy: { padding: 24, gap: 8 },
+  orb: {
+    position: "absolute",
+    right: -30,
+    top: -40,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundImage: "radial-gradient(circle, rgba(235,207,138,0.9) 0%, rgba(235,207,138,0) 70%)",
+  },
+  prophecyText: { ...type.title2, color: "#FFFFFF" },
+  prophecySub: { ...type.subheadline, color: "rgba(255,255,255,0.75)" },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  progDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "rgba(28,25,21,0.12)" },
+  progDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: lv.fillStrong },
   progDotOn: { backgroundColor: lv.thread },
-  saved: { fontSize: 14, color: lv.thread },
+  saved: { ...type.subheadline, color: lv.thread },
 });
