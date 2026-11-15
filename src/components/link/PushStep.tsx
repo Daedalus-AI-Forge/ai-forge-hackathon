@@ -30,7 +30,7 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
 
   const [hint, setHint] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [relation, setRelation] = useState<string | null>(null);
+  const [relation, setRelation] = useState<string | null>("friend");
   const [reason, setReason] = useState("");
   const [vouch, setVouch] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
@@ -54,8 +54,20 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
   const wishText = screen?.boat.text ?? "";
   const formReady = name.trim().length > 0 && relation !== null && reason.trim().length > 0;
 
+  const missing = !name.trim()
+    ? "Add their name first."
+    : !relation
+      ? "Pick how you know them."
+      : !reason.trim()
+        ? "Add one line on why them."
+        : null;
+
   async function onWriteVouch() {
-    if (!relation) return;
+    // Never a dead button: say what's missing instead of silently ignoring the tap.
+    if (missing || !relation) {
+      setError(missing);
+      return;
+    }
     setError(null);
     setWriting(true);
     try {
@@ -204,11 +216,11 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
         testID="push-reason"
       />
       {vouch === null ? (
-        <DButton title="Write the vouch" variant="ink" onPress={onWriteVouch} busy={writing} disabled={!formReady} testID="push-write-vouch" />
+        <DButton title="Write the vouch" variant="ink" onPress={onWriteVouch} busy={writing} testID="push-write-vouch" />
       ) : (
         <>
           <DField label="Your vouch (edit freely)" value={vouch} onChangeText={setVouch} multiline maxLength={400} testID="push-vouch" />
-          <DButton title="Rewrite" variant="ghost" size="sm" onPress={onWriteVouch} busy={writing} disabled={!formReady} testID="push-rewrite" />
+          <DButton title="Rewrite" variant="ghost" size="sm" onPress={onWriteVouch} busy={writing} testID="push-rewrite" />
         </>
       )}
       <DError error={error} />
