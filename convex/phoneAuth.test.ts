@@ -162,7 +162,7 @@ describe("demo phone sign-in", () => {
 });
 
 describe("rate limits", () => {
-  test("sends: 1 per minute per phone, other phones unaffected", async () => {
+  test("sends: 1 per 30s per phone, other phones unaffected", async () => {
     const t = setup();
     await t.action(api.phoneAuth.sendCode, { phone: DEMO });
     expect(await errorCode(t.action(api.phoneAuth.sendCode, { phone: DEMO }))).toBe("RATE_LIMITED");
@@ -174,7 +174,7 @@ describe("rate limits", () => {
     const t = setup();
     for (let i = 0; i < 5; i++) {
       await t.action(api.phoneAuth.sendCode, { phone: DEMO });
-      vi.setSystemTime(Date.now() + 61_000);
+      vi.setSystemTime(Date.now() + 31_000);
     }
     expect(await errorCode(t.action(api.phoneAuth.sendCode, { phone: DEMO }))).toBe("RATE_LIMITED");
   });
@@ -297,5 +297,21 @@ describe("Twilio Verify (mocked fetch; untested against live Twilio)", () => {
     const userId = await phoneSignIn(t, REAL, "123456");
     expect((await t.run((ctx) => ctx.db.get("users", userId)))?.phone).toBe(REAL);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("send failures don't spend the limit", () => {
+  test("a provider error leaves the 30s slot free for an immediate retry", async () => {
+    vi.stubEnv("TWILIO_ACCOUNT_SID", "AC_test");
+    vi.stubEnv("TWILIO_AUTH_TOKEN", "tok");
+    vi.stubEnv("TWILIO_VERIFY_SERVICE_SID", "VA_test");
+    const t = setup();
+    const real = "+14155550123";
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("down", { status: 503 })));
+    expect(await errorCode(t.action(api.phoneAuth.sendCode, { phone: real }))).toBe("SEND_FAILED");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ sid: "VE1", status: "pending" }), { status: 201 })));
+    await t.action(api.phoneAuth.sendCode, { phone: real });
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 });

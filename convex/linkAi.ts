@@ -189,8 +189,7 @@ export const sendClaimCode = action({
     const hop = await ctx.runQuery(internal.hops.aiContext, { hopId });
     if (!hop) throw new Error("This link doesn't exist");
     const phone = normalizePhone(raw);
-    await limitSend(ctx, phone);
-    const { mode } = await sendCode(phone);
+    const { mode } = await limitSend(ctx, phone, () => sendCode(phone));
     console.log(JSON.stringify({ event: "link.claim_code_sent", hopId, phone: maskPhone(phone), mode }));
     return { resendAfterMs: RESEND_AFTER_MS };
   },
