@@ -340,6 +340,62 @@ export const run = internalMutation({
       }
     }
 
+    // 4b. Me tab: two granted wishes so Mia has Wish Granted cards, badges and vouches about her.
+    const newInTown = await ctx.db.insert("wishes", {
+      creatorId: users.me.id,
+      type: "same_boat",
+      mode: "serious",
+      text: "Someone who also just moved to SF, to explore the city together.",
+      status: "granted",
+      expiresAt: now - 10 * 24 * HOUR,
+      photoUrl: "https://picsum.photos/seed/wishwell-sf/800/800",
+      metInPerson: true,
+      tier: "gold",
+    });
+    const priyaMatch = await hop(newInTown, "priya", {
+      depth: 1,
+      action: "its_me",
+      aboutKey: "me",
+      vouch: "Mia is my neighbor, known her 2 years, so fun and knows everyone in the SF music scene.",
+      tags: ["fun", "music"],
+      intro: "I moved here in March and still haven't seen the Presidio!",
+      hoursAgo: 240,
+    });
+    await ctx.db.patch("hops", priyaMatch, { holderContact: "+14155550123" });
+    await ctx.db.patch("wishes", newInTown, { winningHopId: priyaMatch });
+    const iceland = await ctx.db.insert("wishes", {
+      creatorId: users.kenji.id,
+      type: "been_there",
+      mode: "serious",
+      text: "Someone who has been to Iceland, to tell me where to see the northern lights.",
+      status: "granted",
+      expiresAt: now - 5 * 24 * HOUR,
+      photoUrl: "https://picsum.photos/seed/wishwell-iceland/800/800",
+      metInPerson: false,
+      tier: "silver",
+    });
+    const miaIceland = await hop(iceland, "me", {
+      depth: 1,
+      action: "pass",
+      aboutKey: "kenji",
+      vouch: "Kenji is my old roommate from Tokyo, known him 6 years, super reliable.",
+      tags: ["reliable", "Tokyo"],
+      hoursAgo: 150,
+    });
+    const oliverIceland = await hop(iceland, "oliver", {
+      parent: miaIceland,
+      depth: 2,
+      action: "its_me",
+      aboutKey: "me",
+      vouch: "Mia is my travel buddy, known her 4 years, reliable and adventurous. We did Iceland together.",
+      tags: ["reliable", "adventurous", "Iceland"],
+      intro: "I drove the whole ring road last winter and saw the lights six times.",
+      hoursAgo: 140,
+    });
+    await ctx.db.patch("hops", oliverIceland, { holderContact: "@oliver.travels" });
+    await ctx.db.patch("wishes", iceland, { winningHopId: oliverIceland });
+    await ctx.scheduler.runAfter(0, internal.vouchMemory.refreshSummary, { userId: users.me.id });
+
     // 5. A second demo user with too few edges for the coach (below COACH_THRESHOLD).
     // Not claimable via users.claimDemo; log in by using the fixed device id below.
     const fresh = await ctx.db.insert("users", {
@@ -398,6 +454,6 @@ export const run = internalMutation({
 
     // Fresh edge ids: re-index them in Supermemory (no-op without SUPERMEMORY_API_KEY).
     await ctx.scheduler.runAfter(0, internal.memory.backfill, {});
-    return { users: PEOPLE.length + 2, wishes: 6, miaEdges, freshEdges: 2 };
+    return { users: PEOPLE.length + 2, wishes: 8, miaEdges, freshEdges: 2 };
   },
 });

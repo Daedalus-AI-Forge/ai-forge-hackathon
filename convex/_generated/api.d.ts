@@ -24,15 +24,18 @@ import type * as graphShared from "../graphShared.js";
 import type * as hops from "../hops.js";
 import type * as http from "../http.js";
 import type * as lib from "../lib.js";
+import type * as me from "../me.js";
 import type * as memory from "../memory.js";
 import type * as openai from "../openai.js";
 import type * as phoneAuth from "../phoneAuth.js";
 import type * as phoneLimits from "../phoneLimits.js";
 import type * as phoneProvider from "../phoneProvider.js";
+import type * as places from "../places.js";
 import type * as seed from "../seed.js";
 import type * as sms from "../sms.js";
 import type * as stats from "../stats.js";
 import type * as users from "../users.js";
+import type * as vouchMemory from "../vouchMemory.js";
 import type * as wishes from "../wishes.js";
 
 import type {
@@ -58,15 +61,18 @@ declare const fullApi: ApiFromModules<{
   hops: typeof hops;
   http: typeof http;
   lib: typeof lib;
+  me: typeof me;
   memory: typeof memory;
   openai: typeof openai;
   phoneAuth: typeof phoneAuth;
   phoneLimits: typeof phoneLimits;
   phoneProvider: typeof phoneProvider;
+  places: typeof places;
   seed: typeof seed;
   sms: typeof sms;
   stats: typeof stats;
   users: typeof users;
+  vouchMemory: typeof vouchMemory;
   wishes: typeof wishes;
 }>;
 

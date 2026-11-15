@@ -35,6 +35,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
+    // "How friends see you": AI summary of visible vouches about me. `basis` = the vouch ids it was built from.
+    friendsSummary: v.optional(v.object({ text: v.string(), basis: v.string(), updatedAt: v.number() })),
   })
     .index("by_deviceId", ["deviceId"])
     .index("by_demoKey", ["demoKey"])
@@ -108,6 +110,8 @@ export default defineSchema({
     tags: v.array(v.string()),
     wishId: v.id("wishes"),
     hopId: v.id("hops"),
+    // Hidden by the person it is about: left out of chains, summaries and reputation.
+    hidden: v.optional(v.boolean()),
   })
     .index("by_wishId", ["wishId"])
     .index("by_aboutUserId", ["aboutUserId"]),

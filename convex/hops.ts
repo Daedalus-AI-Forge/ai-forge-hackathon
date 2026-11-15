@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { stepAt } from "./daily";
 import {
@@ -17,6 +18,7 @@ import {
   wishModeOf,
 } from "./lib";
 import { wishMode } from "./graphShared";
+import { coordsFor } from "./places";
 import { wishType } from "./schema";
 
 async function chainAbove(ctx: QueryCtx, hop: Doc<"hops">) {
@@ -220,16 +222,18 @@ export const act = mutation({
     const vouch = clampText(args.vouch, LIMITS.vouch);
     const fromTheWell = !!wish.daily && !hop.parentHopId;
     if (!vouch && !fromTheWell) throw new Error("Vouch for the person who sent this to you");
+    const city = clampText(args.city, LIMITS.city) || undefined;
     await ctx.db.patch("hops", hop._id, {
       holderName: name,
-      city: clampText(args.city, LIMITS.city) || undefined,
+      city,
+      ...coordsFor(city),
       vouchForParent: vouch || undefined,
       action: args.action,
       actedAt: Date.now(),
     });
     if (vouch) {
       const sender = await senderOf(ctx, hop, wish);
-      await ctx.db.insert("vouches", {
+      const vouchId = await ctx.db.insert("vouches", {
         aboutName: sender.name,
         aboutUserId: sender.userId,
         byName: name,
@@ -238,6 +242,7 @@ export const act = mutation({
         wishId: wish._id,
         hopId: hop._id,
       });
+      await ctx.scheduler.runAfter(0, internal.vouchMemory.tagVouch, { vouchId });
     }
     return null;
   },
@@ -296,9 +301,11 @@ export const itsMe = mutation({
     const { hop } = await loadUnacted(ctx, args.hopId);
     const intro = clampText(args.intro, LIMITS.intro);
     if (!intro) throw new Error("Write a one-line intro");
+    const city = clampText(args.city, LIMITS.city) || undefined;
     await ctx.db.patch("hops", hop._id, {
       holderName: clampText(args.name, LIMITS.name) || hop.holderName,
-      city: clampText(args.city, LIMITS.city) || undefined,
+      city,
+      ...coordsFor(city),
       itsMeIntro: intro,
       holderContact: clampText(args.contact, LIMITS.contact) || hop.holderContact,
       action: "its_me",

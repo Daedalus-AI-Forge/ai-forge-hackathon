@@ -11,7 +11,7 @@ const STYLE =
   "You write copy for Wishwell, a playful app where a wish travels friend to friend until it reaches the right person. " +
   "Warm, light, friendly, never needy. Sentence case. No hashtags, no quotes around the answer, at most one emoji. Reply with the text only.";
 
-async function respond(
+export async function respond(
   prompt: string,
   fallback: string,
   opts: { instructions?: string; maxOutputTokens?: number } = {},

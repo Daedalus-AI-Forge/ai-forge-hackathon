@@ -2,12 +2,20 @@ import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
 import { Platform, Share } from "react-native";
 
-export function hopUrl(hopId: string) {
+export function appUrl(path: string) {
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    return `${window.location.origin}/w/${hopId}`;
+    return `${window.location.origin}${path}`;
   }
   const base = process.env.EXPO_PUBLIC_WEB_URL;
-  return base ? `${base.replace(/\/$/, "")}/w/${hopId}` : Linking.createURL(`/w/${hopId}`);
+  return base ? `${base.replace(/\/$/, "")}${path}` : Linking.createURL(path);
+}
+
+export function hopUrl(hopId: string) {
+  return appUrl(`/w/${hopId}`);
+}
+
+export function looksLikePhone(contact: string | null) {
+  return !!contact && /^\+?[\d\s().-]{7,}$/.test(contact);
 }
 
 export async function copyLink(text: string) {
@@ -33,8 +41,8 @@ export async function shareLink(message: string, url: string) {
   return "shared";
 }
 
-export function smsLink(message: string, url: string) {
+export function smsLink(message: string, url: string, phone = "") {
   const body = encodeURIComponent(`${message}\n${url}`);
   const sep = Platform.OS === "ios" ? "&" : "?";
-  void Linking.openURL(`sms:${sep}body=${body}`);
+  void Linking.openURL(`sms:${phone.replace(/[^\d+]/g, "")}${sep}body=${body}`);
 }
