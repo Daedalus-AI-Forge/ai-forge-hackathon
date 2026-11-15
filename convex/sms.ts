@@ -139,7 +139,25 @@ export async function sendCode(
     throw phoneAuthError("SEND_FAILED", "Couldn't send the code. Try again in a minute.");
   }
   if (!res.ok) {
-    console.error(JSON.stringify({ event: "phone_auth.twilio_send_error", phone: maskPhone(phone), status: res.status }));
+    let twilioCode: number | undefined;
+    let twilioMessage: string | undefined;
+    try {
+      const body = (await res.json()) as { code?: number; message?: string };
+      twilioCode = body.code;
+      twilioMessage = body.message?.replace(/\+?\d{7,}/g, "***");
+    } catch {
+      // non-JSON error body
+    }
+    console.error(
+      JSON.stringify({ event: "phone_auth.twilio_send_error", phone: maskPhone(phone), status: res.status, twilioCode, twilioMessage }),
+    );
+    // Trial accounts can only text verified numbers (Twilio 21608 / 60410-ish 403s).
+    if (res.status === 403 || twilioCode === 21608) {
+      throw phoneAuthError(
+        "SEND_FAILED",
+        "We can't text this number yet (it isn't on our test list). Use the demo number +1 555 555 0100 · code 000000.",
+      );
+    }
     throw phoneAuthError("SEND_FAILED", "Couldn't send the code. Try again in a minute.");
   }
   return { mode: "twilio" };
