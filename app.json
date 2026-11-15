@@ -9,10 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.daedalusaiforge.raincheck"
+      "bundleIdentifier": "com.theaiforge.raincheck"
     },
     "android": {
-      "package": "com.daedalusaiforge.raincheck",
+      "package": "com.theaiforge.raincheck",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
