@@ -16,13 +16,14 @@ import {
 
 import { Glass as GlassSurface, GlassCard, Icon, type IconName } from "@/components/ios";
 import { keyboardInputProps } from "@/components/keyboard";
-import { lv, shadows, type } from "@/theme/tokens";
+import { lv, night, shadows, type } from "@/theme/tokens";
 
 /**
  * thread: brand red, filled (primary action) · ink: dark filled · ghost: iOS gray fill ·
- * tinted: red label on a red tint · plain: text only · glass: frosted capsule for floating over the backdrop.
+ * tinted: red label on a red tint · plain: text only · glass: frosted capsule for floating over the backdrop ·
+ * gold: the night pool's gold capsule.
  */
-type Variant = "thread" | "ink" | "ghost" | "tinted" | "plain" | "glass";
+type Variant = "thread" | "ink" | "ghost" | "tinted" | "plain" | "glass" | "gold";
 type Size = "sm" | "md" | "lg";
 
 // sm stays compact but gets a hit slop, so every button has at least a 44-pt target.
@@ -35,6 +36,7 @@ const FG: Record<Variant, string> = {
   tinted: lv.thread,
   plain: lv.thread,
   glass: lv.fg,
+  gold: night.goldFg,
 };
 const BG: Record<Exclude<Variant, "glass">, ViewStyle> = {
   thread: { backgroundColor: lv.thread },
@@ -42,6 +44,7 @@ const BG: Record<Exclude<Variant, "glass">, ViewStyle> = {
   ghost: { backgroundColor: lv.fill },
   tinted: { backgroundColor: lv.threadTint },
   plain: { backgroundColor: "transparent" },
+  gold: { backgroundColor: night.gold, boxShadow: "0px 4px 18px rgba(233,199,102,0.55)" },
 };
 
 export function DButton({

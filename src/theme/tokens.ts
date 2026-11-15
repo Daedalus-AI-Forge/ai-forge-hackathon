@@ -4,7 +4,7 @@
 // The look follows iOS: semantic label/fill/separator colors, the iOS type ramp, continuous
 // ("squircle") corners and translucent materials over a soft ambient backdrop. The brand keeps its
 // red thread and gold.
-import type { TextStyle } from "react-native";
+import { Platform, type TextStyle } from "react-native";
 
 export const lv = {
   // Base color under the ambient backdrop (also the native stack background).
@@ -93,6 +93,38 @@ export const shadows = {
   button: "0px 6px 16px rgba(229,72,63,0.28)",
   ink: "0px 6px 16px rgba(28,28,30,0.22)",
 } as const;
+
+/**
+ * Night-garden pool palette (the Pool tab), ported from the teammates' web prototype:
+ * deep green-navy night, luminous gold, aqua water, cream marble. Hex approximations of its oklch tokens.
+ */
+export const night = {
+  bg: "#0E2229",
+  deep: "#07141A",
+  fg: "#F8F2E2",
+  mutedFg: "#B5CBC9",
+  gold: "#E9C766",
+  goldBright: "#F7E6A6",
+  goldDeep: "#A9772B",
+  goldFg: "#3A2A0E",
+  aqua: "#7FD3D1",
+  glass: "rgba(16,38,46,0.62)",
+  glassStrong: "rgba(11,30,37,0.84)",
+  border: "rgba(255,255,255,0.16)",
+  // Instrument Serif is not bundled; Georgia ships with iOS and is the prototype's own fallback.
+  serif: Platform.select({
+    ios: "Georgia",
+    android: "serif",
+    default: '"Instrument Serif", Georgia, serif',
+  }),
+} as const;
+
+/** Pool scene images (assets/pool), from the teammates' web prototype. */
+export const poolImages = {
+  floor: require("../../assets/pool/pool-floor.jpg"),
+  fountain: require("../../assets/pool/fountain-night.jpg"),
+  coins: require("../../assets/pool/copper-coins.png"),
+};
 
 /** Bundled cover images (assets/design). */
 export const lvImages = {

@@ -2,9 +2,9 @@ import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "@/components/ios";
-import { Eyebrow } from "@/components/lv/passon/kit";
+import { CopperCoin } from "@/components/lv/pool/NightPool";
 import { timeLeft, useNow } from "@/lib/time";
-import { lv, type } from "@/theme/tokens";
+import { night, type } from "@/theme/tokens";
 
 export type PoolCoin = {
   _id: string;
@@ -13,15 +13,15 @@ export type PoolCoin = {
   expiresAt: number;
 };
 
-/** The pool floor: my coins, each ringed by the hops it has taken so far. */
+/** The pool floor: my coins (the prototype's copper coins), each ringed by the hops it has taken so far. */
 export function CoinsFloor({ coins }: { coins: PoolCoin[] }) {
   const router = useRouter();
   const now = useNow(30000);
   return (
-    <GlassCard testID="coins-floor">
-      <Eyebrow>Pool floor</Eyebrow>
+    <GlassCard testID="coins-floor" variant="dark">
+      <Text style={styles.heading}>Your coins in the pool</Text>
       <View style={styles.row}>
-        {coins.map((c) => {
+        {coins.map((c, idx) => {
           const rings = Math.max(1, Math.min(c.ripples, 3));
           const label =
             c.status === "granted"
@@ -42,9 +42,7 @@ export function CoinsFloor({ coins }: { coins: PoolCoin[] }) {
                   <View key={i} style={[styles.ring, { width: 46 + i * 16, height: 46 + i * 16, borderRadius: 23 + i * 8 }]} />
                 ))}
                 <View style={[styles.coin, c.status === "granted" && styles.coinGranted]}>
-                  <View style={styles.coinInner}>
-                    <Text style={styles.coinStar}>✦</Text>
-                  </View>
+                  <CopperCoin size={40} variant={idx % 2} />
                 </View>
               </View>
               <Text style={styles.label} numberOfLines={2}>
@@ -59,29 +57,12 @@ export function CoinsFloor({ coins }: { coins: PoolCoin[] }) {
 }
 
 const styles = StyleSheet.create({
+  heading: { ...type.headline, fontWeight: "400", color: night.fg, fontFamily: night.serif },
   row: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-around", rowGap: 12 },
   item: { alignItems: "center", width: 104 },
   coinWrap: { width: 80, height: 80, alignItems: "center", justifyContent: "center" },
-  ring: { position: "absolute", borderWidth: 1, borderColor: "rgba(229,72,63,0.3)" },
-  coin: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: lv.thread,
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0px 4px 8px rgba(10,30,40,0.3)",
-  },
-  coinGranted: { boxShadow: `0px 0px 14px ${lv.gold}` },
-  coinInner: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coinStar: { color: "#fff", fontSize: 14 },
-  label: { ...type.caption1, color: lv.mutedFg, textAlign: "center", marginTop: 6 },
+  ring: { position: "absolute", borderWidth: 1, borderColor: "rgba(127,211,209,0.4)" },
+  coin: { width: 40, height: 40, borderRadius: 20, boxShadow: "1px 3px 6px rgba(4,18,26,0.5)" },
+  coinGranted: { boxShadow: `0px 0px 14px ${night.gold}` },
+  label: { ...type.caption1, color: night.mutedFg, textAlign: "center", marginTop: 6 },
 });

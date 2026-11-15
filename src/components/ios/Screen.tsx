@@ -45,13 +45,15 @@ export type ScreenProps = {
   nativeHeader?: boolean;
   maxWidth?: number;
   contentStyle?: StyleProp<ViewStyle>;
+  /** Replaces the ambient backdrop (e.g. the Pool tab's night scene). */
+  backdrop?: ReactNode;
 };
 
 /**
  * Page scaffold shared by every screen: ambient backdrop, safe areas, page margins, a centered
  * readable column and the frosted scroll edge. Children stack with the standard gap.
  */
-export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.maxWidth, contentStyle }: ScreenProps) {
+export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.maxWidth, contentStyle, backdrop }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const [scrolled, setScrolled] = useState(false);
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => setScrolled(e.nativeEvent.contentOffset.y > 6);
@@ -59,7 +61,7 @@ export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.
   const bottom = tab ? tabClearance(insets.bottom) : insets.bottom + 40;
   return (
     <View style={styles.root}>
-      <Backdrop />
+      {backdrop ?? <Backdrop />}
       <ScrollView
         testID={testID}
         style={styles.scroll}

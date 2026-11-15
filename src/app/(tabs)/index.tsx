@@ -1,8 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
+import { useCallback, useEffect, useState } from "react";
+import { ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { CenterScreen, LargeTitle, Screen } from "@/components/ios";
@@ -12,10 +13,10 @@ import { CoinsFloor, type PoolCoin } from "@/components/lv/pool/CoinsFloor";
 import { ProgressDots } from "@/components/lv/pool/ProgressDots";
 import { TodayBoatCard } from "@/components/lv/pool/TodayBoatCard";
 import { VoyageLogCard, type VoyageLog } from "@/components/lv/pool/VoyageLogCard";
-import { Water } from "@/components/lv/pool/Water";
+import { NightPool } from "@/components/lv/pool/NightPool";
 import { Avatar, errorMessage } from "@/components/ui";
 import { useMe } from "@/lib/device";
-import { lv, type } from "@/theme/tokens";
+import { layout, night, poolImages, type } from "@/theme/tokens";
 
 const ONBOARDED_KEY = "wishwell.onboarded";
 const LOG_DISMISS_KEY = "wishwell.logDismissed";
@@ -34,6 +35,16 @@ export default function ThePool() {
   const [logDismissed, setLogDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { width } = useWindowDimensions();
+  const poolSize = Math.min(width, layout.maxWidth) - layout.margin * 2 - 16 - 24;
+
+  // The pool is a night scene: light status bar while it is on screen, the app default elsewhere.
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+      return () => setStatusBarStyle("dark");
+    }, []),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -99,10 +110,11 @@ export default function ThePool() {
   const primary = friends.length > 0 || todayUnpushed ? "push" : wishesLeft > 0 ? "toss" : "none";
 
   return (
-    <Screen tab testID="well-screen">
+    <Screen tab testID="well-screen" backdrop={<NightBackdrop />}>
       <LargeTitle
+        eyebrowColor={night.mutedFg}
         eyebrow={`${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${progress}/5 boats`}
-        title="Wishwell"
+        title={<Text style={styles.brand}>Wishwell</Text>}
         right={
           <Pressable
             accessibilityRole="button"
@@ -120,7 +132,9 @@ export default function ThePool() {
         <VoyageLogCard log={voyageLog as VoyageLog} onDismiss={() => void AsyncStorage.setItem(LOG_DISMISS_KEY, date).then(() => setLogDismissed(true))} />
       ) : null}
 
-      <Water>
+      <NightPool size={poolSize} coins={coins.length} />
+
+      <View style={styles.boats}>
         {friends.map((c) => (
           <BoatCard
             key={c.hopId}
@@ -132,17 +146,17 @@ export default function ThePool() {
           />
         ))}
         {today ? <TodayBoatCard deviceId={deviceId} date={date} onOpen={(hopId) => router.push({ pathname: "/w/[hopId]", params: { hopId } })} /> : null}
-      </Water>
+      </View>
 
       {coins.length > 0 ? <CoinsFloor coins={coins} /> : null}
 
       <ProgressDots progress={progress} wishesLeft={wishesLeft} />
 
       {primary === "push" ? (
-        <DButton testID="primary-action" title="Push today's boat" size="lg" busy={busy} onPress={pushBoat} />
+        <DButton testID="primary-action" title="Push today's boat" variant="gold" size="lg" busy={busy} onPress={pushBoat} />
       ) : primary === "toss" ? (
         <View testID="toss-button">
-          <DButton testID="primary-action" title="Toss a coin" size="lg" onPress={() => router.push("/toss")} />
+          <DButton testID="primary-action" title="Toss a coin" variant="gold" size="lg" onPress={() => router.push("/toss")} />
         </View>
       ) : (
         <Text testID="pool-done" style={styles.done}>
@@ -165,9 +179,34 @@ export default function ThePool() {
   );
 }
 
+/** The teammates' night garden behind the pool: the fountain, dimmed so text and glass stay legible. */
+function NightBackdrop() {
+  return (
+    <View style={[StyleSheet.absoluteFill, styles.night]}>
+      <ImageBackground source={poolImages.fountain} style={StyleSheet.absoluteFill} resizeMode="cover" imageStyle={styles.fountain}>
+        <View style={[StyleSheet.absoluteFill, styles.dim]} />
+      </ImageBackground>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  avatar: { borderRadius: 999, boxShadow: "0px 4px 12px rgba(28,24,20,0.14)" },
-  done: { ...type.footnote, color: lv.mutedFg, textAlign: "center", paddingVertical: 14 },
-  error: { ...type.footnote, color: lv.destructive, textAlign: "center" },
+  night: { backgroundColor: night.deep, pointerEvents: "none" },
+  fountain: { opacity: 0.55, width: "100%", height: "100%" },
+  dim: { backgroundColor: "rgba(7,20,26,0.5)" },
+  brand: {
+    fontSize: 46,
+    lineHeight: 52,
+    fontWeight: "400",
+    color: night.fg,
+    fontFamily: night.serif,
+    textShadowColor: "rgba(233,199,102,0.55)",
+    textShadowRadius: 18,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  boats: { gap: 14 },
+  avatar: { borderRadius: 999, boxShadow: "0px 4px 12px rgba(0,0,0,0.3)" },
+  done: { ...type.footnote, color: night.mutedFg, textAlign: "center", paddingVertical: 14 },
+  error: { ...type.footnote, color: "#FF8A80", textAlign: "center" },
   demo: { alignSelf: "center" },
 });
