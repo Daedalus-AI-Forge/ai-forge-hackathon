@@ -8,6 +8,8 @@ import { CONTACT_MAX, REASON_MAX, type WishMode } from "./graphShared";
 export const MAX_PASSES = 3;
 export const MAX_RIPPLES = 6;
 export const WISH_LIFETIME_MS = 48 * 60 * 60 * 1000;
+/** Every BOATS_PER_COIN boats a person pushes earns them one coin (a wish credit). */
+export const BOATS_PER_COIN = 5;
 
 const AVATAR_COLORS = ["#F4A261", "#2A9D8F", "#E9C46A", "#8AB17D", "#6D597A", "#457B9D", "#E76F51", "#B5838D"];
 
