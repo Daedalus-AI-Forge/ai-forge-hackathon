@@ -4,7 +4,6 @@ import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "r
 
 import { api } from "@/convex/_generated/api";
 import { glass } from "@/components/lv/home/glass";
-import { DButton } from "@/components/lv/passon/kit";
 import { errorMessage } from "@/components/ui";
 import { lv } from "@/theme/tokens";
 
@@ -74,16 +73,9 @@ export function TodayBoatCard({ deviceId, date, onOpen }: { deviceId: string; da
             </View>
             <Text style={styles.title}>{today.title}</Text>
             <Text style={styles.hint}>Clue: {today.hint}</Text>
-            <Text style={styles.players}>{today.players} pushing today</Text>
-            <DButton
-              title={busy ? "Opening…" : "Open"}
-              variant="thread"
-              size="lg"
-              busy={busy}
-              disabled={!today.open}
-              testID="today-boat-open"
-              onPress={() => void play()}
-            />
+            <Text style={styles.players}>
+              {busy ? "Opening…" : `${today.players} pushing today · Tap to open ›`}
+            </Text>
           </>
         )}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -99,7 +91,7 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.fg },
   title: { fontSize: 22, fontWeight: "700", color: lv.fg, lineHeight: 28, marginTop: 4 },
   hint: { fontSize: 15, color: lv.mutedFg, marginTop: 2 },
-  players: { fontSize: 12, color: lv.mutedFg, marginBottom: 10 },
+  players: { fontSize: 12, color: lv.mutedFg, marginTop: 4 },
   pushed: { fontSize: 15, fontWeight: "600", color: lv.mutedFg, paddingVertical: 6 },
   error: { color: lv.destructive, fontSize: 13 },
 });
