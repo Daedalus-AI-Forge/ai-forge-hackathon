@@ -17,6 +17,7 @@ import { type HandleChoice, Shell, nextStep, prevStep } from "@/components/link/
 import { SpecialCase } from "@/components/link/SpecialCase";
 import { WriteWish } from "@/components/link/WriteWish";
 import { DButton, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { MeetForWish } from "@/components/lv/meet/MeetCard";
 import { useDeviceId } from "@/lib/device";
 import type { FinishResult, FirstScreen as FirstScreenData, LinkEvent } from "@/lib/linkApi.types";
 import { type LinkStep, clearDraft, loadDraft, saveDraft } from "@/lib/linkDraft";
@@ -124,6 +125,7 @@ export default function LinkPage() {
     return (
       <Shell step="first" testID="link-special">
         {header}
+        <MeetForWish wishId={screen.wishId} deviceId={deviceId} />
         <SpecialCase
           screen={screen}
           onFreeWish={() => {
@@ -139,6 +141,7 @@ export default function LinkPage() {
   return (
     <Shell step={step} onBack={onBack} testID="link-page">
       {header}
+      {step === "first" ? <MeetForWish wishId={screen.wishId} deviceId={deviceId} /> : null}
       {step === "first" ? <FirstScreen screen={screen} onStart={() => go("first")} /> : null}
 
       {step === "wish" ? (

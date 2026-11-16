@@ -3,7 +3,7 @@ import rateLimiter from "@convex-dev/rate-limiter/test";
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { PROPHECY_FALLBACK } from "./linkAi";
 
@@ -258,5 +258,53 @@ describe("linkAi.introMessage", () => {
     expect(await t.action(api.linkAi.introMessage, { hopId: dazi })).toBe(
       `Hi Dazi, it's Darren! Vee and Katie connected us about "someone to jam on drums with in a band". Want to set something up?`,
     );
+  });
+});
+
+describe("journey copy", () => {
+  test("a claimed daily boat ends as found with the claimer's story and photo", async () => {
+    const t = setup();
+    const { hopId, wishId } = await seed(t, { daily: true });
+    const before = await t.query(api.link.ending, { wishId });
+    expect(before?.status).toBe("traveling");
+    expect(before?.story).toContain("still out there");
+    const proofStorageId = await t.run((ctx) => ctx.storage.store(new Blob(["img"])));
+    await t.mutation(api.link.claim, { hopId, deviceId: "dev_visitor", intro: "I drum every Sunday", proofStorageId });
+    const after = await t.query(api.link.ending, { wishId });
+    expect(after?.status).toBe("found");
+    expect(after?.story).not.toContain("still out there");
+    expect(after?.story).toContain('In their words: "I drum every Sunday"');
+    expect(after?.photoUrl).toBeTypeOf("string");
+  });
+
+  test("first hop shows the toss reason as vouchForMe (link page + OG), never tags", async () => {
+    const t = setup();
+    const { hopId, wishId } = await seed(t);
+    await t.run(async (ctx) => {
+      const wish = (await ctx.db.get("wishes", wishId))!;
+      await ctx.db.insert("edges", { ownerUserId: wish.creatorId, ownerName: "Darren", personName: "Vee", tag: "secret-tag",
+        source: "pick", wishId, hopId, reason: "you drum with a Berkeley collective" });
+    });
+    const screen = await t.query(api.link.firstScreen, { hopId });
+    expect(screen?.vouchForMe).toBe("you drum with a Berkeley collective");
+    expect(JSON.stringify(screen)).not.toContain("secret-tag");
+    const og = await t.query(internal.linkMetrics.ogHop, { hopId });
+    expect(og?.introVouch).toBe("you drum with a Berkeley collective");
+  });
+
+  test("a sender with no name (or the daily placeholder 'You') shows as 'A friend'", async () => {
+    const t = setup();
+    const { hopId, wishId } = await seed(t);
+    await t.run(async (ctx) => {
+      const wish = (await ctx.db.get("wishes", wishId))!;
+      await ctx.db.patch("users", wish.creatorId, { name: "" });
+    });
+    expect((await t.query(api.link.firstScreen, { hopId }))?.senderName).toBe("A friend");
+    expect((await t.query(internal.linkMetrics.ogHop, { hopId }))?.senderName).toBe("A friend");
+    const child = await t.run((ctx) => ctx.db.insert("hops", {
+      wishId, parentHopId: hopId, depth: 2, holderName: "Amy", recipientTags: [], viaGroup: false }));
+    await t.run((ctx) => ctx.db.patch("hops", hopId, { holderName: "You" }));
+    expect((await t.query(api.link.firstScreen, { hopId: child }))?.senderName).toBe("A friend");
+    expect((await t.query(internal.linkMetrics.ogHop, { hopId: child }))?.senderName).toBe("A friend");
   });
 });

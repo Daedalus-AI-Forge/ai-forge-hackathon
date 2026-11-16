@@ -27,6 +27,10 @@ export interface WaterPoolApi {
 export interface WaterPoolProps {
   size: number;
   coins: number;
+  /** Coins tossed this session (fractions of the pool, 0..1); each new id lands once via tossCoin. */
+  tosses?: { id: number; x: number; y: number; variant: number }[];
+  /** Tapping the water (fractions of the pool, 0..1), as in NightPool. */
+  onWaterTap?: (x: number, y: number) => void;
   onReady?: (api: WaterPoolApi) => void;
   /** GL init/frame failed: the caller should fall back to the non-GL pool. */
   onError?: (err: unknown) => void;
@@ -39,7 +43,7 @@ const FRAME_MS = 1000 / 60;
  * expo-gl GLView natively and a <canvas> on web. Paused while the screen is unfocused or the app is
  * in the background; NightPool falls back to the Animated version on any GL error.
  */
-export function WaterPool({ size, coins, onReady, onError }: WaterPoolProps) {
+export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }: WaterPoolProps) {
   const focused = useIsFocused();
   const [appActive, setAppActive] = useState(AppState.currentState !== "background");
   const [renderer, setRenderer] = useState<WaterRenderer | null>(null);
@@ -102,6 +106,24 @@ export function WaterPool({ size, coins, onReady, onError }: WaterPoolProps) {
     });
   }, [renderer]);
 
+  // Tosses from the composer (NightPool's `tosses`): each new one splashes in and sinks to the floor.
+  const landed = useRef(new Set<number>());
+  useEffect(() => {
+    if (!renderer || !tosses) return;
+    for (const t of tosses) {
+      if (landed.current.has(t.id)) continue;
+      landed.current.add(t.id);
+      const x = t.x * 2 - 1;
+      const y = t.y * 2 - 1;
+      renderer.addDrop(x, y, 0.045, 0.14);
+      renderer.addDrop(x, y, 0.11, -0.04);
+      pushStars(stars.current, x, y, 0.35);
+      const coin = spawnTossedCoin(x, y);
+      coin.variant = t.variant;
+      tossed.current.push(coin);
+    }
+  }, [renderer, tosses]);
+
   const running = !!renderer && focused && appActive;
 
   // Frame loop: rAF capped at 60fps; stopped entirely (not just skipped) while paused.
@@ -153,6 +175,7 @@ export function WaterPool({ size, coins, onReady, onError }: WaterPoolProps) {
     renderer.addDrop(p.x, p.y, 0.11, -0.02);
     pushStars(stars.current, p.x, p.y, 0.25);
     lastMove.current = p;
+    onWaterTap?.((p.x + 1) / 2, (p.y + 1) / 2);
   };
   const onMove = (e: GestureResponderEvent) => {
     const p = toPool(e);
@@ -170,6 +193,7 @@ export function WaterPool({ size, coins, onReady, onError }: WaterPoolProps) {
       accessible
       accessibilityRole="image"
       accessibilityLabel={coins > 0 ? `The wishing pool, with ${coins} of your coins on the floor` : "The wishing pool"}
+      accessibilityHint={onWaterTap ? "Tap the water to toss a coin" : undefined}
       style={[styles.rim, { width: size + 16, height: size + 16, borderRadius: (size + 16) / 2 }]}
     >
       <View

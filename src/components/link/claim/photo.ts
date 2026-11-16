@@ -1,27 +1,19 @@
-// Proof photo picking + upload. Web uses a hidden <input type=file>; native has no picker
-// installed (expo-image-picker is not a dependency), so the photo is skipped there.
-import { Platform } from "react-native";
+// Proof photo picking + upload. Web uses a hidden <input type=file>, native uses expo-image-picker
+// (see src/lib/pickImage.ts).
+import { canPickImage, pickImage, type PickedImage } from "@/lib/pickImage";
 
-export const canPickPhoto = Platform.OS === "web" && typeof document !== "undefined";
+export const canPickPhoto = canPickImage;
 
-/** Opens the browser file chooser; resolves null when the visitor cancels. */
-export function pickPhotoWeb(): Promise<File | null> {
-  return new Promise((resolve) => {
-    if (!canPickPhoto) return resolve(null);
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = () => resolve(input.files?.[0] ?? null);
-    // Some browsers fire no event on cancel; the promise then simply stays pending, which is harmless.
-    input.click();
-  });
+/** Opens the photo picker; resolves null when the visitor cancels. */
+export function pickPhoto(): Promise<PickedImage | null> {
+  return pickImage("image/*");
 }
 
-/** POSTs the file to a Convex upload URL and returns the storage id. */
-export async function uploadPhoto(uploadUrl: string, file: Blob): Promise<string> {
+/** POSTs the image to a Convex upload URL and returns the storage id. */
+export async function uploadPhoto(uploadUrl: string, file: Blob, contentType?: string): Promise<string> {
   const res = await fetch(uploadUrl, {
     method: "POST",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
+    headers: { "Content-Type": contentType || file.type || "application/octet-stream" },
     body: file,
   });
   if (!res.ok) throw new Error("Photo upload failed. Try again or skip the photo.");

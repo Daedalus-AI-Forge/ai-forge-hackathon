@@ -39,7 +39,15 @@
           "contactsPermission": "Wishwell lets you pick a friend to send your paper boat to. Contacts never leave your phone."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Add a photo of you two to finish the wish, or a proof photo when you claim a boat.",
+          "cameraPermission": "Add a photo of you two to finish the wish, or a proof photo when you claim a boat.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth (Google, native Apple, phone OTP, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-16T00:11:57Z
+- **Last updated:** 2026-11-16T00:24:43Z
 
 ## Log
 
@@ -223,3 +223,12 @@ separate UI integration. Historical unbound verified claims retain their old beh
 without guessing a participant identity. Full tests passed (252 tests / 27 files),
 as did root/Convex TypeScript. Validation used in-memory Convex tests; no deployment
 or live-user messages were performed.
+
+### 2026-11-15 - claude/clearer-home — say whose wish is whose on the Pool
+The fountain's wish card was unlabeled, so it was unclear whether it was your wish or
+someone else's. It now carries a gold "Your wish" label ("Your wish · 1 of N" when
+several are in flight, newest shown); today's boat on the fountain adds "Everyone gets
+this boat today"; friends' wish cards in the pool read "✦ Oliver's real wish · pushed to
+you" (the header wraps instead of truncating); and the header counters read
+"1 coin · 2 boats to next coin". Copy follows the shared vocabulary (boat / push /
+Today's boat). Typecheck, 258 tests and ESLint pass; checked in iPhone-sized Chrome.
