@@ -31,7 +31,14 @@
       "expo-status-bar",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "expo-font",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Wishwell lets you pick a friend to send your paper boat to. Contacts never leave your phone."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

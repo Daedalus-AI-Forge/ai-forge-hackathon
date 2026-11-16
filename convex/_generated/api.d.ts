@@ -24,7 +24,11 @@ import type * as graphShared from "../graphShared.js";
 import type * as hops from "../hops.js";
 import type * as http from "../http.js";
 import type * as lib from "../lib.js";
+import type * as link from "../link.js";
+import type * as linkAi from "../linkAi.js";
+import type * as linkMetrics from "../linkMetrics.js";
 import type * as memory from "../memory.js";
+import type * as notify from "../notify.js";
 import type * as openai from "../openai.js";
 import type * as phoneAuth from "../phoneAuth.js";
 import type * as phoneLimits from "../phoneLimits.js";
@@ -35,6 +39,7 @@ import type * as seed from "../seed.js";
 import type * as sms from "../sms.js";
 import type * as stars from "../stars.js";
 import type * as stats from "../stats.js";
+import type * as teamSeed from "../teamSeed.js";
 import type * as users from "../users.js";
 import type * as wishes from "../wishes.js";
 
@@ -61,7 +66,11 @@ declare const fullApi: ApiFromModules<{
   hops: typeof hops;
   http: typeof http;
   lib: typeof lib;
+  link: typeof link;
+  linkAi: typeof linkAi;
+  linkMetrics: typeof linkMetrics;
   memory: typeof memory;
+  notify: typeof notify;
   openai: typeof openai;
   phoneAuth: typeof phoneAuth;
   phoneLimits: typeof phoneLimits;
@@ -72,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   sms: typeof sms;
   stars: typeof stars;
   stats: typeof stats;
+  teamSeed: typeof teamSeed;
   users: typeof users;
   wishes: typeof wishes;
 }>;
@@ -104,4 +114,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+  staticHosting: import("@convex-dev/static-hosting/_generated/component.js").ComponentApi<"staticHosting">;
 };

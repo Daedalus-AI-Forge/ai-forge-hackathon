@@ -1,12 +1,12 @@
 import { useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Share, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { BackButton, GlassCard, Icon, LargeTitle, NavBar, Screen, SectionHeader } from "@/components/ios";
 import { DAvatar, DButton } from "@/components/lv/passon/kit";
 import { useMe } from "@/lib/device";
-import { lv } from "@/theme/tokens";
+import { lv, shadows, type } from "@/theme/tokens";
 
 import type { VoyageCard } from "@/components/lv/voyages/voyageData";
 
@@ -23,26 +23,25 @@ export default function BoatDetail() {
   const card = voyages?.find((v) => v.hopId === hopId);
   const page = useQuery(api.hops.page, hopId ? { hopId } : "skip");
 
-  const back = (
-    <Pressable
-      testID="boat-back"
-      accessibilityRole="button"
-      onPress={() => (router.canGoBack() ? router.back() : router.replace("/voyages"))}
-      hitSlop={12}
-    >
-      <Text style={styles.back}>‹ Voyages</Text>
-    </Pressable>
+  const nav = (
+    <NavBar
+      left={
+        <BackButton
+          testID="boat-back"
+          label="Back to Voyages"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/voyages"))}
+        />
+      }
+    />
   );
 
   if (!card || !page) {
     return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
+      <Screen>
         <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.container}>
-          {back}
-          <Text style={styles.muted}>{voyages === undefined || page === undefined ? "Loading…" : "Boat not found."}</Text>
-        </View>
-      </SafeAreaView>
+        {nav}
+        <Text style={styles.muted}>{voyages === undefined || page === undefined ? "Loading…" : "Boat not found."}</Text>
+      </Screen>
     );
   }
 
@@ -59,90 +58,81 @@ export default function BoatDetail() {
     } catch {}
   };
 
+  const chain = [
+    ...page.chain.map((h, i) => ({ name: h.name, color: h.avatar, prev: i > 0 ? page.chain[i - 1]!.name : null, vouch: h.vouch })),
+    { name: page.hop.holderName, color: lv.primary, prev: null, vouch: null, me: true },
+  ];
+
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <Screen testID="boat-screen">
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView testID="boat-screen" contentContainerStyle={styles.container}>
-        {back}
+      {nav}
 
-        <View style={styles.headline}>
-          <Text style={styles.title}>{card.text}</Text>
-          <Text style={styles.muted}>{source}</Text>
-          {card.source === "daily" && page.wish.daily ? (
-            <Text style={styles.clue}>
-              Daily clue {page.wish.daily.step} of {page.wish.daily.of}: “{page.wish.daily.hint}”
-            </Text>
-          ) : null}
-        </View>
+      <LargeTitle size="title" title={card.text} subtitle={source} />
+      {card.source === "daily" && page.wish.daily ? (
+        <Text style={styles.clue}>
+          Daily clue {page.wish.daily.step} of {page.wish.daily.of}: “{page.wish.daily.hint}”
+        </Text>
+      ) : null}
 
-        <View style={styles.section}>
-          <Text style={styles.eyebrow}>Route</Text>
-          <View style={styles.route}>
-            {card.cities.map((c, i) => (
-              <View key={i} style={styles.routeRow}>
-                <View style={styles.rail}>
-                  <View style={styles.dot} />
-                  {i < card.cities.length - 1 ? <View style={styles.railLine} /> : null}
-                </View>
-                <Text style={styles.routeCity}>{c ?? "Somewhere"}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.eyebrow}>The chain</Text>
-          <View style={styles.chain}>
-            {page.chain.map((h, i) => {
-              const prev = i > 0 ? page.chain[i - 1]!.name : null;
-              return (
-                <View key={i} style={styles.chainRow}>
-                  <DAvatar name={h.name} color={h.avatar} size={26} />
-                  <View style={styles.chainBody}>
-                    {i === 0 ? (
-                      <Text style={styles.chainText}>
-                        <Text style={styles.strong}>{h.name}</Text> started the boat
-                      </Text>
-                    ) : (
-                      <Text style={styles.chainText}>
-                        <Text style={styles.strong}>{prev}</Text> → <Text style={styles.strong}>{h.name}</Text>
-                        {h.vouch ? `: “${h.vouch}”` : ""}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-            <View style={styles.chainRow}>
-              <DAvatar name={page.hop.holderName} color={lv.primary} size={26} />
-              <Text style={styles.chainText}>
-                <Text style={styles.strong}>You</Text>
-              </Text>
+      <SectionHeader title="Route" />
+      <GlassCard style={styles.timeline}>
+        {card.cities.map((c, i) => (
+          <View key={i} style={styles.row}>
+            <View style={styles.rail}>
+              <View style={styles.dot} />
+              {i < card.cities.length - 1 ? <View style={styles.stem} /> : null}
             </View>
+            <Text style={[styles.city, i < card.cities.length - 1 && styles.rowGap]}>{c ?? "Somewhere"}</Text>
           </View>
-        </View>
+        ))}
+      </GlassCard>
 
-        {found ? (
-          <View testID="boat-ending" style={styles.polaroid}>
-            <Text style={styles.polaroidName}>
-              {found.name}
-              {found.city ? ` · ${found.city}` : ""}
+      <SectionHeader title="The chain" />
+      <GlassCard style={styles.timeline}>
+        {chain.map((h, i) => (
+          <View key={i} style={styles.row}>
+            <View style={styles.rail}>
+              <DAvatar name={h.name} color={h.color} size={28} />
+              {i < chain.length - 1 ? <View style={styles.stem} /> : null}
+            </View>
+            <Text style={[styles.chainText, i < chain.length - 1 && styles.rowGap]}>
+              {"me" in h ? (
+                <Text style={styles.strong}>You</Text>
+              ) : i === 0 ? (
+                <>
+                  <Text style={styles.strong}>{h.name}</Text> started the boat
+                </>
+              ) : (
+                <>
+                  <Text style={styles.strong}>{h.prev}</Text> → <Text style={styles.strong}>{h.name}</Text>
+                  {h.vouch ? `: “${h.vouch}”` : ""}
+                </>
+              )}
             </Text>
-            <Text style={styles.polaroidStory}>“{found.story}”</Text>
-            <Text style={styles.polaroidApart}>{peopleApart(card.hops)}</Text>
-            <DButton title="Share" testID="boat-share" onPress={() => void share(found)} size="md" />
           </View>
-        ) : (
-          <View style={styles.locked}>
-            <Text style={styles.lockedText}>
-              {card.status === "faded"
-                ? "This boat faded before it found anyone."
-                : "🔒 The ending unlocks when someone says “That's me”."}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+        ))}
+      </GlassCard>
+
+      {found ? (
+        <View testID="boat-ending" style={styles.polaroid}>
+          <Text style={styles.polaroidName}>
+            {found.name}
+            {found.city ? ` · ${found.city}` : ""}
+          </Text>
+          <Text style={styles.polaroidStory}>“{found.story}”</Text>
+          <Text style={styles.polaroidApart}>{peopleApart(card.hops)}</Text>
+          <DButton title="Share" icon="share" testID="boat-share" onPress={() => void share(found)} />
+        </View>
+      ) : (
+        <GlassCard style={styles.locked}>
+          {card.status === "faded" ? null : <Icon name="lock" size={18} color={lv.mutedFg} />}
+          <Text style={styles.lockedText}>
+            {card.status === "faded" ? "This boat faded before it found anyone." : "The ending unlocks when someone says “That's me”."}
+          </Text>
+        </GlassCard>
+      )}
+    </Screen>
   );
 }
 
@@ -151,48 +141,33 @@ function dateLabel(ms: number) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: lv.bg },
-  container: { padding: 16, paddingTop: 20, gap: 20, maxWidth: 430, width: "100%", alignSelf: "center", paddingBottom: 48 },
-  back: { fontSize: 15, color: lv.mutedFg, paddingHorizontal: 8 },
-  headline: { paddingHorizontal: 8, gap: 6 },
-  title: { fontSize: 30, lineHeight: 34, fontWeight: "700", color: lv.fg, letterSpacing: -0.5 },
-  muted: { fontSize: 14, color: lv.mutedFg, lineHeight: 20 },
-  clue: { fontSize: 13, color: lv.mutedFg, lineHeight: 19, fontStyle: "italic" },
-  section: { gap: 10 },
-  eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.mutedFg, paddingHorizontal: 8 },
-  route: { backgroundColor: lv.card, borderRadius: lv.radiusXl, borderWidth: 1, borderColor: lv.border, padding: 16, ...lv.shadow },
-  routeRow: { flexDirection: "row", alignItems: "stretch" },
-  rail: { width: 24, alignItems: "center" },
-  dot: { width: 12, height: 12, borderRadius: 6, marginTop: 5, backgroundColor: lv.thread, borderWidth: 2, borderColor: lv.card },
-  railLine: { width: 2, flex: 1, marginVertical: 1, backgroundColor: lv.thread },
-  routeCity: { flex: 1, paddingLeft: 10, paddingVertical: 8, fontSize: 16, fontWeight: "500", color: lv.fg },
-  chain: { marginLeft: 16, borderLeftWidth: 1, borderLeftColor: lv.thread, gap: 20 },
-  chainRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginLeft: -13 },
-  chainBody: { flex: 1, paddingTop: 3 },
-  chainText: { fontSize: 14, color: lv.fg, lineHeight: 20 },
-  strong: { fontWeight: "700", color: lv.fg },
+  muted: { ...type.subheadline, color: lv.mutedFg },
+  clue: { ...type.footnote, color: lv.mutedFg, fontStyle: "italic", marginTop: -8 },
+  timeline: { gap: 0 },
+  row: { flexDirection: "row", gap: 12 },
+  rail: { width: 28, alignItems: "center" },
+  dot: { width: 12, height: 12, borderRadius: 6, marginTop: 5, backgroundColor: lv.thread, borderWidth: 2, borderColor: "#fff" },
+  stem: { width: 2, flex: 1, minHeight: 12, marginVertical: 3, borderRadius: 1, backgroundColor: lv.thread },
+  rowGap: { paddingBottom: 16 },
+  city: { flex: 1, ...type.body, fontWeight: "500", color: lv.fg },
+  chainText: { flex: 1, ...type.subheadline, color: lv.fg, paddingTop: 4 },
+  strong: { fontWeight: "600", color: lv.fg },
   polaroid: {
     width: "90%",
     alignSelf: "center",
-    backgroundColor: lv.card,
-    borderRadius: 4,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    borderCurve: "continuous",
     padding: 16,
-    paddingBottom: 20,
+    paddingBottom: 22,
     gap: 10,
+    marginTop: 8,
     transform: [{ rotate: "-1.5deg" }],
-    ...lv.shadow,
+    boxShadow: shadows.float,
   },
-  polaroidName: { fontSize: 22, fontWeight: "700", color: lv.fg },
-  polaroidStory: { fontSize: 15, color: lv.fg, lineHeight: 21 },
-  polaroidApart: { fontSize: 13, color: lv.mutedFg },
-  locked: {
-    backgroundColor: lv.card,
-    borderRadius: lv.radiusXl,
-    borderWidth: 1,
-    borderColor: lv.border,
-    padding: 20,
-    alignItems: "center",
-    ...lv.shadow,
-  },
-  lockedText: { fontSize: 15, color: lv.mutedFg, textAlign: "center", lineHeight: 21 },
+  polaroidName: { ...type.title2, color: lv.fg },
+  polaroidStory: { ...type.subheadline, color: lv.fg },
+  polaroidApart: { ...type.footnote, color: lv.mutedFg },
+  locked: { alignItems: "center", gap: 8, paddingVertical: 22 },
+  lockedText: { ...type.subheadline, color: lv.mutedFg, textAlign: "center" },
 });

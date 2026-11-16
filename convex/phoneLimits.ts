@@ -1,4 +1,4 @@
-import { HOUR, MINUTE, RateLimiter } from "@convex-dev/rate-limiter";
+import { HOUR, RateLimiter, SECOND } from "@convex-dev/rate-limiter";
 
 import { components } from "./_generated/api";
 import type { ActionCtx } from "./_generated/server";
@@ -12,7 +12,8 @@ import { phoneAuthError } from "./sms";
  * then it refills evenly.
  */
 export const phoneRateLimiter = new RateLimiter(components.rateLimiter, {
-  phoneSendMinute: { kind: "token bucket", rate: 1, period: MINUTE },
+  // One send per 30s per phone (matches the client's RESEND_SECONDS = 30).
+  phoneSendMinute: { kind: "token bucket", rate: 1, period: 30 * SECOND },
   phoneSendHour: { kind: "token bucket", rate: 5, period: HOUR },
   phoneVerifyHour: { kind: "token bucket", rate: 10, period: HOUR },
 });
@@ -26,16 +27,25 @@ function rateLimited(retryAfter: number | undefined) {
 
 const SEND_LIMITS = ["phoneSendMinute", "phoneSendHour"] as const;
 
-/** Consume one send for `phone`, or throw RATE_LIMITED. Checks both windows before consuming either. */
-export async function limitSend(ctx: ActionCtx, phone: string) {
+/** Throw RATE_LIMITED if `phone` can't send now. Consumes nothing (see `limitSend`). */
+export async function checkSend(ctx: ActionCtx, phone: string) {
   for (const name of SEND_LIMITS) {
     const status = await phoneRateLimiter.check(ctx, name, { key: phone });
     if (!status.ok) throw rateLimited(status.retryAfter);
   }
+}
+
+/**
+ * Run `send` only if `phone` is within its send limits, and spend a send only when it
+ * succeeds — a provider error (e.g. Twilio down) must not lock the person out.
+ */
+export async function limitSend<T>(ctx: ActionCtx, phone: string, send: () => Promise<T>): Promise<T> {
+  await checkSend(ctx, phone);
+  const result = await send();
   for (const name of SEND_LIMITS) {
-    const status = await phoneRateLimiter.limit(ctx, name, { key: phone });
-    if (!status.ok) throw rateLimited(status.retryAfter);
+    await phoneRateLimiter.limit(ctx, name, { key: phone });
   }
+  return result;
 }
 
 /** Consume one verify attempt for `phone`, or throw RATE_LIMITED. */

@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { GlassCard } from "@/components/ios";
 import { TierBadge } from "@/components/TierBadge";
 import { countdown, useNow } from "@/lib/time";
 import { lv } from "@/theme/tokens";
@@ -24,7 +25,7 @@ export function BranchRace({
   if (!race || race.branches.length === 0) return null;
   const traveling = race.status === "traveling";
   return (
-    <View testID={"branch-race-" + wishId} style={styles.card}>
+    <GlassCard testID={"branch-race-" + wishId} style={{ gap: 8 }}>
       <View style={styles.head}>
         <Text style={styles.eyebrow}>{title ?? (race.branches.length > 1 ? "Branches racing" : "One branch traveling")}</Text>
         {traveling && showCountdown ? (
@@ -49,20 +50,11 @@ export function BranchRace({
           <TierBadge tier={b.tier} label={b.tier.charAt(0).toUpperCase() + b.tier.slice(1)} testID={"branch-tier-" + i} />
         </View>
       ))}
-    </View>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: lv.card,
-    borderRadius: lv.radius,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lv.border,
-    padding: 16,
-    gap: 8,
-    ...lv.shadow,
-  },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.2, textTransform: "uppercase", color: lv.mutedFg },
   countdown: { fontFamily: lv.font.mono, fontSize: 18, fontWeight: "700", color: lv.fg, letterSpacing: 0.5 },

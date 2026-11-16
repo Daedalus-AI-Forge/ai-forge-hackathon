@@ -2,10 +2,11 @@ import { useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { GlassCard } from "@/components/ios";
 import { Button, ErrorText, Field, Muted } from "@/components/ui";
 import { api } from "@/convex/_generated/api";
 import { phoneAuthErrorData, phoneAuthErrorMessage, phoneFromParts, RESEND_SECONDS, usePhoneAuth } from "@/lib/phoneAuth";
-import { colors } from "@/lib/theme";
+import { lv, type } from "@/theme/tokens";
 
 type Busy = "send" | "verify" | null;
 
@@ -46,8 +47,17 @@ export function PhoneSignIn({ onDone, disabled }: { onDone: () => void; disabled
       setCode("");
       setResendIn(RESEND_SECONDS);
     } catch (e) {
+      const data = phoneAuthErrorData(e);
+      if (data?.code === "RATE_LIMITED") {
+        // A code was sent moments ago: go straight to code entry and count down live
+        // instead of leaving a frozen "try again in 53s" on the number screen.
+        setPhone(phoneFromParts(countryCode, number));
+        setResendIn(Math.max(1, Math.ceil((data.retryAfterMs ?? RESEND_SECONDS * 1000) / 1000)));
+        setError(null);
+        return;
+      }
       // No SMS provider for real numbers on a demo deployment: point at the demo number.
-      const notConfigured = phoneAuthErrorData(e)?.code === "NOT_CONFIGURED";
+      const notConfigured = data?.code === "NOT_CONFIGURED";
       setError(notConfigured && demo ? `${phoneAuthErrorMessage(e)}. ${DEMO_HINT}` : phoneAuthErrorMessage(e));
     } finally {
       setBusy(null);
@@ -90,7 +100,7 @@ export function PhoneSignIn({ onDone, disabled }: { onDone: () => void; disabled
   if (!phone) {
     const canSend = number.replace(/\D/g, "").length >= 4 && countryCode.replace(/\D/g, "").length > 0;
     return (
-      <View style={styles.box} testID="phone-step-number">
+      <GlassCard testID="phone-step-number">
         <Text style={styles.label}>Phone number</Text>
         <View style={styles.row}>
           <View style={styles.cc}>
@@ -131,12 +141,12 @@ export function PhoneSignIn({ onDone, disabled }: { onDone: () => void; disabled
           testID="phone-send"
         />
         <ErrorText error={error} />
-      </View>
+      </GlassCard>
     );
   }
 
   return (
-    <View style={styles.box} testID="phone-step-code">
+    <GlassCard testID="phone-step-code">
       <Muted>Enter the 6-digit code we sent to {phone}.</Muted>
       <Field
         value={code}
@@ -176,21 +186,20 @@ export function PhoneSignIn({ onDone, disabled }: { onDone: () => void; disabled
           <Text style={[styles.link, locked && styles.linkOff]}>Change number</Text>
         </Pressable>
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  box: { gap: 10 },
-  label: { fontSize: 14, color: colors.muted, fontWeight: "600" },
-  row: { flexDirection: "row", gap: 8 },
+  label: { ...type.footnote, fontWeight: "500", color: lv.mutedFg, paddingHorizontal: 4 },
+  row: { flexDirection: "row", gap: 8, alignItems: "center" },
   cc: { flexDirection: "row", alignItems: "center", gap: 4 },
-  plus: { fontSize: 17, color: colors.ink, fontWeight: "600" },
-  ccInput: { width: 64, textAlign: "center" },
+  plus: { ...type.body, fontWeight: "600", color: lv.fg },
+  ccInput: { width: 64, flexGrow: 0, textAlign: "center" },
   grow: { flex: 1 },
-  hint: { fontSize: 13 },
+  hint: { ...type.footnote },
   codeInput: { letterSpacing: 6, textAlign: "center", fontSize: 22 },
   links: { flexDirection: "row", justifyContent: "space-between" },
-  link: { color: colors.red, fontSize: 15, fontWeight: "600" },
-  linkOff: { color: colors.muted, opacity: 0.6 },
+  link: { ...type.subheadline, color: lv.thread, fontWeight: "600" },
+  linkOff: { color: lv.mutedFg, opacity: 0.6 },
 });

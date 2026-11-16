@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { GlassCard } from "@/components/ios";
 import { errorMessage } from "@/components/ui";
 import { useMe } from "@/lib/device";
 import { lv } from "@/theme/tokens";
@@ -16,7 +17,7 @@ export function StarsCard() {
   const stars = user?.stars ?? 0;
   const disabled = busy || stars < 2 || !deviceId;
   return (
-    <View testID="stars-card" style={styles.card}>
+    <GlassCard testID="stars-card" style={{ gap: 8 }}>
       <Text style={styles.eyebrow}>Stars</Text>
       <Text testID="stars-count" style={styles.num}>
         {stars} ⭐
@@ -43,20 +44,11 @@ export function StarsCard() {
       >
         <Text style={styles.btnText}>Trade 2 stars for 1 wish</Text>
       </Pressable>
-    </View>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: lv.card,
-    borderRadius: lv.radius,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: lv.border,
-    padding: 16,
-    gap: 8,
-    ...lv.shadow,
-  },
   eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", color: lv.mutedFg },
   num: { fontSize: 24, fontWeight: "700", color: lv.fg },
   hint: { fontSize: 13, lineHeight: 18, color: lv.mutedFg },

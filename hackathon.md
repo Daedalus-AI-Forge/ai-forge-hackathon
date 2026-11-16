@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth (Google, native Apple, phone OTP, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-15T21:10:00Z
+- **Last updated:** 2026-11-15T23:39:30Z
 
 ## Log
 
@@ -111,3 +111,87 @@ chain and ending. Finders of Today's boat choose whether their name and city
 show, and Me has a privacy switch and "how friends see you" (`convex/pool.ts`,
 `convex/hops.ts`, `convex/pool.test.ts`, `src/app/(tabs)/*`, `src/app/welcome.tsx`,
 `src/app/boat/[hopId].tsx`, `src/app/w/[hopId].tsx`, `docs/plans/paper-boat-ux-*.md`).
+
+### 2026-11-15 - feat/team-seed
+Team demo data: `teamSeed:run` takes the four team members' phone numbers at
+run time and binds each number to a user through the same Convex Auth phone
+account that sign-in looks up. Each member gets 20 generated close friends
+(job, habits, Bay Area city, one-line reason) and the chain Darren → Louise →
+Katie → Dazi, tuned so the coach ranks the next person first for "someone to
+jam on drums with in the Bay Area". Re-runs replace only the seed's own rows.
+A rehearsal script tosses and passes the wish as each member and checks the
+coach at every hop (`convex/teamSeed.ts`, `convex/teamSeed.test.ts`,
+`scripts/team-chain.mjs`, `docs/demo/team-chain.md`).
+
+### 2026-11-15 - feat/confirm-claim
+The wisher confirms a claim from the app, and the first text goes from their
+own phone. Voyages shows a "Someone says it's them" card for each verified
+claim (`link.pendingClaims`, which never returns a phone). "Yes, it's you"
+calls `link.confirmClaim`, which now returns the claimer's verified phone to
+the wish creator only. `linkAi.introMessage` drafts a short intro (3s budget,
+template fallback), and "Text {name} from my phone" opens the wisher's own
+Messages app prefilled with it. The wisher taps Send, so no Twilio number is
+needed and the claimer gets the wisher's real number. The automatic notices
+no longer mention numbers (`convex/link.ts`, `convex/linkAi.ts`,
+`src/components/lv/voyages/ClaimCard.tsx`, `src/app/(tabs)/voyages.tsx`).
+
+**Pick the recipient from Contacts.** A "Pick from contacts" button
+(`src/components/ContactPickButton.tsx`, native only; web renders nothing) opens
+the system contact picker via `expo-contacts` `Contact.presentPicker()` and
+returns only the picked name and one phone (mobile/iPhone label first,
+normalized to E.164 in `src/lib/contactPick.ts`). It sits next to the name field
+on Toss, Pass-on and the PushStep. The phone stays in component state and is
+never sent to Convex; it only pre-fills the recipient when "SMS" / "Open in
+Messages" opens the user's own Messages (`sms:<to>&body=` on iOS,
+`sms:<to>?body=` on Android). The user still taps Send. Needs a native rebuild
+(new native module + `NSContactsUsageDescription`).
+
+### 2026-11-15 - working tree — network presentation
+Refined My wish network within the existing warm palette: curved red threads,
+concentric ripples, connection badges, tag previews, selection highlighting,
+and six-person pages that can locate anyone selected in the full list. Added
+live friend/connection/tag totals and source/date context to existing details
+(`src/components/lv/me/EgoGraph.tsx`, `src/components/lv/me/MeNetwork.tsx`).
+Typecheck, targeted ESLint and all 20 Expo Doctor checks passed. Browser checks
+with isolated fixture data covered 320/390/430px widths, selection, pagination,
+forgetting tags/people, last-page removal, and empty/loading/single-person states.
+No backend changes, new dependencies, deployment or native-device verification.
+
+### 2026-11-15 - working tree — community network perspective
+Replaced the personal ring with a community map centered on the viewer: solid
+paths fade by graph distance, unrelated components use dashed lines, and people
+can be selected, searched, zoomed and panned. The bounded Convex projection uses
+verified user IDs and wish hops, respects visibility, excludes the platform well,
+and keeps saved aliases and identity-specific evidence private to their owner
+(`convex/graph.ts`, `src/components/lv/me/`, `src/lib/graphApi.types.ts`).
+Validated 22 scoped tests, full TypeScript, targeted ESLint, 20 Expo Doctor checks,
+Web/iOS/Android JS exports, and a push to the isolated local-anonymous backend.
+Browser fixtures verified paths, pan/zoom/recenter, search expansion, same-name
+identities, aliases, deletion transitions and 320/390px layouts. Added SVG rendering
+and the missing expo-font peer for the existing symbols package. No cloud deploy,
+push, native development-build rebuild or physical-device verification.
+
+### 2026-11-15 - working tree — iOS glass design system
+Restyled every screen in the iOS idiom with frosted glass: an ambient gradient
+backdrop, real UIKit blur materials (expo-blur) with Liquid Glass for the floating
+tab bar and round back buttons on iOS 26 (expo-glass-effect), CSS backdrop-filter on
+web, SF Symbols (expo-symbols), the iOS type ramp, continuous corners and one page
+grid (20-pt margins; caps section headers inset to card content). New primitives live
+in `src/components/ios/` (Glass, Screen, NavBar/BackButton, LargeTitle, SectionHeader,
+Segmented, GlassTabBar, Icon); `passon/kit`, `toss/parts` and `ui.tsx` now share one
+control set. Fixed the pass-on screen sitting under the status bar, fields collapsing
+in web cards, and the well coin drifting below the pool. Native effects are gated on
+the module being present, so an older dev client falls back to translucent views.
+Typecheck, 30 src tests, ESLint (no new errors) and 20 Expo Doctor checks pass;
+web screens verified in iPhone-sized Chrome. Real blur and SF Symbols need a new
+dev build; not yet verified on a device or simulator.
+
+### 2026-11-15 - claude/glass-network — network map in the glass style
+Brought the Me-tab wish network onto the iOS glass system without touching its
+logic: glass section cards, an iOS search field with grouped results, an inset map
+canvas with glass recenter/zoom controls (SF Symbols), round close buttons, tag
+capsules, a route drawn as red-thread steps, and an inset-separator list of saved
+connections. SVG labels use the system font on web (they fell back to serif).
+All testIDs kept (`src/components/lv/me/MeNetwork.tsx`, `EgoGraph.tsx`).
+Typecheck, 227 tests and ESLint (no new errors) pass; verified in iPhone-sized
+Chrome with sample network data, including a selected connection.

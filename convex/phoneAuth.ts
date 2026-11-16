@@ -25,8 +25,7 @@ export const sendCode = action({
   handler: async (ctx, args) => {
     const phone = normalizePhone(args.phone);
     smsModeFor(phone); // NOT_CONFIGURED before any rate limit is spent.
-    await limitSend(ctx, phone);
-    const { mode } = await sendSmsCode(phone);
+    const { mode } = await limitSend(ctx, phone, () => sendSmsCode(phone));
     console.log(JSON.stringify({ event: "phone_auth.code_sent", phone: maskPhone(phone), mode }));
     return { phone, resendAfterMs: RESEND_AFTER_MS };
   },

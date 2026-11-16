@@ -1,15 +1,18 @@
 import { StyleSheet } from "react-native";
 
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
-/** RN stand-ins for the new design's .glass / .glass-dark / .eyebrow utility classes. */
+/**
+ * Plain style fallbacks for places that can't host the `Glass` component.
+ * Prefer `Glass` / `GlassCard` from "@/components/ios": they render real frosted materials.
+ */
 export const glass = StyleSheet.create({
   light: {
-    backgroundColor: "rgba(254,253,251,0.86)",
+    backgroundColor: "rgba(255,255,255,0.82)",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.9)",
-    ...lv.shadow,
+    boxShadow: "0px 10px 30px rgba(28,24,20,0.08)",
   },
-  dark: { backgroundColor: "rgba(20,18,15,0.48)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.18)" },
-  eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1.1, textTransform: "uppercase", color: lv.mutedFg },
+  dark: { backgroundColor: "rgba(28,28,30,0.6)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.14)" },
+  eyebrow: { ...type.eyebrow, color: lv.mutedFg },
 });

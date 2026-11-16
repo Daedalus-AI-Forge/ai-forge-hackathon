@@ -31,6 +31,8 @@ export default defineSchema({
     showInLogs: v.optional(v.boolean()),
     deviceId: v.optional(v.string()),
     demoKey: v.optional(v.string()),
+    // Team demo member ("darren" | "louise" | "katie" | "dazi"), set by teamSeed.run.
+    teamKey: v.optional(v.string()),
     // Convex Auth profile fields (see authTables.users).
     image: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -42,12 +44,15 @@ export default defineSchema({
   })
     .index("by_deviceId", ["deviceId"])
     .index("by_demoKey", ["demoKey"])
+    .index("by_teamKey", ["teamKey"])
     // Index names required by Convex Auth (`phone` also serves phone sign-in).
     .index("email", ["email"])
     .index("phone", ["phone"]),
 
   wishes: defineTable({
     creatorId: v.id("users"),
+    // Set on the hidden graph-holder wish written by teamSeed.run (re-runs replace it).
+    teamKey: v.optional(v.string()),
     type: wishType,
     // "serious" (default when missing): each pass needs a reason. "fun": reason optional.
     mode: v.optional(v.union(v.literal("serious"), v.literal("fun"))),
@@ -101,6 +106,13 @@ export default defineSchema({
     itsMePublic: v.optional(v.boolean()),
     action: v.optional(hopAction),
     actedAt: v.optional(v.number()),
+    // Link page (docs/superpowers/plans/2026-11-15-link-page.md)
+    introVouch: v.optional(v.string()), // the pusher's vouch about this hop's holder
+    relation: v.optional(v.string()),
+    proofStorageId: v.optional(v.id("_storage")),
+    claimAnswers: v.optional(v.array(v.string())),
+    claimPhone: v.optional(v.string()),
+    claimVerified: v.optional(v.boolean()),
   })
     .index("by_wishId", ["wishId"])
     .index("by_wishId_and_holderUserId", ["wishId", "holderUserId"])
@@ -146,4 +158,31 @@ export default defineSchema({
     .index("by_ownerUserId", ["ownerUserId"])
     .index("by_ownerUserId_and_personName", ["ownerUserId", "personName"])
     .index("by_tag", ["tag"]),
+  linkVisitors: defineTable({
+    contactKey: v.string(), // E.164 phone or lowercase email
+    contactKind: v.union(v.literal("phone"), v.literal("email")),
+    userId: v.id("users"),
+    freeWishId: v.optional(v.id("wishes")),
+    draftText: v.optional(v.string()),
+    draftAt: v.optional(v.number()),
+    remindedAt: v.optional(v.number()),
+  })
+    .index("by_contactKey", ["contactKey"])
+    .index("by_userId", ["userId"]),
+
+  linkEvents: defineTable({
+    hopId: v.optional(v.id("hops")),
+    userId: v.optional(v.id("users")),
+    event: v.union(
+      v.literal("open"),
+      v.literal("wish_written"),
+      v.literal("skip_wish"),
+      v.literal("claim"),
+      v.literal("push"),
+      v.literal("contact"),
+      v.literal("download_click"),
+    ),
+    wroteWish: v.optional(v.boolean()),
+    at: v.number(),
+  }).index("by_event", ["event"]),
 });

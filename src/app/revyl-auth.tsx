@@ -3,14 +3,15 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { CenterScreen } from "@/components/ios";
 import { errorMessage } from "@/components/ui";
 import { AUTH_ENABLED } from "@/lib/authFlag";
 import { useDeviceId } from "@/lib/device";
 import { checkBypass } from "@/lib/revylBypass";
-import { colors } from "@/lib/theme";
+import { lv, type } from "@/theme/tokens";
 
 type SignIn = (deviceId: string) => Promise<unknown>;
 
@@ -51,19 +52,18 @@ export default function RevylAuth() {
   }, [deviceId]);
 
   return (
-    <View testID="revyl-auth-screen" style={styles.container}>
+    <CenterScreen testID="revyl-auth-screen">
       {error ? (
         <Text testID="revyl-auth-error" style={styles.error}>
           {error}
         </Text>
       ) : (
-        <ActivityIndicator color={colors.red} />
+        <ActivityIndicator color={lv.thread} />
       )}
-    </View>
+    </CenterScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: colors.cream },
-  error: { fontSize: 16, color: colors.red, textAlign: "center" },
+  error: { ...type.callout, color: lv.destructive, textAlign: "center" },
 });

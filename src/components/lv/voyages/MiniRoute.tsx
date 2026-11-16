@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { lv } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
 /**
  * One-line route summary for a voyage card: the cities a boat drifted through,
@@ -33,6 +33,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", rowGap: 6 },
   seg: { flexDirection: "row", alignItems: "center" },
   dash: { width: 12, height: 2, borderRadius: 1, backgroundColor: lv.thread, marginHorizontal: 5 },
-  text: { fontSize: 13, color: lv.mutedFg },
-  last: { color: lv.fg, fontWeight: "700" },
+  text: { ...type.footnote, color: lv.mutedFg },
+  last: { color: lv.fg, fontWeight: "600" },
 });

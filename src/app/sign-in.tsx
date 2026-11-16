@@ -7,10 +7,12 @@ import { openAuthSessionAsync } from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 
+import { Screen } from "@/components/ios";
 import { PhoneSignIn } from "@/components/PhoneSignIn";
 import { Button, ErrorText, Muted, errorMessage } from "@/components/ui";
 import { AUTH_ENABLED } from "@/lib/authFlag";
-import { colors, radius } from "@/lib/theme";
+import { radius } from "@/lib/theme";
+import { lv, type } from "@/theme/tokens";
 
 /** Native returns to the app scheme; web returns to the current origin (must match SITE_URL). */
 function redirectTarget() {
@@ -81,7 +83,7 @@ function SignInScreen() {
   }
 
   return (
-    <View testID="sign-in-screen" style={styles.container}>
+    <Screen testID="sign-in-screen" nativeHeader contentStyle={styles.container}>
       <View style={styles.hero}>
         <Text style={styles.title}>Keep your wishes</Text>
         <Muted style={styles.center}>
@@ -114,7 +116,7 @@ function SignInScreen() {
         <ErrorText error={error} />
         <Button title="Not now" variant="ghost" onPress={done} testID="sign-in-skip" />
       </View>
-    </View>
+    </Screen>
   );
 }
 
@@ -124,11 +126,11 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 32, justifyContent: "center", backgroundColor: colors.cream, maxWidth: 430, width: "100%", alignSelf: "center" },
+  container: { flexGrow: 1, justifyContent: "center", gap: 32 },
   hero: { alignItems: "center", gap: 10 },
-  title: { fontSize: 28, fontWeight: "800", color: colors.ink },
+  title: { ...type.title1, color: lv.fg, textAlign: "center" },
   center: { textAlign: "center" },
   actions: { gap: 12 },
-  apple: { height: 50, width: "100%" },
+  apple: { height: 52, width: "100%" },
   dim: { opacity: 0.5 },
 });
