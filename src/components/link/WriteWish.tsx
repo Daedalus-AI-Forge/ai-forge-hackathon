@@ -18,9 +18,20 @@ export type WriteWishProps = {
   onChangeText: (t: string) => void;
   onContinue: (text: string) => void;
   onSkip: () => void;
+  /** Copy overrides, e.g. after the visitor just passed a boat on. */
+  eyebrow?: string;
+  title?: string;
 };
 
-export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: WriteWishProps) {
+export function WriteWish({
+  deviceId,
+  text,
+  onChangeText,
+  onContinue,
+  onSkip,
+  eyebrow = "Your free wish",
+  title = "What kind of person do you wish you knew?",
+}: WriteWishProps) {
   const polishWish = useAction(api.ai.polishWish);
   const [polishing, setPolishing] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -44,8 +55,8 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
   return (
     <View style={{ gap: 18 }} testID="link-wish-step">
       <View style={{ gap: 8 }}>
-        <Eyebrow>Your free wish</Eyebrow>
-        <Text style={styles.h1}>What kind of person do you wish you knew?</Text>
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <Text style={styles.h1}>{title}</Text>
         <Sub>One line is enough. It sails to friends of friends, never to a stranger feed.</Sub>
       </View>
 
@@ -80,14 +91,14 @@ export function WriteWish({ deviceId, text, onChangeText, onContinue, onSkip }: 
       </View>
 
       <DButton
-        title="Continue"
+        title="Make my wish"
         size="lg"
         onPress={() => onContinue(trimmed)}
         disabled={!trimmed || polishing}
         testID="link-wish-continue"
       />
       {!trimmed && !polishing ? <DHint>Write one line to continue, or skip it below.</DHint> : null}
-      <DButton title="Not now, just help" variant="plain" size="sm" onPress={onSkip} testID="link-skip-wish" style={styles.skip} />
+      <DButton title="Not now" variant="plain" size="sm" onPress={onSkip} testID="link-skip-wish" style={styles.skip} />
     </View>
   );
 }

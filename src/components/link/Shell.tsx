@@ -7,37 +7,38 @@ import { BackButton, NavBar, Screen } from "@/components/ios";
 import type { LinkStep } from "@/lib/linkDraft";
 import { lv } from "@/theme/tokens";
 
-export type HandleChoice = "claim" | "push" | null;
-
-/** Step after `from`. `freeWishAvailable === false` skips the wish; `freeWishOnly` (special states) skips the boat. */
+/**
+ * Step after `from`. The boat comes first: the visitor passes it on (or claims it) on the first
+ * screen, then makes their own wish. `freeWishAvailable === false` skips the wish.
+ * "handle" is the "That's me" claim form, reached from the first screen.
+ */
 export function nextStep(from: LinkStep, o: { freeWishAvailable: boolean; freeWishOnly: boolean }): LinkStep {
   switch (from) {
     case "first":
-      return o.freeWishAvailable ? "wish" : o.freeWishOnly ? "contact" : "handle";
-    case "wish":
-      return o.freeWishOnly ? "contact" : "handle";
     case "handle":
+      return o.freeWishAvailable ? "wish" : "contact";
+    case "wish":
       return "contact";
     default:
       return "done";
   }
 }
 
-/** Step the back arrow returns to, or null when there is nothing behind (first) or nothing to undo (done). */
+/** Step the back arrow returns to, or null when there is nothing behind or nothing to undo (a passed boat). */
 export function prevStep(from: LinkStep, o: { freeWishAvailable: boolean; freeWishOnly: boolean }): LinkStep | null {
   switch (from) {
-    case "wish":
-      return "first";
     case "handle":
-      return o.freeWishAvailable ? "wish" : "first";
+      return "first";
+    case "wish":
+      return o.freeWishOnly ? "first" : null;
     case "contact":
-      return o.freeWishOnly ? (o.freeWishAvailable ? "wish" : "first") : "handle";
+      return o.freeWishAvailable ? "wish" : null;
     default:
       return null;
   }
 }
 
-const DOTS: LinkStep[] = ["first", "wish", "handle", "contact", "done"];
+const DOTS: LinkStep[] = ["first", "wish", "contact", "done"];
 
 export function Shell({
   step,
@@ -50,7 +51,7 @@ export function Shell({
   children: ReactNode;
   testID?: string;
 }) {
-  const at = DOTS.indexOf(step);
+  const at = Math.max(0, DOTS.indexOf(step));
   return (
     <Screen testID={testID} maxWidth={480} contentStyle={styles.column}>
       {step !== "first" ? (

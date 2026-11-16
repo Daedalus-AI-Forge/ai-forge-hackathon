@@ -1,4 +1,4 @@
-// Screen 5: "Your wish set sail" + prophecy + boat progress + a non-blocking "Get the app".
+// Last screen: "Your wish set sail" + prophecy + boat progress, ending on the "Get Wishwell" card.
 import { useAction } from "convex/react";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -54,12 +54,17 @@ export function DoneStep({ result, wishText, boatWishId }: DoneStepProps) {
         <Text style={styles.more}>{pushMoreLine(result.boatProgress, result.boatsPerCoin)}</Text>
         {result.wishesLeft > 0 ? <Sub>You have {result.wishesLeft} wish{result.wishesLeft === 1 ? "" : "es"} ready.</Sub> : null}
       </Glass>
-      <Sub>We'll text or email you when it lands.</Sub>
       {result.wishId && result.wishId !== boatWishId ? (
         <WishProgressButton wishId={result.wishId} title="Track your new wish" testID="link-new-wish-progress" />
       ) : null}
       <WishProgressButton wishId={boatWishId} title="Check this boat's progress" testID="link-progress-link" />
-      <GetTheApp deviceId={deviceId} />
+      <Glass testID="done-get-app">
+        <Text style={styles.more}>{sailed ? "Follow your wish in the app" : "Follow this boat in the app"}</Text>
+        <Sub>
+          {"See every ripple as it happens and get a ping the moment someone says \"it's me\". We'll also text or email you when it lands."}
+        </Sub>
+        <GetTheApp deviceId={deviceId} title="Get Wishwell" variant="thread" size="lg" />
+      </Glass>
     </View>
   );
 }

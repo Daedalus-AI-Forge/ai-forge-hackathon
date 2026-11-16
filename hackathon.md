@@ -270,3 +270,15 @@ privacy, expiry, both helper branches and 320–1024px layouts; a storage audit 
 the saved photo and granted state. Independent review approved the implementation.
 No cloud deployment or live-user messages. Native photo/Message-app behavior still
 needs device verification after rebuilding the development client.
+
+### 2026-11-15 - claude/link-page-pass-first — link page: pass the boat first, then your wish
+The no-app link page (`/l/[hopId]`) now leads with the boat. Under the vouch and wish card is
+one pass-on card: the AI memory hint, the friend's name (Contacts picker on native), three
+AI-suggested reasons to tap plus "Something else", and one button that pushes the boat and
+opens Messages with the text and link ready. The picked reason is the vouch, so the separate
+relation / reason / "Write the vouch" / edit-message steps are gone. After passing, the page
+shows "You made pass #N" with a live count from the reactive `link.firstScreen` query, then
+"You can make a wish too", the contact step, and a "Get Wishwell" card on the last screen.
+"That's me" still opens the claim form. New Convex action `linkAi.passReasons` (3s budget,
+template fallback). Typecheck and 277 tests pass. Not yet run in a browser or on a device:
+the one-tap `sms:` open after the mutation needs a check in iOS Safari.

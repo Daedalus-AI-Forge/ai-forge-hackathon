@@ -1,278 +1,224 @@
-// Screen 3b: push the boat to exactly one person. Memory hint → name, relation, reason →
-// AI vouch (editable) → link.pushOne → AI-drafted share message (editable) → share sheet.
-import { useAction, useMutation, useQuery } from "convex/react";
+// First-screen pass-on card: name (+ phone on the web; Contacts picker where the platform has one), then a tappable reason the AI suggests
+// (or "Something else"), then one button that pushes the boat and opens Messages with the text ready.
+// The picked reason is the vouch the next person sees, so there is nothing else to write.
+import { useAction, useMutation } from "convex/react";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Platform, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { DButton, DCard, DChips, DError, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { DButton, DCard, DChips, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { ContactPickButton } from "@/components/ContactPickButton";
 import { ContactSuggestions } from "@/components/ContactSuggestions";
-import { smsHref } from "@/lib/contactPick";
+import { phoneTail, smsHref, toE164 } from "@/lib/contactPick";
 import { copyLink } from "@/lib/links";
-import type { FirstScreen } from "@/lib/linkApi.types";
 import { lv, type } from "@/theme/tokens";
 
 import { cleanError } from "./claim/errors";
 import { fallbackShareMessage, ogShareUrl, withTimeout } from "./push/shareCopy";
 
-export type PushStepProps = { hopId: string; deviceId: string; onDone: (childHopId: string) => void };
+export type Passed = { childHopId: string; name: string; reason: string };
+export type PushStepProps = { hopId: string; deviceId: string; wishText: string; onPassed: (p: Passed) => void };
 
-const RELATIONS = ["friend", "coworker", "classmate", "family", "neighbor"] as const;
+const OTHER = "Something else";
+const FALLBACK_REASONS = ["Is into this kind of thing", "Knows a lot of people", "Would love to help"];
 const AI_TIMEOUT_MS = 3000;
 
-export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
+function isAndroid() {
+  return Platform.OS === "android" || (typeof navigator !== "undefined" && /android/i.test(navigator.userAgent ?? ""));
+}
+
+/** Phones can open `sms:`; a desktop browser cannot, so there we copy the message instead. */
+function canText() {
+  if (Platform.OS !== "web") return true;
+  return typeof navigator !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent ?? "");
+}
+
+export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps) {
   const hop = hopId as Id<"hops">;
-  const screen = useQuery(api.link.firstScreen, { hopId, deviceId }) as FirstScreen | null | undefined;
   const memoryPrompt = useAction(api.linkAi.memoryPrompt);
-  const vouchFor = useAction(api.linkAi.vouchFor);
-  const draftPassMessage = useAction(api.ai.draftPassMessage);
+  const passReasons = useAction(api.linkAi.passReasons);
   const pushOne = useMutation(api.link.pushOne);
   const track = useMutation(api.linkMetrics.track);
 
   const [hint, setHint] = useState<string | null>(null);
+  const [reasons, setReasons] = useState<string[] | null>(null);
   const [name, setName] = useState("");
-  // Picked from Contacts (native only), kept in state: pre-fills the Messages recipient.
+  // Picked from Contacts (native), kept in state only: pre-fills the Messages recipient.
   const [phone, setPhone] = useState<string | null>(null);
+  // Web: the number as typed, AutoFilled, or picked (Contact Picker API). State only: it becomes the
+  // `sms:` recipient and is never sent to the server.
+  const [phoneInput, setPhoneInput] = useState("");
   const [nameFocused, setNameFocused] = useState(false);
-  const [relation, setRelation] = useState<string | null>("friend");
-  const [reason, setReason] = useState("");
-  const [vouch, setVouch] = useState<string | null>(null);
-  const [writing, setWriting] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [custom, setCustom] = useState("");
   const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [childHopId, setChildHopId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
     withTimeout(memoryPrompt({ hopId: hop }), AI_TIMEOUT_MS)
       .then((h) => live && setHint(h))
       .catch(() => live && setHint("Who do you know who might fit?"));
+    // The first suggestion starts selected, so a name plus one tap is enough.
+    const use = (r: string[]) => {
+      if (!live) return;
+      setReasons(r);
+      setPicked((p) => p ?? r[0] ?? OTHER);
+    };
+    withTimeout(passReasons({ hopId: hop }), AI_TIMEOUT_MS)
+      .then((r) => use(r.length > 0 ? r : FALLBACK_REASONS))
+      .catch(() => use(FALLBACK_REASONS));
     return () => {
       live = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hopId]);
 
-  const wishText = screen?.boat.text ?? "";
-  const formReady = name.trim().length > 0 && relation !== null && reason.trim().length > 0;
+  const first = name.trim().split(/\s+/)[0] ?? "";
+  const reason = picked === OTHER ? custom.trim() : (picked ?? "");
+  const text = canText();
+  const web = Platform.OS === "web";
+  const recipient = web ? toE164(phoneInput) : phone;
 
-  const missing = !name.trim()
-    ? "Add their name first."
-    : !relation
-      ? "Pick how you know them."
-      : !reason.trim()
-        ? "Add one line on why them."
-        : null;
-
-  async function onWriteVouch() {
-    // Never a dead button: say what's missing instead of silently ignoring the tap.
-    if (missing || !relation) {
-      setError(missing);
-      return;
-    }
-    setError(null);
-    setWriting(true);
-    try {
-      const v = await withTimeout(vouchFor({ hopId: hop, name: name.trim(), relation, reason: reason.trim() }), AI_TIMEOUT_MS);
-      setVouch(v);
-    } catch {
-      setVouch(`${name.trim()} is my ${relation} — ${reason.trim()}`);
-    } finally {
-      setWriting(false);
-    }
-  }
-
-  async function onPush() {
-    if (!relation || !vouch?.trim()) return;
+  async function onPass() {
+    const to = name.trim();
+    if (!to) return setError("Add their name first.");
+    if (!reason) return setError(picked === OTHER ? "Add your reason in a few words." : "Pick a reason, or add your own.");
     setError(null);
     setPushing(true);
-    let child: string;
+    let childHopId: string;
     try {
-      const res = await pushOne({
-        hopId: hop,
-        deviceId,
-        name: name.trim(),
-        relation,
-        reason: reason.trim(),
-        vouch: vouch.trim(),
-      });
-      child = res.childHopId;
+      const res = await pushOne({ hopId: hop, deviceId, name: to, relation: "", reason, vouch: reason });
+      childHopId = res.childHopId;
     } catch (e) {
       setError(cleanError(e));
       setPushing(false);
       return;
     }
-    setChildHopId(child);
-    setPushing(false);
-    const fallback = fallbackShareMessage(name, vouch, wishText);
-    try {
-      const drafted = await withTimeout(draftPassMessage({ hopId: child as Id<"hops"> }), AI_TIMEOUT_MS);
-      setMessage(drafted.trim() || fallback);
-    } catch {
-      setMessage(fallback);
-    }
-  }
-
-  async function onShare() {
-    if (!childHopId || message === null) return;
     const webOrigin = Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : null;
     const url = ogShareUrl(childHopId, process.env.EXPO_PUBLIC_CONVEX_SITE_URL, webOrigin);
-    const text = `${message.trim()}\n${url}`;
-    setError(null);
-    const webShare = Platform.OS === "web" ? webShareFn() : null;
-    if (Platform.OS === "web" && !webShare) {
-      // No Web Share API (most desktop browsers): copy and let the visitor paste it themselves.
-      try {
-        await copyLink(text);
-        setNote(`Copied! Paste it in your chat with ${name.trim()}.`);
-      } catch {
-        setError("Couldn't copy. Select the message and link above and copy them.");
-        return;
-      }
-      void track({ hopId: hop, deviceId, event: "push" }).catch(() => {});
-      return;
-    }
+    const body = `${fallbackShareMessage(first || to, reason, wishText)}\n${url}`;
+    // We only prepare the draft: the visitor reviews it in Messages and taps Send themselves.
+    // If Messages can't open (or this is a desktop browser), the next screen keeps the message one tap away.
     try {
-      if (webShare) await webShare({ text });
-      else await Share.share({ message: text });
+      if (text) await Linking.openURL(smsHref(body, recipient ?? undefined, isAndroid() ? "android" : "ios"));
+      else await copyLink(body);
     } catch {
-      // Share sheet dismissed: the boat is already pushed, so the visitor may continue anyway.
+      // Handled on the next screen ("Didn't send it?").
     }
     void track({ hopId: hop, deviceId, event: "push" }).catch(() => {});
-    onDone(childHopId);
-  }
-
-  // Open the visitor's own Messages app with the AI draft prefilled. We never send anything:
-  // the person reviews it (recipient pre-filled if they picked a contact) and taps Send themselves.
-  async function onOpenMessages() {
-    if (!childHopId || message === null) return;
-    const webOrigin = Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : null;
-    const url = ogShareUrl(childHopId, process.env.EXPO_PUBLIC_CONVEX_SITE_URL, webOrigin);
-    // iOS expects `sms:<to>&body=`, Android `sms:<to>?body=`.
-    const isAndroid = Platform.OS === "android" || (typeof navigator !== "undefined" && /android/i.test(navigator.userAgent ?? ""));
-    const smsUrl = smsHref(`${message.trim()}\n${url}`, phone ?? undefined, isAndroid ? "android" : "ios");
-    setError(null);
-    try {
-      await Linking.openURL(smsUrl);
-      setNote(`Your message to ${name.trim()} is ready in Messages — review it and tap Send yourself.`);
-      void track({ hopId: hop, deviceId, event: "push" }).catch(() => {});
-    } catch {
-      setError("Couldn't open Messages here. Use Share instead.");
-    }
-  }
-
-  if (childHopId) {
-    return (
-      <DCard testID="push-share">
-        <Eyebrow>Boat pushed</Eyebrow>
-        <Text style={styles.title}>Send it to {name.trim()}</Text>
-        {message === null ? (
-          <View style={styles.row}>
-            <ActivityIndicator color={lv.tint} />
-            <Sub>Writing your message…</Sub>
-          </View>
-        ) : (
-          <DField value={message} onChangeText={setMessage} multiline maxLength={600} style={{ minHeight: 110 }} testID="push-message" />
-        )}
-        <DError error={error} />
-        {note ? (
-          <>
-            <Sub>{note}</Sub>
-            <DButton title="Next" onPress={() => onDone(childHopId)} testID="push-next" />
-          </>
-        ) : (
-          <>
-            <DButton
-              title="Open in Messages"
-              size="lg"
-              onPress={onOpenMessages}
-              disabled={message === null || !message.trim()}
-              testID="push-open-messages"
-            />
-            <DButton
-              title="Share another way"
-              variant="ghost"
-              onPress={onShare}
-              disabled={message === null || !message.trim()}
-              testID="push-share-btn"
-            />
-            <Sub>We only prepare the draft. You choose who gets it and tap Send.</Sub>
-          </>
-        )}
-      </DCard>
-    );
+    setPushing(false);
+    onPassed({ childHopId, name: first || to, reason });
   }
 
   return (
     <DCard testID="push-step">
-      <Eyebrow>Push it to one person</Eyebrow>
+      <Eyebrow>Who should get this boat next?</Eyebrow>
       {hint ? <Text style={styles.hint}>{hint}</Text> : <ActivityIndicator color={lv.tint} />}
-      <DField label="Their name" value={name} onChangeText={setName} placeholder="Ben" maxLength={60} testID="push-name" onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)} />
+
+      <DField
+        label="Their name"
+        value={name}
+        onChangeText={(t) => {
+          setName(t);
+          setPhone(null);
+          setError(null);
+        }}
+        placeholder="Maya"
+        maxLength={60}
+        testID="push-name"
+        {...(web ? { autoComplete: "name" as const } : null)}
+        onFocus={() => setNameFocused(true)}
+        onBlur={() => setNameFocused(false)}
+      />
       <ContactSuggestions
         testID="contact-suggest-push"
         query={name}
         focused={nameFocused}
-        onPick={({ name: picked, phone: p }) => {
-          setName(picked);
+        onPick={({ name: n, phone: p }) => {
+          setName(n);
           setPhone(p);
         }}
       />
+      {web ? (
+        <DField
+          label="Their phone (optional)"
+          value={phoneInput}
+          onChangeText={setPhoneInput}
+          placeholder="So Messages opens to them"
+          maxLength={24}
+          keyboardType="phone-pad"
+          inputMode="tel"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
+          testID="push-phone"
+        />
+      ) : null}
       <ContactPickButton
         testID="contact-pick-push"
-        onPick={({ name: picked, phone: p }) => {
-          if (picked) setName(picked);
+        onPick={({ name: n, phone: p }) => {
+          if (n) setName(n);
           setPhone(p);
+          if (web) setPhoneInput(p ?? "");
         }}
       />
-      <DChips label="They are my…" options={RELATIONS} value={relation} onChange={setRelation} testIDPrefix="push-relation" />
-      <DField
-        label="Why them, in one line"
-        value={reason}
-        onChangeText={setReason}
-        placeholder="They always know someone who…"
-        maxLength={200}
-        testID="push-reason"
-      />
-      {vouch === null ? (
-        <>
-          <DButton title="Write the vouch" variant="ink" size="lg" onPress={onWriteVouch} busy={writing} testID="push-write-vouch" />
-          {error ? null : <DHint testID="push-missing">{missing}</DHint>}
-        </>
+      {!web && phone ? <Sub>Texting the number ending in {phoneTail(phone)}.</Sub> : null}
+
+      {reasons ? (
+        <DChips
+          label={first ? `Why ${first}?` : "Why them?"}
+          options={[...reasons, OTHER]}
+          value={picked}
+          onChange={(r) => {
+            setPicked(r);
+            setError(null);
+          }}
+          testIDPrefix="push-reason"
+        />
       ) : (
-        <>
-          <DField label="Your vouch (edit freely)" value={vouch} onChangeText={setVouch} multiline maxLength={400} testID="push-vouch" />
-          <DButton title="Rewrite" variant="ghost" size="sm" onPress={onWriteVouch} busy={writing} testID="push-rewrite" />
-        </>
+        <ActivityIndicator color={lv.tint} />
       )}
-      <DError error={error} />
-      {vouch !== null ? (
-        <>
-          <DButton
-            title={`Push to ${name.trim() || "them"}`}
-            size="lg"
-            onPress={onPush}
-            busy={pushing}
-            disabled={!formReady || !vouch.trim()}
-            testID="push-submit"
-          />
-          <DHint>{missing ?? (vouch.trim() ? null : "Write a line of vouch first.")}</DHint>
-        </>
+      {picked === OTHER ? (
+        <DField
+          value={custom}
+          onChangeText={(t) => {
+            setCustom(t);
+            setError(null);
+          }}
+          placeholder="Your reason, in a few words"
+          maxLength={140}
+          autoFocus
+          testID="push-reason-other"
+          accessibilityLabel="Your own reason"
+        />
       ) : null}
+      {first && reason ? (
+        <Sub>
+          {first} will see “You about {first}: {reason}”
+        </Sub>
+      ) : null}
+
+      <DError error={error} />
+      <DButton
+        title={text ? (first ? `Pass it on to ${first} in Messages` : "Pass it on in Messages") : first ? `Pass it on to ${first}` : "Pass it on"}
+        size="lg"
+        onPress={onPass}
+        busy={pushing}
+        testID="push-submit"
+      />
+      <Sub style={styles.note}>
+        {!text
+          ? "We copy the message and link for you to paste."
+          : recipient
+            ? "Messages opens to them with the text ready. You tap Send."
+            : "Messages opens with the text ready. Choose who gets it, then tap Send."}
+      </Sub>
     </DCard>
   );
 }
 
-function webShareFn(): ((d: ShareData) => Promise<void>) | null {
-  if (typeof navigator === "undefined" || typeof navigator.share !== "function") return null;
-  return (d) => navigator.share(d);
-}
-
 const styles = StyleSheet.create({
-  title: { ...type.title3, color: lv.fg },
   hint: { ...type.body, lineHeight: 24, color: lv.mutedFg, fontStyle: "italic" },
-  row: { flexDirection: "row", gap: 8, alignItems: "center" },
+  note: { ...type.footnote, textAlign: "center" },
 });
