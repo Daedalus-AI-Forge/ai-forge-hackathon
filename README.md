@@ -2,9 +2,10 @@
 
 **Wishes that travel friend to friend until they come true.** Built at the YC Consumer Mobile Hack, 2026-11-15.
 
-Dive into a night-garden fountain, whisper a wish, and watch your coin sink into real water. An AI coach suggests the 1-3 friends most likely to know the right person, and "Text all" opens Messages for each. Every friend vouches for the last one and passes the paper boat on; anyone can help from a link with no app and gets a free wish of their own. When the boat finds the right person, you meet, snap a photo, and the wish is GRANTED. A person always taps Send; the AI only drafts.
+Demo story: Louise wishes to try a Japanese tea ceremony. Her AI coach suggests Katie, "from a daily boat 3 weeks ago". Katie helps from the no-app link page and passes it to Darren, and Dazi says "That's me": California → Osaka → Kyoto in 3 passes. Every friend vouches for the last one; anyone helping from a link gets a free wish of their own. You meet, snap a photo, and the wish is GRANTED. The World tab is a real-geography globe where every completed wish can "Fly the route" in 3D, success stories carry meet-up photos, and AI bots keep wishes travelling across 18 countries. Toss lives on the Well tab, and the lantern paper boat is the app icon. A person always taps Send; the AI only drafts.
 
-- Live no-app link page: https://gallant-seal-635.convex.site
+- Live link: https://gallant-seal-635.convex.site
+- Demo ending (granted tea-ceremony wish): https://gallant-seal-635.convex.site/e/jn72jhcrt9geza5qs4vk47w5eh8jaae8
 - Pitch, demo script and sponsor details: `docs/submission/`
 - Spec: `docs/wishwell-spec.md`
 - Team: Darren, Louise, Katie (design by Katie-Lan and Louise)
