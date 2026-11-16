@@ -9,7 +9,7 @@ Name: Wishwell
 Tagline: Wishes that travel friend to friend until they come true
 
 Description:
-Wishwell turns "does anyone know someone who..." into a paper boat. Dive into a night-garden fountain, whisper a wish, and watch your coin sink into real water. An AI coach reads the reasons you gave when you passed boats before and suggests the 1-3 friends most likely to know someone; "Text all" opens Messages for each. Every friend vouches for the last one and passes the boat on. Anyone can help from a link with no app and gets a free wish of their own. When the boat finds the right person, you meet, snap a photo, and the wish is GRANTED. A person always taps Send; the AI only drafts. The network map shows wishes crossing 18 countries.
+Wishwell turns "does anyone know someone who..." into a lantern paper boat. Louise wishes to try a Japanese tea ceremony. Her AI coach suggests Katie, whose daily boat she passed 3 weeks ago. Katie opens a no-app link page, vouches, and passes it to Darren, whose friend Dazi says "That's me": California to Osaka to Kyoto in 3 passes. Anyone helping from a link gets a free wish of their own. You meet, snap a photo, and the wish is GRANTED. On the World tab, a real-geography globe, every completed wish can "Fly the route" in 3D while AI bots keep wishes travelling across 18 countries. A person always taps Send; the AI only drafts.
 
 How we used Capy:
 - Capy agents built core PRs: scaffold, pass-on page, phone auth, relation graph + AI coach, paper boat UX.
@@ -30,7 +30,9 @@ Team: Darren, Louise, Katie (design by Katie-Lan and Louise)
 
 Repo: https://github.com/Daedalus-AI-Forge/ai-forge-hackathon
 
-Live demo (no-app link page): https://gallant-seal-635.convex.site
+Live link (no-app link page): https://gallant-seal-635.convex.site
+
+Demo ending (granted tea-ceremony wish): https://gallant-seal-635.convex.site/e/jn72jhcrt9geza5qs4vk47w5eh8jaae8
 ```
 
 ## Still to attach
@@ -40,7 +42,7 @@ Live demo (no-app link page): https://gallant-seal-635.convex.site
   2. `toss.png`: night sheet with AI coach picks and evidence, "Text all N"
   3. `link.png`: no-app link page in Safari (vouch + free wish)
   4. Meet-up photo and the GRANTED reveal
-  5. Community network map with wishes across 18 countries
+  5. World globe: a completed wish flying its route, with the meet-up photo
 
 ## Pre-demo checklist
 - [ ] Reseed: `npx convex run teamSeed:run '{...}'` (add `"global": true` for the worldwide network map) with phone numbers passed at run time (never committed). Run it 5+ minutes before the demo so Supermemory indexes the edges. If `seed:run` was run, re-run `teamSeed:run`.
