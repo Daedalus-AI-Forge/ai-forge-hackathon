@@ -11,6 +11,8 @@ import { EndingShareButton, GrantedCard } from "@/components/lv/meet/GrantedCard
 import { MeetForWish } from "@/components/lv/meet/MeetCard";
 import { DCard, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { photoSource } from "@/components/lv/world/Polaroid";
+import { WishGlobe } from "@/components/lv/world/WishGlobe";
+import { wishPathStops } from "@/components/lv/world/wishPath";
 import { useDeviceId } from "@/lib/device";
 import type { EndingView } from "@/lib/linkApi.types";
 import { lv, polaroid, shadows, type } from "@/theme/tokens";
@@ -29,6 +31,9 @@ export default function EndingPage() {
   // Real wishes end through the meet-up: locked while found, the GrantedCard reveal once granted.
   // Daily boats and other states keep the plain polaroid.
   const meetEnding = !!view && (view.status === "granted" || (view.status === "found" && view.locked));
+  // Completed wishes show their world path on the globe; the GrantedCard carries its own.
+  const done = !!view && (view.status === "found" || view.status === "granted");
+  const path = view ? wishPathStops(view.holders, view.route) : [];
 
   return (
     <Screen maxWidth={560}>
@@ -62,6 +67,7 @@ export default function EndingPage() {
             <DCard testID="ending-route">
               <Eyebrow>Route · {view.ripples} hop{view.ripples === 1 ? "" : "s"}</Eyebrow>
               <Text style={styles.route}>{routeChain(view.route)}</Text>
+              {done && !meetEnding && path.length > 1 ? <WishGlobe path={path} /> : null}
             </DCard>
           ) : null}
           {!meetEnding ? <EndingShareButton ending={view} wishId={wishId} testID="ending-share" /> : null}
