@@ -11,7 +11,7 @@ export const MEET_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const MEETING_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 const MEETING_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"] as const;
 const UPLOAD_WINDOW_MS = 10 * 60 * 1000;
-const THANK_YOU_MAX = 500;
+export const THANK_YOU_MAX = 500;
 const LIST_LIMIT = 20;
 const IMAGE_TYPES: ReadonlySet<string> = new Set(MEETING_IMAGE_TYPES);
 
