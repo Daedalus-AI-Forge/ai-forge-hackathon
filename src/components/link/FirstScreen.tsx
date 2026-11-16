@@ -1,27 +1,22 @@
-// Screen 1 of the link page: the vouch about you, the boat that drifted to you, one main button.
-// The main button must sit above the fold on a phone, so the chain is collapsed and the explainer is last.
-import { useState } from "react";
+// Screen 1 of the link page: the vouch about you and the boat that drifted to you.
+// The action (pass it on, or "That's me") is passed in as children and sits right under the boat,
+// so the chain stays collapsed.
+import { type ReactNode, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Glass, GlassCard } from "@/components/ios";
-import { DButton, DTag, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { GlassCard } from "@/components/ios";
+import { DTag, Eyebrow } from "@/components/lv/passon/kit";
 import type { FirstScreen as FirstScreenData } from "@/lib/linkApi.types";
 import { ordinal, timeLeft, useNow } from "@/lib/time";
-import { layout, lv, type } from "@/theme/tokens";
+import { lv, type } from "@/theme/tokens";
 
-export type FirstScreenProps = { screen: FirstScreenData; onStart: () => void };
-
-const HOW_IT_WORKS = [
-  "Make one wish. It's free, no app needed.",
-  "Help this boat: it's you, or push it to the one person it fits.",
-  "Your wish sets sail through friends of friends.",
-] as const;
+export type FirstScreenProps = { screen: FirstScreenData; children?: ReactNode };
 
 export function sourceTag(boat: FirstScreenData["boat"]) {
   return boat.kind === "daily" ? "Today's boat" : `${boat.creatorName}'s real wish`;
 }
 
-export function FirstScreen({ screen, onStart }: FirstScreenProps) {
+export function FirstScreen({ screen, children }: FirstScreenProps) {
   const now = useNow(30_000);
   const [chainOpen, setChainOpen] = useState(false);
   const { boat, chain } = screen;
@@ -78,25 +73,7 @@ export function FirstScreen({ screen, onStart }: FirstScreenProps) {
         ) : null}
       </GlassCard>
 
-      <DButton
-        title={screen.freeWishAvailable ? "Claim your free wish" : "Help this boat"}
-        onPress={onStart}
-        size="lg"
-        testID="link-start"
-      />
-      {!screen.freeWishAvailable ? (
-        <Sub style={styles.footnote}>You've used your free wish. Helping still moves you toward the next one.</Sub>
-      ) : null}
-
-      <Glass variant="thin" testID="link-how" style={styles.how}>
-        <Eyebrow>How it works</Eyebrow>
-        {HOW_IT_WORKS.map((t, i) => (
-          <View key={t} style={styles.howRow}>
-            <Text style={styles.howNum}>{i + 1}</Text>
-            <Text style={styles.howText}>{t}</Text>
-          </View>
-        ))}
-      </Glass>
+      {children}
     </View>
   );
 }
@@ -112,20 +89,4 @@ const styles = StyleSheet.create({
   chainItem: { gap: 2 },
   chainName: { ...type.subheadline, fontWeight: "600", color: lv.fg },
   chainVouch: { ...type.subheadline, color: lv.mutedFg, fontStyle: "italic" },
-  footnote: { ...type.footnote, textAlign: "center" },
-  how: { gap: 12, marginTop: 12, padding: layout.cardPadding },
-  howRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
-  howNum: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: lv.fg,
-    color: lv.primaryFg,
-    textAlign: "center",
-    lineHeight: 22,
-    fontSize: 12,
-    fontWeight: "700",
-    overflow: "hidden",
-  },
-  howText: { flex: 1, ...type.subheadline, color: lv.fg },
 });

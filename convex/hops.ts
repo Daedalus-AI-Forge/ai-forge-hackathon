@@ -297,6 +297,8 @@ export const passTo = mutation({
       holderName: viaGroup ? name || "Group chat" : name,
       recipientTags: cleanTags(args.tags),
       viaGroup,
+      // The passer's own words about the next holder: shown at the top of their link page.
+      ...(!viaGroup && args.reason?.trim() ? { introVouch: clampText(args.reason, LIMITS.vouch) } : {}),
     });
     if (!viaGroup) {
       await recordEdges(ctx, {

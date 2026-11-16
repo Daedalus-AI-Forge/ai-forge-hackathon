@@ -1,5 +1,6 @@
 // Link page API (docs/superpowers/plans/2026-11-15-link-page.md). Skeleton: signatures only.
 // Sections are owned by tasks: T1 core (firstScreen/open/pushOne/finish), T2 claim, T3 drafts/confirm, T4 ending.
+import { bindBotHolder } from "./bots";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
@@ -309,6 +310,8 @@ export const pushOne = mutation({
       wishId: wish._id,
       hopId: childHopId,
     });
+    // Pushed to a wish bot friend (convex/bots.ts): the bot holds it and keeps it moving.
+    await bindBotHolder(ctx, user._id, childHopId, name);
     return { childHopId };
   },
 });

@@ -25,9 +25,13 @@ function pickWeb(accept: string): Promise<PickedImage | null> {
   });
 }
 
+export async function pickNativeImage(quality: number) {
+  const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality });
+  return picked.canceled ? null : picked.assets[0];
+}
+
 async function pickNative(): Promise<PickedImage | null> {
-  const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.7 });
-  const asset = picked.canceled ? null : picked.assets[0];
+  const asset = await pickNativeImage(0.7);
   if (!asset) return null;
   const blob = await (await fetch(asset.uri)).blob();
   // quality < 1 re-encodes to JPEG on iOS; fall back to that when the blob has no type.

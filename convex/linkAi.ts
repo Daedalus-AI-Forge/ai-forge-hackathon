@@ -162,6 +162,38 @@ export const memoryPrompt = action({
   },
 });
 
+export const PASS_REASON_FALLBACK = ["Is into this kind of thing", "Knows a lot of people", "Would love to help"];
+const REASON_MAX = 40;
+
+/**
+ * Three short, tappable reasons for "why them" on the link page's pass-on card, grounded in the wish.
+ * They double as the vouch the next person sees, so they stay friendly and never touch private matters.
+ */
+export const passReasons = action({
+  args: { hopId: v.id("hops") },
+  returns: v.array(v.string()),
+  handler: async (ctx, { hopId }): Promise<string[]> => {
+    return await safe(PASS_REASON_FALLBACK, async () => {
+      const wishText = await wishTextFor(ctx, hopId);
+      if (!wishText || !(await aiAllowed(ctx, `link:${hopId}`))) return PASS_REASON_FALLBACK;
+      const raw = await respondFast(
+        `Wish: "${wishText}". Someone is about to pass this wish to one friend who fits it or who knows who does. ` +
+          `Write 3 different short reasons (2 to 6 words each) they could tap to say why that friend. ` +
+          `Each starts with a verb describing the friend, like "Plays in a band" or "Knows the local scene". ` +
+          `Ground them in the wish. Never mention health, money, romance, religion or politics. ` +
+          `One per line, no numbering, no period, no emoji.`,
+        "",
+      );
+      const reasons = raw
+        .split("\n")
+        .map((l) => clampText(stripQuotes(l.replace(/^\s*(?:\d+[.)]|[-*•])\s*/, "")).replace(/[.!]+$/, ""), REASON_MAX))
+        .filter((l) => l.length > 3);
+      const unique = [...new Set(reasons)].slice(0, 3);
+      return unique.length === 3 ? unique : PASS_REASON_FALLBACK;
+    });
+  },
+});
+
 export const PROPHECY_FALLBACK = "Someone two friends away is already closer than you think.";
 
 function keyHash(text: string) {

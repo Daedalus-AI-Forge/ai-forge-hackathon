@@ -9,7 +9,21 @@ import { DButton } from "@/components/lv/passon/kit";
 
 const APP_URL = process.env.EXPO_PUBLIC_APP_URL;
 
-export function GetTheApp({ title = "Get the app", deviceId, hopId, testID = "get-the-app" }: { title?: string; deviceId: string | null; hopId?: string; testID?: string }) {
+export function GetTheApp({
+  title = "Get the app",
+  deviceId,
+  hopId,
+  testID = "get-the-app",
+  variant = "glass",
+  size,
+}: {
+  title?: string;
+  deviceId: string | null;
+  hopId?: string;
+  testID?: string;
+  variant?: "glass" | "thread";
+  size?: "lg";
+}) {
   const track = useMutation(api.linkMetrics.track);
   const onPress = () => {
     if (deviceId) {
@@ -19,5 +33,5 @@ export function GetTheApp({ title = "Get the app", deviceId, hopId, testID = "ge
     if (Platform.OS === "web" && typeof window !== "undefined") window.open(APP_URL, "_blank", "noopener");
     else void Linking.openURL(APP_URL).catch(() => {});
   };
-  return <DButton testID={testID} variant="glass" title={title} onPress={onPress} />;
+  return <DButton testID={testID} variant={variant} size={size} title={title} onPress={onPress} />;
 }

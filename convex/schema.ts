@@ -44,10 +44,17 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
+    // Wish bots (convex/bots.ts): seeded global users that pass boats on during the demo.
+    // No phone, contact or deviceId. teamKey is "bot:<member key>" so teamSeed re-runs replace them.
+    isBot: v.optional(v.boolean()),
+    botProfile: v.optional(
+      v.object({ tags: v.array(v.string()), persona: v.string(), lat: v.number(), lng: v.number(), country: v.string() }),
+    ),
   })
     .index("by_deviceId", ["deviceId"])
     .index("by_demoKey", ["demoKey"])
     .index("by_teamKey", ["teamKey"])
+    .index("by_isBot", ["isBot"])
     // Index names required by Convex Auth (`phone` also serves phone sign-in).
     .index("email", ["email"])
     .index("phone", ["phone"]),

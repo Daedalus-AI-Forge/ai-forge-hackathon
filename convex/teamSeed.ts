@@ -16,6 +16,7 @@ import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from
 import { deleteUserAndAuthData } from "./authUsers";
 import { LIMITS, avatarFor, clampText, cleanTags, recordEdges } from "./lib";
 import { REASON_MAX, personKey } from "./graphShared";
+import { bestBot, botVouch } from "./bots";
 
 export const TEAM_KEYS = ["darren", "louise", "katie", "dazi"] as const;
 export type TeamKey = (typeof TEAM_KEYS)[number];
@@ -134,10 +135,57 @@ const HABITS: { tag: string; phrase: string; music?: true }[] = [
   { tag: "drums", phrase: "drums in a garage band", music: true },
 ];
 
-export type Friend = { name: string; age: number; city: string; job: string; tags: string[]; reason: string };
+/** Global cities for `run({ global: true })`: labels match src/components/lv/threads/threadData.ts. */
+export const GLOBAL_CITIES: { slug: string; label: string; country: string; lat: number; lng: number }[] = [
+  { slug: "san-francisco", label: "San Francisco", country: "USA", lat: 37.77, lng: -122.42 },
+  { slug: "nyc", label: "New York", country: "USA", lat: 40.71, lng: -74.0 },
+  { slug: "seattle", label: "Seattle", country: "USA", lat: 47.61, lng: -122.33 },
+  { slug: "austin", label: "Austin", country: "USA", lat: 30.27, lng: -97.74 },
+  { slug: "toronto", label: "Toronto", country: "Canada", lat: 43.65, lng: -79.38 },
+  { slug: "mexico-city", label: "Mexico City", country: "Mexico", lat: 19.43, lng: -99.13 },
+  { slug: "sao-paulo", label: "São Paulo", country: "Brazil", lat: -23.55, lng: -46.63 },
+  { slug: "london", label: "London", country: "UK", lat: 51.5, lng: -0.12 },
+  { slug: "paris", label: "Paris", country: "France", lat: 48.86, lng: 2.35 },
+  { slug: "berlin", label: "Berlin", country: "Germany", lat: 52.52, lng: 13.4 },
+  { slug: "lisbon", label: "Lisbon", country: "Portugal", lat: 38.72, lng: -9.14 },
+  { slug: "lagos", label: "Lagos", country: "Nigeria", lat: 6.52, lng: 3.38 },
+  { slug: "nairobi", label: "Nairobi", country: "Kenya", lat: -1.29, lng: 36.82 },
+  { slug: "dubai", label: "Dubai", country: "UAE", lat: 25.2, lng: 55.27 },
+  { slug: "mumbai", label: "Mumbai", country: "India", lat: 19.08, lng: 72.88 },
+  { slug: "bangalore", label: "Bangalore", country: "India", lat: 12.97, lng: 77.59 },
+  { slug: "singapore", label: "Singapore", country: "Singapore", lat: 1.35, lng: 103.82 },
+  { slug: "shanghai", label: "Shanghai", country: "China", lat: 31.23, lng: 121.47 },
+  { slug: "tokyo", label: "Tokyo", country: "Japan", lat: 35.68, lng: 139.69 },
+  { slug: "seoul", label: "Seoul", country: "Korea", lat: 37.57, lng: 126.98 },
+  { slug: "sydney", label: "Sydney", country: "Australia", lat: -33.87, lng: 151.21 },
+  { slug: "taipei", label: "Taipei", country: "Taiwan", lat: 25.03, lng: 121.57 },
+];
+// Members' home cities, for their hops on seeded voyages.
+const BAY_COORDS: Record<string, { lat: number; lng: number }> = {
+  "San Francisco": { lat: 37.77, lng: -122.42 },
+  Oakland: { lat: 37.8, lng: -122.27 },
+  Berkeley: { lat: 37.87, lng: -122.27 },
+};
 
-/** The member's 20 close friends. Members on the chain never get music habits, so nobody outranks it. */
-export function generateFriends(key: TeamKey, reserved: string[] = []): Friend[] {
+export type Friend = {
+  name: string;
+  age: number;
+  city: string;
+  job: string;
+  tags: string[];
+  reason: string;
+  // Set only on global friends (`global: true`).
+  country?: string;
+  lat?: number;
+  lng?: number;
+};
+
+/**
+ * The member's 20 close friends. Members on the chain never get music habits, so nobody outranks it.
+ * `global`: every other friend lives in a GLOBAL_CITIES city instead. The random stream is the
+ * same in both modes (one draw per city pick), so names, ages, jobs and habits do not change.
+ */
+export function generateFriends(key: TeamKey, reserved: string[] = [], opts: { global?: boolean } = {}): Friend[] {
   const rand = prng(`team:${key}`);
   const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rand() * xs.length)];
   const habits = HABITS.filter((h) => !h.music || key === "dazi");
@@ -148,7 +196,9 @@ export function generateFriends(key: TeamKey, reserved: string[] = []): Friend[]
     if (taken.has(personKey(name))) continue;
     taken.add(personKey(name));
     const age = 22 + Math.floor(rand() * 24);
-    const city = pick(CITIES);
+    const cityRoll = rand();
+    const abroad = opts.global && friends.length % 2 === 1 ? GLOBAL_CITIES[Math.floor(cityRoll * GLOBAL_CITIES.length)] : null;
+    const city = abroad ?? CITIES[Math.floor(cityRoll * CITIES.length)];
     const job = pick(JOBS);
     const count = 2 + Math.floor(rand() * 2);
     const chosen: (typeof HABITS)[number][] = [];
@@ -163,6 +213,7 @@ export function generateFriends(key: TeamKey, reserved: string[] = []): Friend[]
       job: job.label,
       tags: [job.slug, ...chosen.map((h) => h.tag), city.slug],
       reason: `${age}, ${job.label} in ${city.label} — ${chosen.map((h) => h.phrase).join(", ")}`,
+      ...(abroad ? { country: abroad.country, lat: abroad.lat, lng: abroad.lng } : {}),
     });
   }
   return friends;
@@ -307,6 +358,250 @@ async function writePerson(
   return tags.length;
 }
 
+// ---------- global voyages (`global: true`) ----------
+
+type VoyageHop = { who: TeamKey | string; city: string; action?: "pass" | "its_me"; note: string };
+type Voyage = {
+  creator: TeamKey;
+  text: string;
+  status: "traveling" | "found" | "granted";
+  hops: VoyageHop[];
+  thankYou?: string;
+};
+
+/** Seeded wishes whose hops cross the world. The last hop is the finder (its_me) unless still traveling. */
+export const VOYAGES: Voyage[] = [
+  {
+    creator: "darren",
+    text: "Someone to teach me how to make real tonkotsu broth",
+    status: "granted",
+    thankYou: "Yuki spent a whole Saturday on broth with me over video. Arigato, everyone who passed it on!",
+    hops: [
+      { who: "louise", city: "San Francisco", action: "pass", note: "My friend Ravi cooks like a pro and knows chefs everywhere" },
+      { who: "Ravi Singh", city: "Bangalore", action: "pass", note: "Mina did a ramen stage in Asia, she will know" },
+      { who: "Mina Park", city: "Seoul", action: "pass", note: "Yuki runs a tiny ramen counter in Tokyo" },
+      { who: "Yuki Sato", city: "Tokyo", action: "its_me", note: "That's me! Broth is my whole life." },
+    ],
+  },
+  {
+    creator: "louise",
+    text: "A street photographer to shoot golden hour with on my Lisbon trip",
+    status: "granted",
+    thankYou: "Rafael showed me the Alfama at sunset. Best photos I've ever taken.",
+    hops: [
+      { who: "katie", city: "Oakland", action: "pass", note: "Elena shoots film and travels constantly" },
+      { who: "Elena Rossi", city: "London", action: "pass", note: "Ines is in every photo walk in Europe" },
+      { who: "Ines Mendes", city: "Paris", action: "pass", note: "My cousin Rafael lives in Lisbon and shoots street" },
+      { who: "Rafael Silva", city: "Lisbon", action: "its_me", note: "Golden hour in Lisbon is my thing, let's go." },
+    ],
+  },
+  {
+    creator: "katie",
+    text: "A running buddy for a half marathon while I'm in Nairobi",
+    status: "granted",
+    thankYou: "Leila paced me the whole 21k. Asante sana!",
+    hops: [
+      { who: "dazi", city: "Berkeley", action: "pass", note: "Andre runs marathons all over the world" },
+      { who: "Andre Fischer", city: "Berlin", action: "pass", note: "Kofi coaches a run club in Lagos" },
+      { who: "Kofi Adeyemi", city: "Lagos", action: "pass", note: "Omar trains with East African runners" },
+      { who: "Omar Haddad", city: "Dubai", action: "pass", note: "Leila runs Karura Forest every morning" },
+      { who: "Leila Ibrahim", city: "Nairobi", action: "its_me", note: "I run Nairobi every day, come join." },
+    ],
+  },
+  {
+    creator: "dazi",
+    text: "A late-night dumpling crawl buddy in Shanghai",
+    status: "found",
+    hops: [
+      { who: "katie", city: "Oakland", action: "pass", note: "Mei knows every night market in Asia" },
+      { who: "Mei Huang", city: "Taipei", action: "pass", note: "Arjun is the biggest foodie in Singapore" },
+      { who: "Arjun Patel", city: "Singapore", action: "pass", note: "Jonah lives in Shanghai and eats out every night" },
+      { who: "Jonah Wong", city: "Shanghai", action: "its_me", note: "Xiaolongbao at midnight? I'm in." },
+    ],
+  },
+  {
+    creator: "dazi",
+    text: "Someone to jam on drums with on my São Paulo trip",
+    status: "traveling",
+    hops: [
+      { who: "darren", city: "San Francisco", action: "pass", note: "Marcus plays in a jazz trio in NYC" },
+      { who: "Marcus Bennett", city: "New York", action: "pass", note: "Diego tours Latin America with his band" },
+      { who: "Diego Lopez", city: "Mexico City", action: "pass", note: "Camila drums in a samba school in São Paulo" },
+      { who: "Camila Reyes", city: "São Paulo", note: "" },
+    ],
+  },
+];
+
+const HOUR = 60 * 60 * 1000;
+
+function coordsOf(city: string) {
+  const g = GLOBAL_CITIES.find((c) => c.label === city);
+  return g ? { lat: g.lat, lng: g.lng } : BAY_COORDS[city];
+}
+
+/** Write the voyages as rows shaped like wishes.toss + hops.act + link.confirmClaim + meetings write them. */
+async function writeVoyages(ctx: MutationCtx, members: { key: TeamKey; name: string; userId: Id<"users"> }[], now: number) {
+  let written = 0;
+  for (const [vi, voyage] of VOYAGES.entries()) {
+    const creator = members.find((m) => m.key === voyage.creator);
+    if (!creator) continue;
+    // Skip a voyage whose route needs a member who is not being seeded.
+    if (voyage.hops.some((h) => (TEAM_KEYS as readonly string[]).includes(h.who) && !members.some((m) => m.key === h.who))) continue;
+    const start = now - (72 - vi * 6) * HOUR;
+    const wishId = await ctx.db.insert("wishes", {
+      creatorId: creator.userId,
+      type: "do_together",
+      mode: "serious",
+      text: voyage.text,
+      status: voyage.status,
+      expiresAt: voyage.status === "traveling" ? now + 48 * HOUR : start + 48 * HOUR,
+      teamKey: voyage.creator,
+    });
+    let parent: Id<"hops"> | undefined;
+    let winner: Id<"hops"> | undefined;
+    for (const [i, h] of voyage.hops.entries()) {
+      const member = members.find((m) => m.key === h.who);
+      const acted = h.action !== undefined;
+      const coords = coordsOf(h.city);
+      const hopId: Id<"hops"> = await ctx.db.insert("hops", {
+        wishId,
+        parentHopId: parent,
+        depth: i + 1,
+        holderName: member?.name ?? h.who,
+        holderUserId: member?.userId,
+        city: acted ? h.city : undefined,
+        lat: acted ? coords?.lat : undefined,
+        lng: acted ? coords?.lng : undefined,
+        recipientTags: [],
+        viaGroup: false,
+        passMessage: h.action === "pass" ? h.note : undefined,
+        itsMeIntro: h.action === "its_me" ? h.note : undefined,
+        introVouch: i > 0 ? voyage.hops[i - 1].note : undefined,
+        action: h.action,
+        actedAt: acted ? start + (i + 1) * 6 * HOUR : undefined,
+      });
+      if (h.action === "its_me") winner = hopId;
+      parent = hopId;
+    }
+    if (voyage.status !== "traveling") {
+      const depth = voyage.hops.length;
+      await ctx.db.patch("wishes", wishId, {
+        winningHopId: winner,
+        meetDeadline: now + 5 * 24 * HOUR,
+        ...(voyage.status === "granted"
+          ? {
+              metInPerson: true,
+              tier: depth >= 5 ? ("gold" as const) : ("silver" as const),
+              photoUrl: `https://picsum.photos/seed/wishwell-voyage-${vi}/800/800`,
+              // meetingPhoto.thankYou needs a stored file, so the thank-you rides in the ending story.
+              endingStory: `${voyage.hops.map((h) => h.city).join(" → ")}: ${depth} hops around the world. ${voyage.thankYou ?? ""}`.trim(),
+            }
+          : {}),
+      });
+    }
+    written++;
+  }
+  return written;
+}
+
+// ---------- wish bots (`global: true`, convex/bots.ts) ----------
+
+export const BOTS_PER_MEMBER = 5;
+export const botTeamKey = (key: TeamKey) => `bot:${key}`;
+
+/** The bots for one member: their first BOTS_PER_MEMBER global friends (deterministic). */
+export function botFriends(key: TeamKey, reserved: string[]) {
+  return generateFriends(key, reserved, { global: true })
+    .filter((f) => f.lat !== undefined)
+    .slice(0, BOTS_PER_MEMBER);
+}
+
+/** Upsert bot users (no phone, no contact, no deviceId); drop this member's stale bots. */
+async function writeBots(ctx: MutationCtx, members: { key: TeamKey; name: string }[]) {
+  const seen = new Set<string>();
+  const bots: Doc<"users">[] = [];
+  for (const m of members) {
+    const existing = await ctx.db.query("users").withIndex("by_teamKey", (q) => q.eq("teamKey", botTeamKey(m.key))).take(50);
+    const keep = new Set<Id<"users">>();
+    for (const f of botFriends(m.key, members.map((x) => x.name))) {
+      if (seen.has(personKey(f.name))) continue;
+      seen.add(personKey(f.name));
+      const fields = {
+        name: f.name,
+        avatar: avatarFor(f.name),
+        city: f.city,
+        wishesLeft: 0,
+        stars: 0,
+        isBot: true,
+        teamKey: botTeamKey(m.key),
+        botProfile: { tags: f.tags, persona: f.reason, lat: f.lat!, lng: f.lng!, country: f.country ?? "" },
+      };
+      const row = existing.find((u) => personKey(u.name) === personKey(f.name));
+      const id = row ? (await ctx.db.patch("users", row._id, fields), row._id) : await ctx.db.insert("users", fields);
+      keep.add(id);
+      bots.push((await ctx.db.get("users", id))!);
+    }
+    for (const u of existing) if (!keep.has(u._id) && u.isBot) await ctx.db.delete("users", u._id);
+  }
+  return bots;
+}
+
+/** Fresh traveling wishes already in a bot's hands, so the map moves right after seeding. */
+export const BOT_WISHES: { creator: TeamKey; text: string }[] = [
+  { creator: "darren", text: "A climbing partner for a bouldering trip abroad" },
+  { creator: "louise", text: "Someone to bake sourdough with while I travel" },
+  { creator: "katie", text: "A hiking buddy for a mountain trail weekend" },
+];
+
+async function writeBotWishes(
+  ctx: MutationCtx,
+  members: { key: TeamKey; name: string; userId: Id<"users"> }[],
+  bots: Doc<"users">[],
+  now: number,
+) {
+  let written = 0;
+  for (const bw of BOT_WISHES) {
+    const creator = members.find((m) => m.key === bw.creator);
+    const first = bestBot(bw.text, bots)?.bot ?? bots[written % Math.max(bots.length, 1)];
+    if (!creator || !first) continue;
+    const wishId = await ctx.db.insert("wishes", {
+      creatorId: creator.userId,
+      type: "do_together",
+      mode: "serious",
+      text: bw.text,
+      status: "traveling",
+      expiresAt: now + 48 * HOUR,
+      teamKey: bw.creator,
+    });
+    const city = MEMBER_CITY[creator.key];
+    const root = await ctx.db.insert("hops", {
+      wishId,
+      depth: 1,
+      holderName: creator.name,
+      holderUserId: creator.userId,
+      city,
+      ...BAY_COORDS[city],
+      recipientTags: [],
+      viaGroup: false,
+      passMessage: `${first.name.split(" ")[0]} came to mind first`,
+      action: "pass",
+      actedAt: now - 10 * 60 * 1000,
+    });
+    await ctx.db.insert("hops", {
+      wishId,
+      parentHopId: root,
+      depth: 2,
+      holderName: first.name,
+      holderUserId: first._id,
+      recipientTags: first.botProfile?.tags ?? [],
+      viaGroup: false,
+      introVouch: botVouch(first),
+    });
+    written++;
+  }
+  return written;
+}
+
 const memberValidator = v.object({
   key: v.union(v.literal("darren"), v.literal("louise"), v.literal("katie"), v.literal("dazi")),
   name: v.string(),
@@ -319,11 +614,13 @@ export const run = internalMutation({
     // Bind dev_team_<key> device ids (scripts/team-chain.mjs). Off by default: a guessable
     // device id lets anyone act as that member and read their row (incl. phone) via users.me.
     bindDevices: v.optional(v.boolean()),
+    // Half of each member's friends live abroad, plus VOYAGES routed across GLOBAL_CITIES.
+    global: v.optional(v.boolean()),
   },
   returns: v.array(
     v.object({ key: v.string(), userId: v.id("users"), created: v.boolean(), edges: v.number(), deviceId: v.union(v.string(), v.null()) }),
   ),
-  handler: async (ctx, { members, bindDevices }) => {
+  handler: async (ctx, { members, bindDevices, global }) => {
     const keys = new Set(members.map((m) => m.key));
     if (members.length === 0 || keys.size !== members.length) throw new Error("Pass each team key at most once");
     const phones = members.map((m) => e164(m.phone));
@@ -372,7 +669,7 @@ export const run = internalMutation({
       });
       const mates = resolved.filter((r) => r.key !== me.key);
       let edges = 0;
-      for (const f of generateFriends(me.key, resolved.map((r) => r.name))) {
+      for (const f of generateFriends(me.key, resolved.map((r) => r.name), { global })) {
         edges += await writePerson(ctx, owner, wishId, f, { ingest: false });
       }
       const chain = CHAIN[me.key];
@@ -382,7 +679,12 @@ export const run = internalMutation({
       }
       out.push({ key: me.key, userId: me.userId, created: me.created, edges, deviceId: bindDevices ? teamDeviceId(me.key) : null });
     }
-    console.log(JSON.stringify({ event: "team_seed.run", members: out.length, replacedWishes: previous.wishes }));
+    const voyages = global ? await writeVoyages(ctx, resolved, now) : 0;
+    const bots = global ? await writeBots(ctx, resolved) : [];
+    const botWishes = global ? await writeBotWishes(ctx, resolved, bots, now) : 0;
+    console.log(
+      JSON.stringify({ event: "team_seed.run", members: out.length, replacedWishes: previous.wishes, global: !!global, voyages, bots: bots.length, botWishes }),
+    );
     return out;
   },
 });
@@ -451,4 +753,42 @@ export const status = internalQuery({
       testNumber: !!u.phone?.startsWith("+1555"),
       deviceBound: !!u.deviceId?.startsWith("dev_team_"),
     })),
+});
+
+/** Where the seed's voyages and friends are: distinct cities/countries (verifies `global: true`). */
+export const globalSummary = internalQuery({
+  args: {},
+  returns: v.object({
+    voyages: v.array(v.object({ creator: v.string(), status: v.string(), route: v.array(v.string()) })),
+    voyageCities: v.number(),
+    friendCities: v.number(),
+    countries: v.number(),
+  }),
+  handler: async (ctx) => {
+    const voyages = [];
+    const voyageCities = new Set<string>();
+    const friendCities = new Set<string>();
+    const countries = new Set<string>();
+    for (const u of await teamUsers(ctx)) {
+      for (const w of await ctx.db.query("wishes").withIndex("by_creatorId", (q) => q.eq("creatorId", u._id)).take(BATCH)) {
+        if (!w.teamKey) continue;
+        const hops = await ctx.db.query("hops").withIndex("by_wishId", (q) => q.eq("wishId", w._id)).take(BATCH);
+        if (w.text === GRAPH_WISH_TEXT) {
+          for (const h of hops) {
+            const g = GLOBAL_CITIES.find((c) => h.recipientTags.includes(c.slug));
+            if (g) { friendCities.add(g.label); countries.add(g.country); }
+          }
+          continue;
+        }
+        const route = hops.sort((a, b) => a.depth - b.depth).flatMap((h) => (h.city ? [h.city] : []));
+        for (const c of route) {
+          voyageCities.add(c);
+          const g = GLOBAL_CITIES.find((x) => x.label === c);
+          countries.add(g?.country ?? "USA");
+        }
+        voyages.push({ creator: w.teamKey, status: w.status, route });
+      }
+    }
+    return { voyages, voyageCities: voyageCities.size, friendCities: friendCities.size, countries: countries.size };
+  },
 });

@@ -1,6 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, it, test } from "vitest";
 
-import { choosePhone, phoneLabel, phoneTail, smsHref, toE164, toSuggestions } from "./contactPick";
+import { choosePhone, fromWebPicker, phoneLabel, phoneTail, smsHref, toE164, toSuggestions } from "./contactPick";
 
 describe("choosePhone", () => {
   test("prefers a mobile / iPhone label over others", () => {
@@ -103,5 +103,22 @@ describe("toSuggestions", () => {
 describe("phoneTail", () => {
   test("last four digits only", () => {
     expect(phoneTail("+15555550100")).toBe("0100");
+  });
+});
+
+describe("fromWebPicker", () => {
+  it("returns the first name and the first number as E.164", () => {
+    expect(fromWebPicker([{ name: ["  Maya Lin "], tel: ["(415) 555-0100", "415 555 0199"] }])).toEqual({
+      name: "Maya Lin",
+      phone: "+14155550100",
+    });
+  });
+  it("skips numbers without enough digits and keeps a name-only pick", () => {
+    expect(fromWebPicker([{ name: ["Sam"], tel: ["12", ""] }])).toEqual({ name: "Sam", phone: null });
+  });
+  it("returns null when the picker was cancelled or empty", () => {
+    expect(fromWebPicker([])).toBeNull();
+    expect(fromWebPicker(undefined)).toBeNull();
+    expect(fromWebPicker([{ name: [], tel: [] }])).toBeNull();
   });
 });
