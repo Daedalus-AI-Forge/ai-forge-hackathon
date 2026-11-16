@@ -51,6 +51,23 @@ export function placeOf(node: Pick<CommunityNode, "city" | "lat" | "lng">): { la
   return city ? { lat: city.lat, lng: city.lng, label } : null;
 }
 
+const SF = { lat: 37.77, lng: -122.42 };
+
+/** Where to put a viewer with no known place: the centroid of the people one step away, else everyone placed, else SF. */
+export function viewerFallback(nodes: GlobeNode[]): { lat: number; lng: number } {
+  const placed = nodes.filter((n) => n.v && n.distance !== 0);
+  const circle = placed.filter((n) => n.distance === 1);
+  const pool = circle.length ? circle : placed;
+  if (!pool.length) return SF;
+  const sum = pool.reduce((acc, n) => ({ x: acc.x + n.v!.x, y: acc.y + n.v!.y, z: acc.z + n.v!.z }), { x: 0, y: 0, z: 0 });
+  const length = Math.hypot(sum.x, sum.y, sum.z);
+  if (length < 1e-6) return SF;
+  return {
+    lat: (Math.asin(sum.y / length) * 180) / Math.PI,
+    lng: (Math.atan2(sum.x / length, sum.z / length) * 180) / Math.PI,
+  };
+}
+
 /** One dot on the globe: everyone at the same place shares it (shown with a count), never nudged apart. */
 export type GlobeMarker = { id: string; place: string; v: Vec3; members: GlobeNode[] };
 
@@ -75,6 +92,16 @@ export function layoutGlobe(graph: CommunityNetwork) {
     const marker = groups.get(id) ?? { id, place: place.label, v, members: [] };
     marker.members.push(globeNode);
     if (!marker.place && place.label) marker.place = place.label;
+    groups.set(id, marker);
+  }
+  // You are always on the globe: with no known place, you stand at the middle of your circle (or SF).
+  const meNode = nodes.find((n) => n.key === graph.meKey);
+  if (meNode && !meNode.v) {
+    const fallback = viewerFallback(nodes);
+    meNode.v = fromLatLng(fallback.lat, fallback.lng);
+    const id = `${fallback.lat.toFixed(2)},${fallback.lng.toFixed(2)}`;
+    const marker = groups.get(id) ?? { id, place: meNode.city?.trim() || "", v: meNode.v, members: [] };
+    marker.members.push(meNode);
     groups.set(id, marker);
   }
   const markers = [...groups.values()];
