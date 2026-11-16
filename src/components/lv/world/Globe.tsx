@@ -34,7 +34,7 @@ const INTRO_FROM: Camera = { yaw: -1.5, pitch: 0.42 };
 const SWAY = 0.2; // radians either side of rest
 const SWAY_PERIOD_MS = 18000;
 const FONT = Platform.OS === "web" ? "-apple-system, BlinkMacSystemFont, system-ui, sans-serif" : undefined;
-const webGestureStyle: ViewStyle & { touchAction: "none"; cursor: "grab" } = { touchAction: "none", cursor: "grab" };
+const webGestureStyle = { touchAction: "none", cursor: "grab" } as unknown as ViewStyle;
 
 type ArcStyle = ThreadKind;
 const TONE = { gold: night.gold, fg: night.fg, aqua: night.aqua } as const;
