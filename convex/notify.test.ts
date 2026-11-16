@@ -218,6 +218,22 @@ describe("link.saveDraft reminder", () => {
 });
 
 describe("link.notifyLanded", () => {
+  test("a verified claim from the link page texts the pusher", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("DEMO_PHONE_NUMBERS", "+15555550100");
+    vi.stubEnv("DEMO_PHONE_CODE", "");
+    const { sent } = mockTwilio();
+    const t = convexTest(schema, modules);
+    const { hopId } = await setup(t);
+    await t.run(async (ctx) => ctx.db.patch("hops", hopId, { action: undefined, claimPhone: undefined, claimVerified: undefined }));
+    await t.mutation(api.link.claim, {
+      hopId, deviceId: "dev_bob", intro: "It's me", answers: ["yes"], phone: "+15555550100", code: "000000",
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(sent.map((m) => m.To)).toEqual(["+14155550100"]);
+    expect(sent[0].Body).toContain("landed");
+  });
+
   test("texts the pusher (wish creator at depth 1)", async () => {
     vi.useFakeTimers();
     const { sent } = mockTwilio();

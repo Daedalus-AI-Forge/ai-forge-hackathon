@@ -405,6 +405,7 @@ export const claim = mutation({
         action: "its_me",
         actedAt: now,
       });
+      await ctx.scheduler.runAfter(0, t3Internal.link.notifyLanded, { hopId: hop._id });
       return { status: "awaiting_confirmation" };
     }
 
@@ -432,6 +433,8 @@ export const claim = mutation({
       action: "its_me",
       actedAt: now,
     });
+    // Tell whoever pushed this boat that it landed (log-only without a contact).
+    await ctx.scheduler.runAfter(0, t3Internal.link.notifyLanded, { hopId: hop._id });
     return { status: "awaiting_confirmation" };
   },
 });
