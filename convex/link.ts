@@ -85,10 +85,31 @@ async function upstreamHops(ctx: QueryCtx, hop: Doc<"hops">) {
 async function linkSender(ctx: QueryCtx, hop: Doc<"hops">, wish: Doc<"wishes">) {
   if (hop.parentHopId) {
     const parent = await ctx.db.get("hops", hop.parentHopId);
-    if (parent) return { name: parent.holderName, userId: parent.holderUserId };
+    if (parent) return { name: senderDisplayName(parent.holderName), userId: parent.holderUserId };
   }
   const creator = await ctx.db.get("users", wish.creatorId);
-  return { name: creator?.name || "Someone", userId: creator?._id };
+  return { name: senderDisplayName(creator?.name), userId: creator?._id };
+}
+
+/** A sender with no name (or the daily join placeholder "You") shows as "A friend", never "You". */
+export function senderDisplayName(name: string | null | undefined) {
+  const n = (name ?? "").trim();
+  return !n || n.toLowerCase() === "you" ? "A friend" : n;
+}
+
+/**
+ * What the sender said about this hop's holder: the link-page vouch, or for a first hop the
+ * toss reason (the creator's own words about this recipient). Never tags.
+ */
+export async function vouchForHolder(ctx: QueryCtx, hop: Doc<"hops">, wish: Doc<"wishes">): Promise<string | null> {
+  const vouch = hop.introVouch?.trim();
+  if (vouch) return vouch;
+  if (hop.parentHopId) return null;
+  const edges = await ctx.db
+    .query("edges")
+    .withIndex("by_ownerUserId_and_personName", (q) => q.eq("ownerUserId", wish.creatorId).eq("personName", hop.holderName))
+    .take(100);
+  return edges.find((e) => e.hopId === hop._id && e.reason?.trim())?.reason?.trim() ?? null;
 }
 
 /** The visitor's user row; created (like users.ensure) on first contact so no app/login is needed. */
@@ -182,7 +203,7 @@ export const firstScreen = query({
       hopId: hop._id,
       wishId: wish._id,
       senderName: sender.name,
-      vouchForMe: hop.introVouch ?? null,
+      vouchForMe: await vouchForHolder(ctx, hop, wish),
       holderName: hop.holderName,
       boat: {
         text: wish.text,
@@ -776,8 +797,13 @@ export const ending = query({
       const proofUrl = finder?.proofStorageId ? await ctx.storage.getUrl(finder.proofStorageId) : null;
       const route = endingRoute(hops);
       const { ripples } = rippleSummary(hops);
-      return { ...base, locked: false, photoUrl: proofUrl ?? wish.photoUrl ?? null,
-        route, ripples, story: endingStory(wish.status, route, ripples), thankYou: "", tier: null, metInPerson: null };
+      // Daily boats have no confirmClaim, so wish.status stays "traveling": a claim is the ending.
+      const claimer = finder ?? hops.find(h => h.action === "its_me");
+      const status = claimer && wish.status === "traveling" ? "found" : wish.status;
+      const intro = claimer?.itsMeIntro?.trim();
+      const story = endingStory(status, route, ripples) + (claimer && intro ? ` In their words: "${intro}"` : "");
+      return { ...base, status, locked: false, photoUrl: proofUrl ?? wish.photoUrl ?? null,
+        route, ripples, story, thankYou: "", tier: null, metInPerson: null };
     }
     // Older granted rows may lack a recorded winner. Prefer their recorded finder when present.
     const recordedWinner = winner ?? (await wishHops(ctx, wish._id)).find(h => h.action === "its_me");
