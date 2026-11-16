@@ -103,7 +103,13 @@ export default defineSchema({
     .index("by_daily_date", ["daily.date"]),
 
   // Stock meet-up photos for demo success stories (convex/gallery.ts). Operator-uploaded only.
-  galleryPool: defineTable({ storageId: v.id("_storage") }).index("by_storageId", ["storageId"]),
+  galleryPool: defineTable({
+    storageId: v.id("_storage"),
+    // Photorealistic AI scene of fictional people (gallery.usePhotoreal); preferred over illustrations.
+    photoreal: v.optional(v.boolean()),
+    // Lowercase keywords matched against a story's wish text to pick a fitting scene.
+    tags: v.optional(v.array(v.string())),
+  }).index("by_storageId", ["storageId"]),
 
   // Upload tickets bind one file to the confirmed participant and their wish.
   meetingUploads: defineTable({
