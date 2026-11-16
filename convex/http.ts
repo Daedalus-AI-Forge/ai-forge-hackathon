@@ -5,6 +5,7 @@ import { components, internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 import { ogHtml, ogNotFoundHtml } from "./linkMetrics";
+import { MEETING_UPLOAD_PATH, meetingUpload, meetingUploadOptions } from "./meetingUploadHttp";
 
 const http = httpRouter();
 
@@ -24,6 +25,9 @@ http.route({
     return new Response(ogHtml(hop, process.env.APP_WEB_URL), { status: 200, headers });
   }),
 });
+
+http.route({ pathPrefix: MEETING_UPLOAD_PATH, method: "POST", handler: meetingUpload });
+http.route({ pathPrefix: MEETING_UPLOAD_PATH, method: "OPTIONS", handler: meetingUploadOptions });
 
 // Keep last: static web app catch-all (SPA fallback to index.html). Exact
 // routes registered above win over it.
