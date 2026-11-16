@@ -37,6 +37,20 @@ describe("withTimeout", () => {
 });
 
 describe("cleanError", () => {
+  it("shows a structured ConvexError's message, not its JSON or stack", () => {
+    const e = Object.assign(
+      new Error('[CONVEX M(link:finish)] [Request ID: e4] Server Error Uncaught ConvexError: {"code":"INVALID_PHONE","message":"Enter a phone number with its country code."} at phoneAuthError (convex/sms.ts:36)'),
+      { data: { code: "INVALID_PHONE", message: "Enter a phone number with its country code." } },
+    );
+    expect(cleanError(e)).toBe("Enter a phone number with its country code.");
+  });
+  it("strips a ConvexError JSON payload even without .data", () => {
+    const e = new Error('[CONVEX M(link:finish)] Server Error Uncaught ConvexError: {"code":"X","message":"Nope."} at f (a.ts:1)');
+    expect(cleanError(e)).toBe("Nope.");
+  });
+  it("drops trailing stack frames from a plain server error", () => {
+    expect(cleanError(new Error("[CONVEX M(x)] Server Error Uncaught Error: Bad thing at handler (convex/x.ts:3)"))).toBe("Bad thing");
+  });
   it("strips Convex wrapping", () => {
     const e = new Error("[CONVEX M(link:pushOne)] [Request ID: abc] Server Error\nUncaught Error: Pick someone else — this boat already passed through them\n    at handler (../convex/link.ts:40:11)\n\n  Called by client");
     expect(cleanError(e)).toBe("Pick someone else — this boat already passed through them");

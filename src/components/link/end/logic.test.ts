@@ -8,6 +8,14 @@ describe("validateContact", () => {
   it("accepts phone with spaces and plus", () => {
     expect(validateContact("phone", "+1 415 555 0100")).toEqual({ ok: true, value: "+14155550100" });
   });
+  it("defaults a number without a country code to +1", () => {
+    for (const raw of ["4083065268", "(408) 306-5268", "+1 408 306 5268", "14083065268", "1 (408) 306-5268"]) {
+      expect(validateContact("phone", raw)).toEqual({ ok: true, value: "+14083065268" });
+    }
+  });
+  it("keeps an international number's own country code", () => {
+    expect(validateContact("phone", "+44 20 7946 0958")).toEqual({ ok: true, value: "+442079460958" });
+  });
   it("rejects too-short phone", () => {
     expect(validateContact("phone", "12345").ok).toBe(false);
   });
