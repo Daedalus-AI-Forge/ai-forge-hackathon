@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 
 import { Glass, GlassCard, Icon, Screen, SectionHeader } from "@/components/ios";
 import { LvAvatar } from "@/components/lv/me/LvAvatar";
-import { DButton, DCard, DField } from "@/components/lv/passon/kit";
+import { DButton, DCard, DField, switchColors } from "@/components/lv/passon/kit";
 import { copyLink } from "@/lib/links";
 import { AUTH_ENABLED } from "@/lib/authFlag";
 import { useMe } from "@/lib/device";
@@ -144,8 +144,7 @@ export default function Me() {
               onValueChange={(value) => {
                 if (deviceId) void setShowInLogs({ deviceId, value });
               }}
-              trackColor={{ true: lv.tint, false: lv.fillStrong }}
-              ios_backgroundColor={lv.fillStrong}
+              {...switchColors}
             />
           </View>
         </GlassCard>

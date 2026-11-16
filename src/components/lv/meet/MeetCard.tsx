@@ -1,37 +1,76 @@
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Image, Linking, StyleSheet, Switch, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Glass, Icon } from "@/components/ios";
 import { cleanError } from "@/components/link/claim/errors";
-import { DButton, DCard, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
-import { useNow } from "@/lib/time";
-import { lv, type } from "@/theme/tokens";
+import { DButton, DCard, DError, DField, Eyebrow, Sub, switchColors } from "@/components/lv/passon/kit";
+import { TIER_LABEL } from "@/components/lv/threads/threadData";
+import { Polaroid, tiltFor } from "@/components/lv/world/Polaroid";
+import { hopCount, useNow } from "@/lib/time";
+import { layout, lv, night, type } from "@/theme/tokens";
 
-import { GrantedCard } from "./GrantedCard";
 import { meetCopy, otherName } from "./meetLogic";
 import { CAN_PICK_PHOTO, pickPhoto, releasePhoto, type MeetingPhoto } from "./pickPhoto";
-import { WishProgressButton } from "./WishProgressButton";
 
 export type MeetingView = NonNullable<FunctionReturnType<typeof api.meetings.get>>;
 
 export function MeetCard({ meeting, deviceId, showEndingLink = true }: { meeting: MeetingView; deviceId: string; showEndingLink?: boolean }) {
-  if (meeting.stage === "granted") return <GrantedFromEnding wishId={meeting.wishId} showEndingLink={showEndingLink} />;
+  if (meeting.stage === "granted") return <GrantedFromEnding meeting={meeting} showEndingLink={showEndingLink} />;
   // A new server photo or stage invalidates local consent and restores the persisted meeting details.
   return <MeetUp key={`${meeting.wishId}:${meeting.stage}:${meeting.photoStorageId}`} meeting={meeting} deviceId={deviceId} />;
 }
 
-function GrantedFromEnding({ wishId, showEndingLink }: { wishId: Id<"wishes">; showEndingLink: boolean }) {
+/**
+ * A granted meet-up in a list (Voyages, the link page): a small print of the photo beside the wish, like
+ * the World tab's polaroid strip. The full ending, with the story, route and Share, opens on /e.
+ */
+function GrantedFromEnding({ meeting, showEndingLink }: { meeting: MeetingView; showEndingLink: boolean }) {
+  const router = useRouter();
+  const { wishId } = meeting;
   const ending = useQuery(api.link.ending, { wishId });
   if (!ending || ending.status !== "granted" || ending.locked) return null;
+  const other = otherName(meeting);
+  const met = ending.metInPerson === true ? " · met in person" : ending.metInPerson === false ? " · met on a call" : "";
+  const open = showEndingLink ? () => router.push({ pathname: "/e/[wishId]", params: { wishId } }) : undefined;
   return (
-    <View style={styles.granted}>
-      <GrantedCard ending={ending} wishId={wishId} />
-      {showEndingLink ? <WishProgressButton wishId={wishId} title="Open the ending" testID={`granted-open-${wishId}`} /> : null}
-    </View>
+    <Glass
+      testID={open ? `granted-open-${wishId}` : `granted-teaser-${wishId}`}
+      onPress={open}
+      accessibilityLabel={`Wish granted with ${other}: ${ending.wishText}${open ? ". Open the ending" : ""}`}
+      style={styles.teaser}
+    >
+      <Polaroid
+        photoUrl={ending.photoUrl}
+        caption={`with ${other}`}
+        names={[meeting.creatorName, meeting.matchName]}
+        date={null}
+        width={92}
+        tilt={tiltFor(wishId, 3)}
+        tape={false}
+      />
+      <View style={styles.teaserBody}>
+        <Text style={styles.teaserEyebrow}>Wish granted{ending.tier ? ` · ${TIER_LABEL[ending.tier]}` : ""}</Text>
+        <Text style={styles.title} numberOfLines={3}>
+          {ending.wishText}
+        </Text>
+        <Text style={styles.wish}>
+          {hopCount(ending.ripples)}
+          {met}
+        </Text>
+        {open ? (
+          <View style={styles.teaserLink}>
+            <Text style={styles.teaserLinkText}>See the ending</Text>
+            <Icon name="forward" size={12} color={lv.tint} />
+          </View>
+        ) : null}
+      </View>
+    </Glass>
   );
 }
 
@@ -44,7 +83,7 @@ function MatchContact({ contact, phone, name }: { contact: string; phone: string
     setError(null);
     try {
       if (!(await Clipboard.setStringAsync(contact))) throw new Error();
-      setNote("Contact copied.");
+      setNote("Number copied.");
     } catch {
       setError("Couldn't copy the contact. You can select it above.");
     }
@@ -66,8 +105,10 @@ function MatchContact({ contact, phone, name }: { contact: string; phone: string
       <Text style={styles.contactLabel}>{name}’s contact</Text>
       <Text selectable style={styles.contactText} testID="meet-contact">{contact}</Text>
       <View style={styles.contactActions}>
-        <DButton title="Copy contact" variant="ghost" size="sm" onPress={copyContact} testID="meet-copy-contact" />
-        {phone ? <DButton title="Open Messages" variant="ghost" size="sm" onPress={openMessages} testID="meet-open-messages" /> : null}
+        <DButton title="Copy number" variant="ghost" size="sm" onPress={copyContact} testID="meet-copy-contact" style={styles.contactButton} />
+        {phone ? (
+          <DButton title={`Text ${name}`} variant="ghost" size="sm" onPress={openMessages} testID="meet-open-messages" style={styles.contactButton} />
+        ) : null}
       </View>
       {note ? <Text style={styles.contactLabel} accessibilityLiveRegion="polite">{note}</Text> : null}
       <DError error={error} />
@@ -224,6 +265,11 @@ function MeetUp({ meeting, deviceId }: { meeting: MeetingView; deviceId: string 
           />
         </View>
       ) : null}
+      {stage === "waiting" && !picked && meeting.thankYou ? (
+        <Text style={styles.quote} testID="meet-own-note">
+          “{meeting.thankYou}”
+        </Text>
+      ) : null}
       {canUpload ? (
         <View style={styles.actions}>
           {stage === "upload" || picked ? (
@@ -245,7 +291,7 @@ function MeetUp({ meeting, deviceId }: { meeting: MeetingView; deviceId: string 
                   value={metInPerson}
                   onValueChange={setMetInPerson}
                   disabled={inactive}
-                  trackColor={{ true: lv.thread, false: lv.fill }}
+                  {...switchColors}
                 />
               </View>
             </>
@@ -274,18 +320,25 @@ function MeetUp({ meeting, deviceId }: { meeting: MeetingView; deviceId: string 
 }
 
 const styles = StyleSheet.create({
-  granted: { gap: 10 },
+  teaser: { flexDirection: "row", alignItems: "center", gap: 18, padding: layout.cardPadding, paddingLeft: 20 },
+  teaserBody: { flex: 1, gap: 4 },
+  teaserEyebrow: { ...type.eyebrow, color: night.gold },
+  teaserLink: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  teaserLinkText: { ...type.subheadline, fontWeight: "600", color: lv.tint },
   title: { ...type.headline, color: lv.fg },
   wish: { ...type.footnote, color: lv.mutedFg },
-  quote: { ...type.subheadline, color: lv.fg, fontStyle: "italic" },
+  // The thank-you line in the night garden's serif, like the quotes on the chain page.
+  quote: { fontFamily: night.serif, fontSize: 18, lineHeight: 25, color: lv.fg },
   photo: { width: "100%", aspectRatio: 1, borderRadius: 12, backgroundColor: lv.muted },
   actions: { gap: 10, marginTop: 4 },
   toggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   toggleText: { ...type.subheadline, color: lv.fg },
-  contact: { gap: 6, marginTop: 4 },
+  // The match's number as one inset tile, so the copy / Messages actions read as belonging to it.
+  contact: { gap: 6, marginTop: 4, padding: 12, borderRadius: lv.radiusMd, borderCurve: "continuous", backgroundColor: lv.fill },
   contactLabel: { ...type.footnote, color: lv.mutedFg },
   contactText: { ...type.subheadline, color: lv.fg },
-  contactActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  contactActions: { flexDirection: "row", gap: 8 },
+  contactButton: { flex: 1, paddingHorizontal: 12 },
 });
 
 /** For pages that know a wish but not whether this device is in it. */

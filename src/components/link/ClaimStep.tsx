@@ -7,7 +7,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "re
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
-import { DButton, DCard, DError, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { DButton, DCard, DError, DField, DHint, Eyebrow, Sub, switchColors } from "@/components/lv/passon/kit";
 import { phoneFromParts } from "@/lib/phoneNumber";
 import { lv, type } from "@/theme/tokens";
 
@@ -193,8 +193,7 @@ export function ClaimStep({ hopId, wishId, deviceId, kind, onDone }: ClaimStepPr
             <Switch
               value={showNameAndCity}
               onValueChange={setShowNameAndCity}
-              trackColor={{ true: lv.tint, false: lv.fillStrong }}
-              ios_backgroundColor={lv.fillStrong}
+              {...switchColors}
               testID="claim-show-name"
             />
           </Pressable>
