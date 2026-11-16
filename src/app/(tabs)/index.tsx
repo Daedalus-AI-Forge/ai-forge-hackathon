@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { CenterScreen, LargeTitle, Screen } from "@/components/ios";
+import { CenterScreen, LargeTitle, Screen, setChromeTone } from "@/components/ios";
 import { DButton } from "@/components/lv/passon/kit";
 import { BoatCard } from "@/components/lv/pool/BoatCard";
 import { CoinsFloor, type PoolCoin } from "@/components/lv/pool/CoinsFloor";
@@ -38,11 +38,16 @@ export default function ThePool() {
   const { width } = useWindowDimensions();
   const poolSize = Math.min(width, layout.maxWidth) - layout.margin * 2 - 16 - 24;
 
-  // The pool is a night scene: light status bar while it is on screen, the app default elsewhere.
+  // The pool is a night scene: light status bar and a dark tab bar while it is on screen,
+  // the app defaults elsewhere.
   useFocusEffect(
     useCallback(() => {
       setStatusBarStyle("light");
-      return () => setStatusBarStyle("dark");
+      setChromeTone("night");
+      return () => {
+        setStatusBarStyle("dark");
+        setChromeTone("light");
+      };
     }, []),
   );
 
@@ -76,7 +81,7 @@ export default function ThePool() {
     };
   }, [date]);
 
-  if (!home || !deviceId) return <CenterScreen />;
+  if (!home || !deviceId) return <CenterScreen backdrop={<NightBackdrop />} spinnerColor={night.gold} />;
 
   const user = home.user;
   const wishesLeft = user.wishesLeft;
@@ -110,7 +115,7 @@ export default function ThePool() {
   const primary = friends.length > 0 || todayUnpushed ? "push" : wishesLeft > 0 ? "toss" : "none";
 
   return (
-    <Screen tab testID="well-screen" backdrop={<NightBackdrop />}>
+    <Screen tab testID="well-screen" backdrop={<NightBackdrop />} tone="night">
       <LargeTitle
         eyebrowColor={night.mutedFg}
         eyebrow={`${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${progress}/5 boats`}
@@ -170,6 +175,7 @@ export default function ThePool() {
           testID="use-demo-profile"
           title="Try it with demo wishes"
           variant="plain"
+          tone="night"
           size="sm"
           style={styles.demo}
           onPress={() => void claimDemo({ deviceId })}

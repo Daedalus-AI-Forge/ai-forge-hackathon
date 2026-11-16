@@ -56,6 +56,7 @@ export function DButton({
   testID,
   size = "md",
   icon,
+  tone = "light",
   style,
 }: {
   title: string;
@@ -66,10 +67,19 @@ export function DButton({
   testID?: string;
   size?: Size;
   icon?: IconName;
+  /** "night" on the night pool: ghost becomes a light-on-dark fill and plain turns gold. */
+  tone?: "light" | "night";
   style?: StyleProp<ViewStyle>;
 }) {
   const inactive = !!disabled || !!busy;
-  const fg = variant === "glass" && inactive && !busy ? lv.tertiaryFg : FG[variant];
+  const nightTone = tone === "night" && (variant === "ghost" || variant === "plain");
+  const fg = nightTone
+    ? variant === "ghost"
+      ? night.fg
+      : night.gold
+    : variant === "glass" && inactive && !busy
+      ? lv.tertiaryFg
+      : FG[variant];
   const content = busy ? (
     <ActivityIndicator color={fg} />
   ) : (
@@ -110,6 +120,7 @@ export function DButton({
         s.btn,
         { height: HEIGHT[size] },
         BG[variant],
+        nightTone && variant === "ghost" && s.ghostNight,
         lift,
         variant === "plain" && s.plain,
         inactive && s.inactive,
@@ -271,6 +282,7 @@ export const s = StyleSheet.create({
   labelRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   btnText: { fontWeight: "600", textAlign: "center" },
   plain: { paddingHorizontal: 8 },
+  ghostNight: { backgroundColor: "rgba(255,255,255,0.12)" },
   liftThread: { boxShadow: shadows.button },
   liftInk: { boxShadow: shadows.ink },
   inactive: { opacity: 0.4 },
