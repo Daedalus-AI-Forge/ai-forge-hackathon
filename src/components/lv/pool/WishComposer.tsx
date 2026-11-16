@@ -1,8 +1,12 @@
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Glass, Icon } from "@/components/ios";
 import { keyboardInputProps } from "@/components/keyboard";
-import { layout, night } from "@/theme/tokens";
+import { night } from "@/theme/tokens";
+
+const COMPOSER_MAX = 430;
+// Brighter than mutedFg so "Whisper a wish…" reads on the dark glass.
+const PLACEHOLDER = "rgba(222,236,234,0.72)";
 
 /** Katie-Lan's pool composer: "Whisper a wish…" and a gold Toss. An empty wish just sinks. */
 export function WishComposer({
@@ -24,14 +28,15 @@ export function WishComposer({
       pointerEvents="box-none"
       testID="wish-composer"
     >
-      <Glass variant="dark" radius={26} style={styles.bar}>
+      <View style={styles.column}>
+        <Glass variant="dark" radius={26} style={styles.bar}>
         <TextInput
           {...keyboardInputProps({
             testID: "toss-text",
             value,
             onChangeText: onChange,
             placeholder: "Whisper a wish…",
-            placeholderTextColor: night.mutedFg,
+            placeholderTextColor: PLACEHOLDER,
             maxLength: 120,
             accessibilityLabel: "Your wish",
             onSubmitEditing: onToss,
@@ -49,13 +54,16 @@ export function WishComposer({
           <Text style={styles.goldText}>Toss</Text>
         </Pressable>
       </Glass>
-      <Text style={styles.hint}>or tap anywhere on the water</Text>
+        <Text style={styles.hint}>or tap anywhere on the water</Text>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", left: 16, right: 16, zIndex: 10, maxWidth: layout.maxWidth - 32, marginHorizontal: "auto" },
+  // Full-width track, centered column: on wide screens the composer stays phone-sized.
+  wrap: { position: "absolute", left: 0, right: 0, zIndex: 10, alignItems: "center", paddingHorizontal: 16 },
+  column: { width: "100%", maxWidth: COMPOSER_MAX },
   bar: {
     flexDirection: "row",
     alignItems: "center",
@@ -64,7 +72,7 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
     backgroundColor: night.glassStrong,
   },
-  input: { flex: 1, minWidth: 0, height: 48, fontFamily: night.serif, fontSize: 20, color: night.fg, outlineStyle: "none" } as object,
+  input: { flex: 1, minWidth: 0, height: 48, zIndex: 1, fontFamily: night.serif, fontSize: 20, color: night.fg, outlineStyle: "none" } as object,
   gold: {
     flexDirection: "row",
     alignItems: "center",

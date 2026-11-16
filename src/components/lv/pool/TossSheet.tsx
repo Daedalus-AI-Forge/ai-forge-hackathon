@@ -7,6 +7,7 @@ import { formScrollProps } from "@/components/keyboard";
 import { DField } from "@/components/lv/passon/kit";
 import { TossPeopleStep, TossShareStep } from "@/components/lv/toss/TossSteps";
 import { useTossWish } from "@/components/lv/toss/useTossWish";
+import { ToneProvider } from "@/components/lv/tone";
 import { inferWishType } from "@/lib/tossWish";
 import { layout, night } from "@/theme/tokens";
 
@@ -71,7 +72,8 @@ export function TossSheet({
           >
             <Icon name="close" size={13} color={night.fg} weight="bold" />
           </Pressable>
-          <ScrollView {...formScrollProps} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
+          <ToneProvider tone="night">
+            <ScrollView {...formScrollProps} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}>
             {step === "people" ? (
               <TossPeopleStep
                 t={t}
@@ -90,7 +92,8 @@ export function TossSheet({
             ) : (
               <TossShareStep t={t} onDone={onClose} />
             )}
-          </ScrollView>
+            </ScrollView>
+          </ToneProvider>
         </Glass>
       </Animated.View>
     </View>
