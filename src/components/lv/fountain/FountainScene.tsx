@@ -170,7 +170,9 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
               <Text style={styles.starGlyph}>{challenge?.done ? "✓" : "★"}</Text>
             </View>
             <View style={styles.challengeText}>
-              <Text style={styles.challengeLabel}>{challenge?.done ? "Today's boat · pushed" : `Today's boat · ${left} left`}</Text>
+              <Text style={styles.challengeLabel} numberOfLines={1}>
+                {challenge?.done ? "Today's boat · pushed" : `Today's boat · ${left} left`}
+              </Text>
               <Text style={styles.challengeTitle} numberOfLines={1}>
                 {challenge?.title ?? " "}
               </Text>
@@ -414,43 +416,44 @@ const styles = StyleSheet.create({
     color: night.goldFg,
   },
   pressed: { transform: [{ scale: 0.98 }] },
+  // Compact: a secondary card under the Toss button, so it shouldn't crowd the fountain.
   challenge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   star: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: night.gold,
     alignItems: "center",
     justifyContent: "center",
     boxShadow: goldGlow,
   },
-  starGlyph: { fontSize: 16, lineHeight: 20, color: night.goldFg },
-  challengeText: { flex: 1, minWidth: 0 },
+  starGlyph: { fontSize: 14, lineHeight: 18, color: night.goldFg },
+  challengeText: { flex: 1, minWidth: 0, gap: 1 },
   challengeLabel: {
     fontFamily: serif,
-    fontSize: 14,
-    lineHeight: 20,
-    letterSpacing: 2,
+    fontSize: 11,
+    lineHeight: 15,
+    letterSpacing: 1,
     textTransform: "uppercase",
     color: night.mutedFg,
     fontVariant: ["tabular-nums"],
   },
   challengeNote: {
     fontFamily: serif,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     color: night.mutedFg,
   },
   challengeTitle: {
     fontFamily: serif,
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 21,
     color: night.fg,
   },
 });
