@@ -1,19 +1,16 @@
-// The wish network as a little planet: the viewer faces you, each step away sits farther round
-// the sphere, and people not yet connected wait on the far side. Placement is by relationship
-// distance, never geography. Pure math, no React.
+// The wish network on the real Earth: every person at their true latitude/longitude, threads as
+// great-circle arcs between them. Pure math, no React.
 import type { CommunityNetwork, CommunityNode } from "@/lib/graphApi.types";
+import { cityOf } from "../threads/threadData";
+
 import { networkDistances } from "../me/communityLayout";
 
 export type Vec3 = { x: number; y: number; z: number };
-export type GlobeNode = CommunityNode & { distance: number | null; v: Vec3 };
+export type GlobeNode = CommunityNode & { distance: number | null; v: Vec3 | null };
 export type Camera = { yaw: number; pitch: number };
 export type Projected = { x: number; y: number; z: number; front: boolean };
 
 export const PITCH_LIMIT = 1.25;
-
-function hash(key: string) {
-  return [...key].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 7);
-}
 
 export type ThreadKind = "near" | "mid" | "far" | "wide";
 
@@ -32,111 +29,67 @@ export const THREAD_LOOK: Record<ThreadKind, { tone: "gold" | "fg" | "aqua"; wid
   wide: { tone: "aqua", width: 0.8, opacity: 0.22 },
 };
 
-/** Polar angle from the viewer (radians): 1 step on the near ring, the wider network round the back. */
-export function polarFor(distance: number | null) {
-  if (distance === null) return 2.6;
-  if (distance <= 0) return 0;
-  if (distance === 1) return 0.62;
-  if (distance === 2) return 1.08;
-  return Math.min(1.45 + (distance - 3) * 0.28, 2.05);
-}
-
-function fromPolar(theta: number, phi: number): Vec3 {
-  return { x: Math.sin(theta) * Math.cos(phi), y: Math.sin(theta) * Math.sin(phi), z: Math.cos(theta) };
-}
-
 function normalize(v: Vec3): Vec3 {
   const l = Math.hypot(v.x, v.y, v.z) || 1;
   return { x: v.x / l, y: v.y / l, z: v.z / l };
 }
 
-/** Deterministic sphere positions. The viewer is pinned at +z (facing the camera at yaw = pitch = 0). */
+/** Unit vector for a latitude/longitude, in the globe's frame (north up, longitude 0 facing you). */
+export function fromLatLng(lat: number, lng: number): Vec3 {
+  const a = (lat * Math.PI) / 180;
+  const b = (lng * Math.PI) / 180;
+  return { x: Math.cos(a) * Math.sin(b), y: Math.sin(a), z: Math.cos(a) * Math.cos(b) };
+}
+
+/** Where a person is on Earth: exact coordinates when we have them, else their city's. Unknown = null, never guessed. */
+export function placeOf(node: Pick<CommunityNode, "city" | "lat" | "lng">): { lat: number; lng: number; label: string } | null {
+  const label = node.city?.trim() || "";
+  if (typeof node.lat === "number" && typeof node.lng === "number" && Number.isFinite(node.lat) && Number.isFinite(node.lng)) {
+    return { lat: node.lat, lng: node.lng, label };
+  }
+  const city = cityOf(node.city);
+  return city ? { lat: city.lat, lng: city.lng, label } : null;
+}
+
+/** One dot on the globe: everyone at the same place shares it (shown with a count), never nudged apart. */
+export type GlobeMarker = { id: string; place: string; v: Vec3; members: GlobeNode[] };
+
+/**
+ * Real geography: each person sits at their true latitude/longitude. People in the same city share
+ * one marker; people whose location is unknown stay off the globe (they are still in the list).
+ */
 export function layoutGlobe(graph: CommunityNetwork) {
-  const { adjacency, distances, parents } = networkDistances(graph);
+  const { distances, parents } = networkDistances(graph);
   const sorted = [...graph.nodes].sort((a, b) => a.key.localeCompare(b.key));
-  const phi = new Map<string, number>();
-  const theta = new Map<string, number>();
-
-  // Near ring, evenly spaced from the top; a crowded ring alternates two radii so dots don't touch.
-  const direct = sorted.filter((node) => distances.get(node.key) === 1);
-  direct.forEach((node, i) => {
-    phi.set(node.key, Math.PI / 2 + (i * Math.PI * 2) / direct.length);
-    theta.set(node.key, direct.length > 14 ? polarFor(1) + (i % 2 ? 0.16 : -0.08) : polarFor(1));
-  });
-
-  // Everyone farther out fans around the person who leads back to you.
-  const children = new Map<string, string[]>();
-  for (const [key, parent] of parents) children.set(parent, [...(children.get(parent) ?? []), key]);
-  for (const [key] of [...distances].sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))) {
-    const kids = (children.get(key) ?? []).sort();
-    const spread = Math.min(0.42, 1.5 / Math.max(1, kids.length));
-    kids.forEach((kid, i) => {
-      if (distances.get(kid)! < 2) return;
-      phi.set(kid, (phi.get(key) ?? 0) + (i - (kids.length - 1) / 2) * spread);
-      theta.set(kid, polarFor(distances.get(kid)!) + ((hash(kid) % 7) - 3) * 0.02);
-    });
-  }
-
-  // Unconnected groups gather on the far side, each around its own anchor (golden-angle spiral).
-  let group = 0;
+  const rank = (n: GlobeNode) => (n.key === graph.meKey ? -1 : n.distance ?? 99);
+  const nodes: GlobeNode[] = [];
+  const groups = new Map<string, GlobeMarker>();
   for (const node of sorted) {
-    if (distances.has(node.key) || phi.has(node.key)) continue;
-    const members: string[] = [];
-    const queue = [node.key];
-    const seen = new Set(queue);
-    for (let i = 0; i < queue.length; i++) {
-      members.push(queue[i]!);
-      for (const next of adjacency.get(queue[i]!) ?? []) {
-        if (!seen.has(next)) { seen.add(next); queue.push(next); }
-      }
-    }
-    const anchorTheta = 2.2 + ((group * 0.618) % 1) * 0.8;
-    const anchorPhi = group * 2.39996;
-    group++;
-    members.forEach((key, i) => {
-      const ring = i === 0 ? 0 : 0.1 + Math.sqrt(i) * 0.06;
-      const around = i * 2.39996;
-      theta.set(key, anchorTheta + Math.sin(around) * ring);
-      phi.set(key, anchorPhi + (Math.cos(around) * ring) / Math.max(0.3, Math.sin(anchorTheta)));
-    });
+    const distance = node.key === graph.meKey ? 0 : distances.get(node.key) ?? null;
+    const place = placeOf(node);
+    const v = place ? fromLatLng(place.lat, place.lng) : null;
+    const globeNode: GlobeNode = { ...node, distance, v };
+    nodes.push(globeNode);
+    if (!place || !v) continue;
+    const id = `${place.lat.toFixed(2)},${place.lng.toFixed(2)}`;
+    const marker = groups.get(id) ?? { id, place: place.label, v, members: [] };
+    marker.members.push(globeNode);
+    if (!marker.place && place.label) marker.place = place.label;
+    groups.set(id, marker);
   }
-
-  const nodes: GlobeNode[] = sorted.map((node) => {
-    const distance = distances.get(node.key) ?? null;
-    return {
-      ...node,
-      distance,
-      v: node.key === graph.meKey ? { x: 0, y: 0, z: 1 } : fromPolar(theta.get(node.key) ?? polarFor(distance), phi.get(node.key) ?? hash(node.key) * 0.01),
-    };
-  });
-
-  // A few rounds of gentle repulsion on the sphere so nobody sits on top of anybody else.
-  const moving = nodes.filter((node) => node.key !== graph.meKey);
-  const minGap = (n: GlobeNode) => (n.distance !== null && n.distance <= 1 ? 0.2 : n.distance === null ? 0.07 : 0.12);
-  if (moving.length <= 600) {
-    for (let round = 0; round < 24; round++) {
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const a = nodes[i]!;
-          const b = nodes[j]!;
-          const gap = Math.max(minGap(a), minGap(b));
-          const dx = a.v.x - b.v.x;
-          const dy = a.v.y - b.v.y;
-          const dz = a.v.z - b.v.z;
-          const d = Math.hypot(dx, dy, dz);
-          if (d >= gap) continue;
-          const push = ((gap - d) / 2) * 0.6;
-          const ux = d > 1e-6 ? dx / d : 0.01 * (hash(a.key) % 3 - 1);
-          const uy = d > 1e-6 ? dy / d : 0.01;
-          const uz = d > 1e-6 ? dz / d : 0;
-          if (a.key !== graph.meKey) a.v = normalize({ x: a.v.x + ux * push, y: a.v.y + uy * push, z: a.v.z + uz * push });
-          if (b.key !== graph.meKey) b.v = normalize({ x: b.v.x - ux * push, y: b.v.y - uy * push, z: b.v.z - uz * push });
-        }
-      }
-    }
-  }
-
-  return { nodes, byKey: new Map(nodes.map((n) => [n.key, n])), distances, parents };
+  const markers = [...groups.values()];
+  for (const m of markers) m.members.sort((a, b) => rank(a) - rank(b) || a.key.localeCompare(b.key));
+  const markerOf = new Map<string, GlobeMarker>();
+  for (const m of markers) for (const n of m.members) markerOf.set(n.key, m);
+  return {
+    nodes,
+    markers,
+    markerOf,
+    byKey: new Map(nodes.map((n) => [n.key, n])),
+    unplaced: nodes.filter((n) => !n.v).length,
+    distances,
+    parents,
+  };
 }
 
 /** Rotate a layout vector into camera space: yaw about the vertical axis, then pitch about the horizontal. */

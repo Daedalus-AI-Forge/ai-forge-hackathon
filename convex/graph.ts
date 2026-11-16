@@ -32,6 +32,10 @@ const communityNodeValidator = v.object({
   personKeys: v.array(v.string()),
   edgeIds: v.array(v.id("edges")),
   kind: v.union(v.literal("user"), v.literal("contact")),
+  // Where this person is on Earth, when known: a city name and/or exact coordinates from a hop.
+  city: v.optional(v.string()),
+  lat: v.optional(v.number()),
+  lng: v.optional(v.number()),
 });
 
 const communityLinkValidator = v.object({ key: v.string(), source: v.string(), target: v.string() });
@@ -77,12 +81,12 @@ export const communityNetwork = query({
     ]);
     const meKey = userKey(viewer._id);
     const nodes = new Map<string, Infer<typeof communityNodeValidator>>([
-      [meKey, { key: meKey, name: viewer.name, personKeys: [], edgeIds: [], kind: "user" }],
+      [meKey, { key: meKey, name: viewer.name, personKeys: [], edgeIds: [], kind: "user", city: viewer.city }],
     ]);
     for (const user of users.slice(0, USER_READ_LIMIT)) {
       if (user.showInLogs === false || user.demoKey === "well" || user._id === viewer._id) continue;
       const key = userKey(user._id);
-      nodes.set(key, { key, name: user.name, personKeys: [], edgeIds: [], kind: "user" });
+      nodes.set(key, { key, name: user.name, personKeys: [], edgeIds: [], kind: "user", city: user.city });
     }
 
     const links = new Map<string, Infer<typeof communityLinkValidator>>();
@@ -158,6 +162,8 @@ export const communityNetwork = query({
         } else {
           nodes.set(key, {
             key, name: edge.personName.trim(), personKeys: [detailKey], edgeIds: [edge._id], kind: "contact",
+            ...(hop?.city ? { city: hop.city } : {}),
+            ...(hop?.lat !== undefined && hop?.lng !== undefined ? { lat: hop.lat, lng: hop.lng } : {}),
           });
         }
         connect(meKey, key);

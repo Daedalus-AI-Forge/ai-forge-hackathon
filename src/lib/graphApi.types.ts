@@ -25,6 +25,9 @@ export type CommunityNode = {
   personKeys: string[];
   edgeIds: Id<"edges">[];
   kind: "user" | "contact";
+  city?: string;
+  lat?: number;
+  lng?: number;
 };
 export type CommunityLink = { key: string; source: string; target: string };
 export type CommunityNetwork = {
