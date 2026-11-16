@@ -142,6 +142,28 @@ export const vouchFor = action({
   },
 });
 
+/**
+ * Deterministic copy for wish topics we can ground without a model call: the wish text or the
+ * holder's city names the place. Used first so the link page never waits on OpenAI for these.
+ */
+const TOPICS: { match: RegExp; question: string; reasons: string[] }[] = [
+  {
+    match: /\b(tea ceremony|chanoyu|sado|japan|japanese|kyoto|osaka|tokyo|ikebana|kimono|calligraphy)\b/i,
+    question: "Who do you know in Japan's traditional arts?",
+    reasons: ["Makes ceramics in Kyoto", "Studies a Japanese art", "Grew up in Japan"],
+  },
+];
+
+export function topicHint(wishText: string, holderCity = ""): { question: string; reasons: string[] } | null {
+  const facts = `${wishText} ${holderCity}`;
+  const t = TOPICS.find((x) => x.match.test(facts));
+  return t ? { question: t.question, reasons: t.reasons } : null;
+}
+
+async function holderCityFor(ctx: ActionCtx, hopId: Id<"hops">): Promise<string> {
+  return clampText((await ctx.runQuery(internal.link.holderCity, { hopId })) ?? "", LIMITS.city);
+}
+
 export const memoryPrompt = action({
   args: { hopId: v.id("hops") },
   returns: v.string(),
@@ -150,6 +172,8 @@ export const memoryPrompt = action({
     return await safe(generic, async () => {
       const wishText = await wishTextFor(ctx, hopId);
       if (!wishText) return generic;
+      const topic = topicHint(wishText, await holderCityFor(ctx, hopId));
+      if (topic) return topic.question;
       const fallback = `Who's the first person you'd ask about "${short(wishText, 60)}"?`;
       if (!(await aiAllowed(ctx, `link:${hopId}`))) return fallback;
       const out = await respondFast(
@@ -175,6 +199,8 @@ export const passReasons = action({
   handler: async (ctx, { hopId }): Promise<string[]> => {
     return await safe(PASS_REASON_FALLBACK, async () => {
       const wishText = await wishTextFor(ctx, hopId);
+      const topic = wishText ? topicHint(wishText, await holderCityFor(ctx, hopId)) : null;
+      if (topic) return topic.reasons;
       if (!wishText || !(await aiAllowed(ctx, `link:${hopId}`))) return PASS_REASON_FALLBACK;
       const raw = await respondFast(
         `Wish: "${wishText}". Someone is about to pass this wish to one friend who fits it or who knows who does. ` +

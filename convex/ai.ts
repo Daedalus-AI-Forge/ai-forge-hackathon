@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, type ActionCtx } from "./_generated/server";
 import { aiAllowed } from "./aiLimits";
-import { COACH_THRESHOLD, COACH_TURNS_MAX, WISH_TEXT_MAX, type Candidate } from "./graphShared";
+import { COACH_THRESHOLD, COACH_TURNS_MAX, WISH_TEXT_MAX, evidenceMeta, type Candidate } from "./graphShared";
 import { isCoachReady } from "./graphRank";
 import { LIMITS, clampText, requireDeviceId } from "./lib";
 import { FACTS_RULES, checkDraft, firstName, wishGist } from "./greetings";
@@ -158,9 +158,44 @@ const COACH_INSTRUCTIONS =
   'Output strict JSON only, no prose, no code fences: {"message": string, "suggestions": [{"personKey": string, "why": string}]}';
 
 const coachTurn = v.object({ role: v.union(v.literal("user"), v.literal("coach")), text: v.string() });
-const coachEvidence = v.object({ tag: v.string(), reason: v.union(v.string(), v.null()) });
+const coachEvidence = v.object({ tag: v.string(), reason: v.union(v.string(), v.null()), ...evidenceMeta });
 
-type CoachSuggestion = { name: string; personKey: string; why: string; evidence: Candidate["evidence"] };
+type CoachSuggestion = { name: string; personKey: string; why: string; evidence: Candidate["evidence"]; label?: string };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** "today", "yesterday", "5 days ago", "3 weeks ago", "2 months ago". */
+export function ageText(at: number, now = Date.now()) {
+  const days = Math.max(0, Math.floor((now - at) / DAY_MS));
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 14) return `${days} days ago`;
+  if (days < 60) return `${Math.round(days / 7)} weeks ago`;
+  return `${Math.round(days / 30)} months ago`;
+}
+
+function titleTag(tag: string) {
+  return tag.replace(/[-_]+/g, " ").replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+}
+
+/**
+ * One-line provenance for a suggestion, e.g. "Katie · Japan · from a daily boat 3 weeks ago".
+ * Built only from the top evidence edge (the owner's own tag + when/how they passed to this person).
+ */
+export function evidenceLabel(c: Pick<Candidate, "name" | "evidence">, now = Date.now()) {
+  const top = c.evidence[0];
+  if (!top) return c.name;
+  const parts = [c.name, titleTag(top.tag)];
+  if (top.at !== undefined) parts.push(`${top.source === "daily" ? "from a daily boat" : "you passed them a wish"} ${ageText(top.at, now)}`);
+  return parts.join(" · ");
+}
+
+/** Keep suggestions that are at least half as strong as the best one (one clear match stays one name). */
+export const COACH_RELATIVE_CUTOFF = 0.5;
+export function strongCandidates(candidates: Candidate[]) {
+  const best = candidates[0]?.score ?? 0;
+  return candidates.filter((c) => c.score >= best * COACH_RELATIVE_CUTOFF);
+}
 type CoachResult =
   | { ready: false; edgeCount: number; threshold: number }
   | { ready: true; message: string; suggestions: CoachSuggestion[] };
@@ -188,7 +223,7 @@ export function coachFallback(candidates: Candidate[]): { message: string; sugge
   const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
   return {
     message: `From what you've told the well, ${list} could be a good first pass. Who feels closest to this wish?`,
-    suggestions: top.map((c) => ({ name: c.name, personKey: c.personKey, why: templateWhy(c), evidence: c.evidence })),
+    suggestions: top.map((c) => ({ name: c.name, personKey: c.personKey, why: templateWhy(c), evidence: c.evidence, label: evidenceLabel(c) })),
   };
 }
 
@@ -216,7 +251,7 @@ export function parseCoachReply(raw: string, candidates: Candidate[]) {
     const c = byKey.get(personKey);
     if (!c || seen.has(c.personKey)) continue;
     seen.add(c.personKey);
-    out.push({ name: c.name, personKey: c.personKey, why: clampText(why, COACH_WHY_MAX), evidence: c.evidence });
+    out.push({ name: c.name, personKey: c.personKey, why: clampText(why, COACH_WHY_MAX), evidence: c.evidence, label: evidenceLabel(c) });
     if (out.length === COACH_SUGGESTIONS_MAX) break;
   }
   if (out.length === 0 && candidates.length > 0) return null;
@@ -237,7 +272,13 @@ export const coach = action({
       ready: v.literal(true),
       message: v.string(),
       suggestions: v.array(
-        v.object({ name: v.string(), personKey: v.string(), why: v.string(), evidence: v.array(coachEvidence) }),
+        v.object({
+          name: v.string(),
+          personKey: v.string(),
+          why: v.string(),
+          evidence: v.array(coachEvidence),
+          label: v.optional(v.string()),
+        }),
       ),
     }),
   ),
@@ -258,12 +299,14 @@ export const coach = action({
       .filter((t) => t.text);
     // Rate-limit before any paid call (Supermemory search or OpenAI).
     const allowed = await aiAllowed(ctx, `device:${args.deviceId}`);
-    const candidates: Candidate[] = await ctx.runAction(internal.graphRank.rankForWish, {
-      ownerUserId: context.ownerUserId,
-      wishText,
-      limit: 5,
-      useMemory: allowed,
-    });
+    const candidates: Candidate[] = strongCandidates(
+      await ctx.runAction(internal.graphRank.rankForWish, {
+        ownerUserId: context.ownerUserId,
+        wishText,
+        limit: 5,
+        useMemory: allowed,
+      }),
+    );
     const fallback = coachFallback(candidates);
     if (candidates.length === 0 || !allowed) {
       return { ready: true, ...fallback };

@@ -185,6 +185,8 @@ export default defineSchema({
     // Graph + coach (docs/api/wishwell-graph-api.md): why the owner picked this person.
     reason: v.optional(v.string()),
     contact: v.optional(v.string()),
+    // When the owner met/passed to this person, if earlier than the row (seeded history). Defaults to _creationTime.
+    at: v.optional(v.number()),
   })
     .index("by_ownerUserId", ["ownerUserId"])
     .index("by_ownerUserId_and_personName", ["ownerUserId", "personName"])

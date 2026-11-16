@@ -9,7 +9,7 @@ import { lv, type } from "@/theme/tokens";
 import { useToneColors } from "../tone";
 import { Eyebrow, LvAvatar, LvButton, LvCard } from "./parts";
 
-export type CoachPick = { name: string; why: string };
+export type CoachPick = { name: string; why: string; label?: string };
 type Turn = { role: "user" | "coach"; text: string };
 
 /**
@@ -48,7 +48,7 @@ export function CoachPanel({
     try {
       const r = await coach({ deviceId, wishText, turns: nextTurns.length ? nextTurns : undefined });
       if (r.ready) {
-        const suggestions = r.suggestions.slice(0, 3).map((x) => ({ name: x.name, why: x.why }));
+        const suggestions = r.suggestions.slice(0, 3).map((x) => ({ name: x.name, why: x.why, label: x.label }));
         setResult({ message: r.message, suggestions });
         onSuggestions?.(suggestions);
         setTurns([...nextTurns, { role: "coach", text: r.message }]);
@@ -100,6 +100,11 @@ export function CoachPanel({
                   <LvAvatar name={sg.name} size={36} />
                   <View style={{ flex: 1 }}>
                     <Text style={[s.name, { color: c.fg }]}>{sg.name}</Text>
+                    {sg.label && sg.label !== sg.name ? (
+                      <Text testID={`toss-coach-label-${i}`} style={[s.why, { color: c.accent }]} numberOfLines={1}>
+                        {sg.label}
+                      </Text>
+                    ) : null}
                     <Text style={[s.why, { color: c.mutedFg }]} numberOfLines={2}>
                       {sg.why}
                     </Text>

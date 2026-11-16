@@ -39,11 +39,32 @@ const PHONE_PROVIDER = "phone"; // convex/phoneProvider.ts: createAccount({ prov
 const FRIENDS_PER_MEMBER = 20;
 const BATCH = 500;
 
+// Tea-ceremony demo story (docs/submission/demo-script.md): Louise wishes from California,
+// Katie (two years in Osaka) passes it on, Darren makes ceramics in Kyoto, Dazi teaches tea.
 const MEMBER_CITY: Record<TeamKey, string> = {
-  darren: "San Francisco",
-  louise: "San Francisco",
-  katie: "Oakland",
-  dazi: "Berkeley",
+  darren: "Kyoto",
+  louise: "California",
+  katie: "Osaka",
+  dazi: "Kyoto",
+};
+
+/** The demo wish Louise types; her coach must rank Katie first with a daily-boat evidence line. */
+export const TEA_WISH_TEXT = "Talk to someone who really practices the Japanese tea ceremony";
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * A person in one member's graph who came from a daily boat `daysAgo` days ago (edges carry
+ * `at`). The graph hop records where they live so the map and link page can place them.
+ */
+const DAILY_PEOPLE: Partial<Record<TeamKey, { to: TeamKey; probe: string; tags: string[]; reason: string; city: string; daysAgo: number }>> = {
+  louise: {
+    to: "katie",
+    probe: "someone who has lived abroad",
+    tags: ["japan", "osaka", "lived-abroad", "traditional-arts-adjacent"],
+    reason: "Spent two years in Osaka",
+    city: "Osaka",
+    daysAgo: 21,
+  },
 };
 
 /** Crafted chain edges: owner -> next person. Tags/reasons chosen so keyword ranking puts them first. */
@@ -159,12 +180,15 @@ export const GLOBAL_CITIES: { slug: string; label: string; country: string; lat:
   { slug: "singapore", label: "Singapore", country: "Singapore", lat: 1.35, lng: 103.82 },
   { slug: "shanghai", label: "Shanghai", country: "China", lat: 31.23, lng: 121.47 },
   { slug: "tokyo", label: "Tokyo", country: "Japan", lat: 35.68, lng: 139.69 },
+  { slug: "osaka", label: "Osaka", country: "Japan", lat: 34.69, lng: 135.5 },
+  { slug: "kyoto", label: "Kyoto", country: "Japan", lat: 35.01, lng: 135.77 },
   { slug: "seoul", label: "Seoul", country: "Korea", lat: 37.57, lng: 126.98 },
   { slug: "sydney", label: "Sydney", country: "Australia", lat: -33.87, lng: 151.21 },
   { slug: "taipei", label: "Taipei", country: "Taiwan", lat: 25.03, lng: 121.57 },
 ];
 // Members' home cities, for their hops on seeded voyages.
 const BAY_COORDS: Record<string, { lat: number; lng: number }> = {
+  California: { lat: 37.77, lng: -122.42 },
   "San Francisco": { lat: 37.77, lng: -122.42 },
   Oakland: { lat: 37.8, lng: -122.27 },
   Berkeley: { lat: 37.87, lng: -122.27 },
@@ -369,6 +393,46 @@ async function writePerson(
   return tags.length;
 }
 
+/**
+ * A person the owner passed a daily boat to `daysAgo` days ago: a graph hop with their city and
+ * one daily edge per tag dated `at`, ingested like teammates so semantic search sees them too.
+ */
+async function writeDailyPerson(
+  ctx: MutationCtx,
+  owner: { userId: Id<"users">; name: string },
+  wishId: Id<"wishes">,
+  name: string,
+  p: { tags: string[]; reason: string; city: string; daysAgo: number },
+  now: number,
+) {
+  const coords = coordsOf(p.city);
+  const hopId = await ctx.db.insert("hops", {
+    wishId,
+    depth: 1,
+    holderName: name,
+    city: p.city,
+    ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+    recipientTags: p.tags,
+    viaGroup: false,
+  });
+  const tags = cleanTags(p.tags);
+  for (const tag of tags) {
+    const edgeId = await ctx.db.insert("edges", {
+      ownerUserId: owner.userId,
+      ownerName: clampText(owner.name, LIMITS.name),
+      personName: clampText(name, LIMITS.name),
+      tag,
+      source: "daily",
+      wishId,
+      hopId,
+      reason: clampText(p.reason, REASON_MAX) || undefined,
+      at: now - p.daysAgo * DAY,
+    });
+    await ctx.scheduler.runAfter(0, internal.memory.ingest, { edgeId });
+  }
+  return tags.length;
+}
+
 // ---------- global voyages (`global: true`) ----------
 
 type VoyageHop = { who: TeamKey | string; city: string; action?: "pass" | "its_me"; note: string };
@@ -378,10 +442,25 @@ type Voyage = {
   status: "traveling" | "found" | "granted";
   hops: VoyageHop[];
   thankYou?: string;
+  /** Ending line; defaults to "<cities>: N hops around the world." */
+  story?: string;
 };
 
 /** Seeded wishes whose hops cross the world. The last hop is the finder (its_me) unless still traveling. */
 export const VOYAGES: Voyage[] = [
+  {
+    // Pre-completed copy of the live demo story, so the ending screen exists even if the live run fails.
+    creator: "louise",
+    text: TEA_WISH_TEXT,
+    status: "granted",
+    thankYou: "Dazi poured tea for us in Kyoto and showed me every step. Thank you Katie and Darren for passing it on!",
+    story: "California → Osaka → Kyoto: 3 passes across the Pacific to a tea teacher of twenty years.",
+    hops: [
+      { who: "katie", city: "Osaka", action: "pass", note: "Darren makes ceramics in Kyoto" },
+      { who: "darren", city: "Kyoto", action: "pass", note: "My teacher Dazi has practiced tea for twenty years" },
+      { who: "dazi", city: "Kyoto", action: "its_me", note: "That's me! I've practiced tea for twenty years." },
+    ],
+  },
   {
     creator: "darren",
     text: "Someone to teach me how to make real tonkotsu broth",
@@ -519,7 +598,9 @@ async function writeVoyages(
               photoUrl: `https://picsum.photos/seed/wishwell-voyage-${vi}/800/800`,
               // A stored meet-up photo (scripts/seed-gallery.mjs) survives re-runs and wins over photoUrl.
               ...takePhoto(photos, reattached, voyage.text),
-              endingStory: `${voyage.hops.map((h) => h.city).join(" → ")}: ${depth} hops around the world. ${voyage.thankYou ?? ""}`.trim(),
+              endingStory:
+                voyage.story ??
+                `${voyage.hops.map((h) => h.city).join(" → ")}: ${depth} hops around the world. ${voyage.thankYou ?? ""}`.trim(),
             }
           : {}),
       });
@@ -527,6 +608,23 @@ async function writeVoyages(
     written++;
   }
   return written;
+}
+
+/** Pool-filled photos carry no thank-you; give seeded granted voyages theirs. */
+async function thankYouOnPoolPhotos(ctx: MutationCtx, members: { userId: Id<"users"> }[]) {
+  for (const m of members) {
+    const granted = await ctx.db
+      .query("wishes")
+      .withIndex("by_creatorId_and_status", (q) => q.eq("creatorId", m.userId).eq("status", "granted"))
+      .take(BATCH);
+    for (const w of granted) {
+      const voyage = VOYAGES.find((vg) => vg.text === w.text);
+      if (!w.teamKey || !voyage?.thankYou || !w.meetingPhoto || w.meetingPhoto.thankYou) continue;
+      await ctx.db.patch("wishes", w._id, {
+        meetingPhoto: { ...w.meetingPhoto, thankYou: clampText(voyage.thankYou, THANK_YOU_MAX) },
+      });
+    }
+  }
 }
 
 // ---------- wish bots (`global: true`, convex/bots.ts) ----------
@@ -605,7 +703,7 @@ async function writeBotWishes(
       holderName: creator.name,
       holderUserId: creator.userId,
       city,
-      ...BAY_COORDS[city],
+      ...coordsOf(city),
       recipientTags: [],
       viaGroup: false,
       passMessage: `${first.name.split(" ")[0]} came to mind first`,
@@ -702,12 +800,16 @@ export const run = internalMutation({
         const crafted = chain && chain.to === mate.key ? chain : TEAMMATE;
         edges += await writePerson(ctx, owner, wishId, { name: mate.name, tags: crafted.tags, reason: crafted.reason }, { ingest: true });
       }
+      const daily = DAILY_PEOPLE[me.key];
+      const dailyMate = daily && resolved.find((r) => r.key === daily.to);
+      if (daily && dailyMate) edges += await writeDailyPerson(ctx, owner, wishId, dailyMate.name, daily, now);
       out.push({ key: me.key, userId: me.userId, created: me.created, edges, deviceId: bindDevices ? teamDeviceId(me.key) : null });
     }
     const reattached = new Set<string>();
     const voyages = global ? await writeVoyages(ctx, resolved, now, previous.photos, reattached) : 0;
     // Fill the found voyage and any other blank success story from the stock pool.
     await fillMissingPhotos(ctx);
+    if (global) await thankYouOnPoolPhotos(ctx, resolved);
     const bots = global ? await writeBots(ctx, resolved) : [];
     const botWishes = global ? await writeBotWishes(ctx, resolved, bots, now) : 0;
     console.log(
@@ -818,6 +920,25 @@ export const globalSummary = internalQuery({
       }
     }
     return { voyages, voyageCities: voyageCities.size, friendCities: friendCities.size, countries: countries.size };
+  },
+});
+
+/** The pre-completed tea-ceremony voyage (fallback ending): its wish id, route and photo state. */
+export const teaStory = internalQuery({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({ wishId: v.id("wishes"), status: v.string(), route: v.array(v.string()), hasPhoto: v.boolean() }),
+  ),
+  handler: async (ctx) => {
+    const louise = (await ctx.db.query("users").withIndex("by_teamKey", (q) => q.eq("teamKey", "louise")).take(5))[0];
+    if (!louise) return null;
+    const wishes = await ctx.db.query("wishes").withIndex("by_creatorId", (q) => q.eq("creatorId", louise._id)).take(BATCH);
+    const w = wishes.find((x) => x.teamKey && x.text === TEA_WISH_TEXT);
+    if (!w) return null;
+    const hops = await ctx.db.query("hops").withIndex("by_wishId", (q) => q.eq("wishId", w._id)).take(BATCH);
+    const route = [louise.city, ...hops.sort((a, b) => a.depth - b.depth).flatMap((h) => (h.city ? [h.city] : []))];
+    return { wishId: w._id, status: w.status, route, hasPhoto: !!w.meetingPhoto };
   },
 });
 

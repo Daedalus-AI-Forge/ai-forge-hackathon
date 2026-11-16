@@ -23,6 +23,7 @@ const CITIES: Record<string, LatLng> = {
   "redwood city": { lat: 37.49, lng: -122.24, country: "USA" },
   "san francisco bay area": { lat: 37.77, lng: -122.42, country: "USA" },
   "bay area": { lat: 37.77, lng: -122.42, country: "USA" },
+  california: { lat: 37.77, lng: -122.42, country: "USA" },
   soma: { lat: 37.78, lng: -122.4, country: "USA" },
   mission: { lat: 37.76, lng: -122.42, country: "USA" },
   "mission district": { lat: 37.76, lng: -122.42, country: "USA" },
@@ -82,6 +83,8 @@ const CITIES: Record<string, LatLng> = {
   taipei: { lat: 25.03, lng: 121.57, country: "Taiwan" },
   seoul: { lat: 37.57, lng: 126.98, country: "Korea" },
   tokyo: { lat: 35.68, lng: 139.69, country: "Japan" },
+  osaka: { lat: 34.69, lng: 135.5, country: "Japan" },
+  kyoto: { lat: 35.01, lng: 135.77, country: "Japan" },
   sydney: { lat: -33.87, lng: 151.21, country: "Australia" },
 };
 const FALLBACK: LatLng = CITIES["san francisco"]!;
