@@ -5,10 +5,10 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { errorMessage } from "@/components/ui";
 import { DButton, DChips, DError, DField, DHint, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
 import type { FinishResult } from "@/lib/linkApi.types";
 import { lv, type } from "@/theme/tokens";
+import { cleanError } from "./claim/errors";
 import { CONTACT_REQUIRED, type ContactKind, validateContact } from "./end/logic";
 
 export type ContactStepProps = { hopId: string; deviceId: string; wishText: string | null; onDone: (r: FinishResult) => void };
@@ -36,7 +36,7 @@ export function ContactStep({ hopId, deviceId, wishText, onDone }: ContactStepPr
       void track({ hopId: hopId as Id<"hops">, deviceId, event: "contact", wroteWish: !!wishText }).catch(() => {});
       onDone(result);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(cleanError(e));
     } finally {
       setBusy(false);
     }

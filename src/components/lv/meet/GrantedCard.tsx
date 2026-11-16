@@ -15,6 +15,8 @@ import type { EndingView } from "@/lib/linkApi.types";
 import { shareLink } from "@/lib/links";
 import { hopCount } from "@/lib/time";
 import { layout, night, type } from "@/theme/tokens";
+import { WishGlobe } from "@/components/lv/world/WishGlobe";
+import { wishPathStops } from "@/components/lv/world/wishPath";
 
 import { grantedStops, type GrantedStop } from "./meetLogic";
 
@@ -76,6 +78,7 @@ export function GrantedCard({
   const names = pair.map((p) => p.name).join(" & ");
   const city = pair.at(-1)?.city;
   const met = ending.metInPerson === true ? " · met in person" : ending.metInPerson === false ? " · met on a call" : "";
+  const path = wishPathStops(ending.holders, ending.route);
   return (
     <View testID={testID} style={styles.wrap}>
       <View style={styles.head}>
@@ -116,6 +119,11 @@ export function GrantedCard({
         {stops.length ? (
           <View testID="granted-route" style={styles.route} accessibilityLabel={`Route: ${stops.map((s) => s.name).join(", ")}`}>
             <RouteRows stops={stops} />
+          </View>
+        ) : null}
+        {path.length > 1 ? (
+          <View style={styles.globe}>
+            <WishGlobe path={path} height={280} />
           </View>
         ) : null}
       </Glass>
@@ -209,4 +217,5 @@ const styles = StyleSheet.create({
   stopCity: { ...type.caption2, color: night.mutedFg },
   star: { ...type.caption2, fontWeight: "700", color: night.gold },
   share: { gap: 6, marginTop: 4 },
+  globe: { backgroundColor: night.deep, borderRadius: 12, borderCurve: "continuous", padding: 8 },
 });

@@ -13,7 +13,7 @@ import {
 } from "./lib";
 import { MEET_WINDOW_MS, tierFor, winningBranch } from "./meetings";
 import { hopAction, meetingTier } from "./schema";
-import { checkCode, normalizePhone, smsModeFor } from "./sms";
+import { checkCode, normalizePhone, normalizeUsDefaultPhone, smsModeFor } from "./sms";
 
 const linkEvent = v.union(
   v.literal("open"), v.literal("wish_written"), v.literal("skip_wish"), v.literal("claim"),
@@ -140,7 +140,7 @@ function contactKeyOf(raw: string): { contactKey: string; contactKind: "phone" |
     if (!EMAIL_PATTERN.test(email)) throw new Error("That email doesn't look right");
     return { contactKey: email, contactKind: "email" };
   }
-  return { contactKey: normalizePhone(value), contactKind: "phone" };
+  return { contactKey: normalizeUsDefaultPhone(value), contactKind: "phone" };
 }
 
 function emptyScreen(hopId: string): FirstScreen {

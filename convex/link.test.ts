@@ -222,6 +222,27 @@ describe("finish", () => {
     expect((await t.query(api.link.firstScreen, { hopId: benHop, deviceId: "dev_ben" }))?.freeWishAvailable).toBe(false);
   });
 
+  test("accepts US numbers typed without +1, all spellings share one dedupe key", async () => {
+    const t = convexTest(schema, modules);
+    const { benHop } = await boatToBen(t);
+    const a = await t.mutation(api.link.finish, { hopId: benHop, deviceId: "dev_a", contact: "4083065268", wishText: "One" });
+    expect(a.freeWishUsed).toBe(false);
+    for (const [i, contact] of ["(408) 306-5268", "+1 408 306 5268", "14083065268"].entries()) {
+      const r = await t.mutation(api.link.finish, { hopId: benHop, deviceId: `dev_b${i}`, contact, wishText: "Again" });
+      expect(r).toMatchObject({ freeWishUsed: true, wishId: null });
+    }
+    const visitors = await t.run(async (ctx) => ctx.db.query("linkVisitors").collect());
+    expect(visitors).toMatchObject([{ contactKey: "+14083065268", contactKind: "phone" }]);
+  });
+
+  test("keeps international numbers as typed with their country code", async () => {
+    const t = convexTest(schema, modules);
+    const { benHop } = await boatToBen(t);
+    await t.mutation(api.link.finish, { hopId: benHop, deviceId: "dev_uk", contact: "+44 20 7946 0958" });
+    const visitors = await t.run(async (ctx) => ctx.db.query("linkVisitors").collect());
+    expect(visitors).toMatchObject([{ contactKey: "+442079460958" }]);
+  });
+
   test("normalizes phones so spaces don't defeat dedupe", async () => {
     vi.stubEnv("DEMO_PHONE_NUMBERS", "+15555550100");
     const t = convexTest(schema, modules);

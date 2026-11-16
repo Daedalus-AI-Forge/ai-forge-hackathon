@@ -1,3 +1,5 @@
+import { toE164 } from "../../../lib/contactPick";
+
 // Pure helpers for the link page's contact, done, and ending screens (no React Native imports).
 
 export type ContactKind = "phone" | "email";
@@ -13,7 +15,8 @@ export function validateContact(kind: ContactKind, raw: string): { ok: true; val
     if (!/^\+?[\d\s().-]+$/.test(text) || digits.length < 7 || digits.length > 15) {
       return { ok: false, error: "That phone number doesn't look right" };
     }
-    return { ok: true, value: `${text.startsWith("+") ? "+" : ""}${digits}` };
+    // No "+" means a US/Canada number (+1 default); the server re-normalizes and dedupes.
+    return { ok: true, value: toE164(text) ?? `+${digits}` };
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return { ok: false, error: "That email doesn't look right" };
   return { ok: true, value: text };

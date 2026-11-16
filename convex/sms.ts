@@ -71,6 +71,23 @@ export function normalizePhone(input: unknown, env: Env = process.env): string {
   return e164;
 }
 
+/**
+ * Like normalizePhone, but a number typed without "+" is read as US/Canada when it is
+ * 10 digits, or 11 digits starting with 1 ("4083065268", "(408) 306-5268", "14083065268").
+ * Any other "+"-less number is rejected rather than guessed, so an international number
+ * is never mis-keyed under +1.
+ */
+export function normalizeUsDefaultPhone(input: unknown, env: Env = process.env): string {
+  if (typeof input === "string" && !input.trim().startsWith("+")) {
+    const digits = input.replace(/\D/g, "");
+    if (/^[\d\s().-]+$/.test(input.trim())) {
+      if (digits.length === 10) return normalizePhone(`+1${digits}`, env);
+      if (digits.length === 11 && digits.startsWith("1")) return normalizePhone(`+${digits}`, env);
+    }
+  }
+  return normalizePhone(input, env);
+}
+
 export type SmsMode =
   | { kind: "demo"; code: string }
   | { kind: "twilio"; accountSid: string; authToken: string; serviceSid: string };

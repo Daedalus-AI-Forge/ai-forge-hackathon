@@ -11,7 +11,8 @@ import { DButton } from "@/components/lv/passon/kit";
 import { TIER_LABEL, totalKm, type Holder } from "@/components/lv/threads/threadData";
 import { photoNames, ROLE_LINE, routeLine, type Chain } from "@/components/lv/world/chainText";
 import { Polaroid, tiltFor } from "@/components/lv/world/Polaroid";
-import { RouteGlobe, routeStops } from "@/components/lv/world/RouteGlobe";
+import { WishGlobe } from "@/components/lv/world/WishGlobe";
+import { wishPathStops } from "@/components/lv/world/wishPath";
 import { WorldBackdrop } from "@/components/lv/world/WorldBackdrop";
 import { useMe } from "@/lib/device";
 import { layout, night, type } from "@/theme/tokens";
@@ -127,7 +128,7 @@ export default function ChainScreen() {
       ) : null}
 
       <Glass variant="dark" testID="chain-route" style={styles.mapCard}>
-        {routeStops(chain.people.map((p) => p.city)).length > 1 ? <RouteGlobe cities={chain.people.map((p) => p.city)} /> : null}
+        {wishPathStops(chain.people).length > 1 ? <WishGlobe path={wishPathStops(chain.people)} /> : null}
         <View style={styles.stats}>
           <Stat value={String(hops)} label={hops === 1 ? "Hop" : "Hops"} />
           <Stat value={km > 0 ? km.toLocaleString() : "—"} label="Km" divider />

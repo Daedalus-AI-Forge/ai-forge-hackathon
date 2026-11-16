@@ -12,6 +12,8 @@ import { EndingShareButton, GrantedCard, usePrintWidth } from "@/components/lv/m
 import { MeetForWish } from "@/components/lv/meet/MeetCard";
 import { DCard, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { Polaroid, tiltFor } from "@/components/lv/world/Polaroid";
+import { WishGlobe } from "@/components/lv/world/WishGlobe";
+import { wishPathStops } from "@/components/lv/world/wishPath";
 import { useDeviceId } from "@/lib/device";
 import type { EndingView } from "@/lib/linkApi.types";
 import { layout, lv, night, type } from "@/theme/tokens";
@@ -34,6 +36,9 @@ export default function EndingPage() {
   const meetEnding = !!view && (view.status === "granted" || (view.status === "found" && view.locked));
   // Opened from inside the app (Voyages, a boat, a claim): a way back. A cold SMS link has nowhere to go back to.
   const canGoBack = router.canGoBack();
+  // Completed wishes show their world path on the globe; the GrantedCard carries its own.
+  const done = !!view && (view.status === "found" || view.status === "granted");
+  const path = view ? wishPathStops(view.holders, view.route) : [];
 
   return (
     <Screen maxWidth={560}>
@@ -85,6 +90,7 @@ export default function EndingPage() {
             <DCard testID="ending-route">
               <Eyebrow>Route · {view.ripples} hop{view.ripples === 1 ? "" : "s"}</Eyebrow>
               <Text style={styles.route}>{routeChain(view.route)}</Text>
+              {done && !meetEnding && path.length > 1 ? <WishGlobe path={path} /> : null}
             </DCard>
           ) : null}
           {!meetEnding ? <EndingShareButton ending={view} wishId={wishId} testID="ending-share" /> : null}
