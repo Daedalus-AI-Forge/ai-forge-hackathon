@@ -216,4 +216,37 @@ describe("teamSeed.run", () => {
     await t.mutation(internal.teamSeed.run, { members: MEMBERS, bindDevices: true });
     expect((await counts(t)).wishes).toBe(4);
   });
+
+  test("gallery photos attach to granted voyages, render in link.ending, and survive a reseed", async () => {
+    const t = setup();
+    await t.mutation(internal.teamSeed.run, { members: MEMBERS, global: true });
+    const urls = await t.mutation(internal.teamSeed.galleryUploadUrls, { count: 2 });
+    expect(urls).toHaveLength(2);
+    const ids = await t.run(async (ctx) => [
+      await ctx.storage.store(new Blob(["a"], { type: "image/jpeg" })),
+      await ctx.storage.store(new Blob(["b"], { type: "image/jpeg" })),
+    ]);
+    const attached = await t.mutation(internal.teamSeed.attachGalleryPhotos, { storageIds: ids });
+    const granted = VOYAGES.filter((vg) => vg.status === "granted");
+    expect(attached.map((a) => a.text).sort()).toEqual(granted.map((vg) => vg.text).sort());
+    const ending = await t.query(api.link.ending, { wishId: attached[0].wishId });
+    expect(ending?.photoUrl).toBeTruthy();
+    expect(ending?.photoUrl).not.toContain("picsum");
+    expect(ending?.thankYou).toBe(granted.find((vg) => vg.text === attached[0].text)?.thankYou);
+
+    // Re-attaching replaces (and deletes) the old files.
+    const fresh = await t.run(async (ctx) => [await ctx.storage.store(new Blob(["c"], { type: "image/jpeg" }))]);
+    await t.mutation(internal.teamSeed.attachGalleryPhotos, { storageIds: fresh });
+    expect(await t.run(async (ctx) => await ctx.storage.getUrl(ids[0]))).toBeNull();
+
+    // A reseed keeps the photos on the reinserted voyages.
+    await t.mutation(internal.teamSeed.run, { members: MEMBERS, global: true });
+    const photos = await t.run(async (ctx) =>
+      (await ctx.db.query("wishes").collect()).filter((w) => w.meetingPhoto).map((w) => w.meetingPhoto!.storageId),
+    );
+    expect(photos).toEqual(granted.map(() => fresh[0]));
+    // Dropping global removes the voyages and their files.
+    await t.mutation(internal.teamSeed.run, { members: MEMBERS });
+    expect(await t.run(async (ctx) => await ctx.storage.getUrl(fresh[0]))).toBeNull();
+  });
 });

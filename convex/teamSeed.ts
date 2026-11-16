@@ -6,7 +6,8 @@
 //
 // Idempotent: every row it writes hangs off a wish tagged `teamKey`, and members carry
 // `users.teamKey`; a re-run deletes exactly those rows before reinserting. It never touches
-// other users or the `seed:run` demo data.
+// other users or the `seed:run` demo data. Meet-up photos attached by scripts/seed-gallery.mjs
+// are carried over to the reinserted voyages, so the gallery survives a reseed.
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { v } from "convex/values";
 
@@ -17,6 +18,7 @@ import { deleteUserAndAuthData } from "./authUsers";
 import { LIMITS, avatarFor, clampText, cleanTags, recordEdges } from "./lib";
 import { REASON_MAX, personKey } from "./graphShared";
 import { bestBot, botVouch } from "./bots";
+import { THANK_YOU_MAX } from "./meetings";
 
 export const TEAM_KEYS = ["darren", "louise", "katie", "dazi"] as const;
 export type TeamKey = (typeof TEAM_KEYS)[number];
@@ -261,19 +263,27 @@ async function deleteWishTree(ctx: MutationCtx, wish: Doc<"wishes">) {
   return hops;
 }
 
-/** Remove every row this seed wrote. Members keep their user + auth rows (they may have signed in). */
+type GalleryPhoto = NonNullable<Doc<"wishes">["meetingPhoto"]>;
+
+/**
+ * Remove every row this seed wrote. Members keep their user + auth rows (they may have signed in).
+ * Meet-up photos attached by `attachGalleryPhotos` are returned keyed by wish text (their files
+ * stay in storage) so a re-run can put them back on the reinserted voyage.
+ */
 async function clearSeedData(ctx: MutationCtx) {
   const users = await teamUsers(ctx);
   let wishes = 0;
+  const photos = new Map<string, GalleryPhoto>();
   for (const u of users) {
     const own = await ctx.db.query("wishes").withIndex("by_creatorId", (q) => q.eq("creatorId", u._id)).take(BATCH);
     for (const w of own) {
       if (!w.teamKey) continue;
+      if (w.meetingPhoto) photos.set(w.text, w.meetingPhoto);
       await deleteWishTree(ctx, w);
       wishes++;
     }
   }
-  return { users, wishes };
+  return { users, wishes, photos };
 }
 
 /**
@@ -434,13 +444,36 @@ export const VOYAGES: Voyage[] = [
 
 const HOUR = 60 * 60 * 1000;
 
+/**
+ * Delete the files of gallery photos no reinserted wish reattached. Photos are dealt
+ * round-robin, so several wishes may share one file: keep any file still in use.
+ */
+async function deletePhotoFiles(ctx: MutationCtx, photos: Map<string, GalleryPhoto>, reattached = new Set<string>()) {
+  const inUse = new Set([...reattached].map((text) => photos.get(text)?.storageId));
+  const stale = new Set([...photos.values()].map((p) => p.storageId).filter((id) => !inUse.has(id)));
+  for (const id of stale) await ctx.storage.delete(id);
+}
+
+function takePhoto(photos: Map<string, GalleryPhoto>, reattached: Set<string>, text: string) {
+  const meetingPhoto = photos.get(text);
+  if (!meetingPhoto) return {};
+  reattached.add(text);
+  return { meetingPhoto, meetingPhotoRevision: 1 };
+}
+
 function coordsOf(city: string) {
   const g = GLOBAL_CITIES.find((c) => c.label === city);
   return g ? { lat: g.lat, lng: g.lng } : BAY_COORDS[city];
 }
 
 /** Write the voyages as rows shaped like wishes.toss + hops.act + link.confirmClaim + meetings write them. */
-async function writeVoyages(ctx: MutationCtx, members: { key: TeamKey; name: string; userId: Id<"users"> }[], now: number) {
+async function writeVoyages(
+  ctx: MutationCtx,
+  members: { key: TeamKey; name: string; userId: Id<"users"> }[],
+  now: number,
+  photos: Map<string, GalleryPhoto> = new Map(),
+  reattached = new Set<string>(),
+) {
   let written = 0;
   for (const [vi, voyage] of VOYAGES.entries()) {
     const creator = members.find((m) => m.key === voyage.creator);
@@ -493,7 +526,8 @@ async function writeVoyages(ctx: MutationCtx, members: { key: TeamKey; name: str
               metInPerson: true,
               tier: depth >= 5 ? ("gold" as const) : ("silver" as const),
               photoUrl: `https://picsum.photos/seed/wishwell-voyage-${vi}/800/800`,
-              // meetingPhoto.thankYou needs a stored file, so the thank-you rides in the ending story.
+              // A stored meet-up photo (scripts/seed-gallery.mjs) survives re-runs and wins over photoUrl.
+              ...takePhoto(photos, reattached, voyage.text),
               endingStory: `${voyage.hops.map((h) => h.city).join(" → ")}: ${depth} hops around the world. ${voyage.thankYou ?? ""}`.trim(),
             }
           : {}),
@@ -679,7 +713,9 @@ export const run = internalMutation({
       }
       out.push({ key: me.key, userId: me.userId, created: me.created, edges, deviceId: bindDevices ? teamDeviceId(me.key) : null });
     }
-    const voyages = global ? await writeVoyages(ctx, resolved, now) : 0;
+    const reattached = new Set<string>();
+    const voyages = global ? await writeVoyages(ctx, resolved, now, previous.photos, reattached) : 0;
+    await deletePhotoFiles(ctx, previous.photos, reattached);
     const bots = global ? await writeBots(ctx, resolved) : [];
     const botWishes = global ? await writeBotWishes(ctx, resolved, bots, now) : 0;
     console.log(
@@ -697,7 +733,8 @@ export const clear = internalMutation({
   args: { deleteTestUsers: v.optional(v.boolean()) },
   returns: v.object({ wishes: v.number(), deletedUsers: v.number() }),
   handler: async (ctx, { deleteTestUsers }) => {
-    const { users, wishes } = await clearSeedData(ctx);
+    const { users, wishes, photos } = await clearSeedData(ctx);
+    await deletePhotoFiles(ctx, photos);
     let deletedUsers = 0;
     for (const u of users) {
       if (deleteTestUsers && u.phone?.startsWith("+1555")) {
@@ -790,5 +827,67 @@ export const globalSummary = internalQuery({
       }
     }
     return { voyages, voyageCities: voyageCities.size, friendCities: friendCities.size, countries: countries.size };
+  },
+});
+
+// ---------- meet-up gallery (scripts/seed-gallery.mjs) ----------
+
+/** One upload URL per gallery photo. Files are POSTed straight to storage by the script. */
+export const galleryUploadUrls = internalMutation({
+  args: { count: v.number() },
+  returns: v.array(v.string()),
+  handler: async (ctx, { count }) => {
+    if (!Number.isInteger(count) || count < 1 || count > 20) throw new Error("count must be 1..20");
+    const urls: string[] = [];
+    for (let i = 0; i < count; i++) urls.push(await ctx.storage.generateUploadUrl());
+    return urls;
+  },
+});
+
+/**
+ * Give every seeded granted voyage a confirmed meet-up photo, as meetings.submitPhoto (by the
+ * finder) + confirmPhoto (by the wisher) would leave it: `meetingPhoto` with the voyage's
+ * thank-you line. Photos are dealt round-robin. Re-running replaces earlier gallery photos and
+ * deletes their files; teamSeed.run keeps them across reseeds.
+ */
+export const attachGalleryPhotos = internalMutation({
+  args: { storageIds: v.array(v.id("_storage")) },
+  returns: v.array(v.object({ wishId: v.id("wishes"), text: v.string(), storageId: v.id("_storage") })),
+  handler: async (ctx, { storageIds }) => {
+    if (storageIds.length === 0) throw new Error("Pass at least one storageId");
+    for (const id of storageIds) {
+      if (!(await ctx.db.system.get("_storage", id))) throw new Error(`No stored file ${id}`);
+    }
+    const incoming = new Set<string>(storageIds);
+    const granted: Doc<"wishes">[] = [];
+    for (const u of await teamUsers(ctx)) {
+      const own = await ctx.db
+        .query("wishes")
+        .withIndex("by_creatorId_and_status", (q) => q.eq("creatorId", u._id).eq("status", "granted"))
+        .take(BATCH);
+      granted.push(...own.filter((w) => w.teamKey && VOYAGES.some((vg) => vg.text === w.text)));
+    }
+    granted.sort((a, b) => a._creationTime - b._creationTime);
+    const out = [];
+    const replaced = new Set<Id<"_storage">>();
+    for (const [i, wish] of granted.entries()) {
+      const storageId = storageIds[i % storageIds.length];
+      const voyage = VOYAGES.find((vg) => vg.text === wish.text);
+      const old = wish.meetingPhoto?.storageId;
+      await ctx.db.patch("wishes", wish._id, {
+        meetingPhotoRevision: (wish.meetingPhotoRevision ?? 0) + 1,
+        meetingPhoto: {
+          storageId,
+          uploaderRole: "match",
+          metInPerson: wish.metInPerson ?? true,
+          thankYou: clampText(voyage?.thankYou ?? "", THANK_YOU_MAX),
+        },
+      });
+      if (old && !incoming.has(old)) replaced.add(old);
+      out.push({ wishId: wish._id, text: wish.text, storageId });
+    }
+    for (const id of replaced) await ctx.storage.delete(id);
+    console.log(JSON.stringify({ event: "team_seed.gallery", photos: storageIds.length, wishes: out.length }));
+    return out;
   },
 });
