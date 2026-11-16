@@ -3,9 +3,12 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { GlassCard, Icon, SectionHeader } from "@/components/ios";
+import { keyboardInputProps } from "@/components/keyboard";
+import { DTag } from "@/components/lv/passon/kit";
 import { EgoGraph, LvAvatar } from "@/components/lv/me/EgoGraph";
 import { networkDistances } from "@/components/lv/me/communityLayout";
-import { lv } from "@/theme/tokens";
+import { layout, lv, type } from "@/theme/tokens";
 
 /**
  * Community topology with the viewer's own private evidence kept in its detail panel.
@@ -49,17 +52,12 @@ export function MeNetwork({ deviceId }: { deviceId: string }) {
   const clearSelection = () => { setSelected(null); setSelectedAlias(null); };
 
   return (
-    <View testID="network-map" style={{ gap: 12 }}>
-      <View style={styles.sectionHeading}>
-        <Text style={styles.h2}>The wish network</Text>
-        <View style={styles.privateBadge}><View style={styles.privateDot} /><Text style={styles.micro}>Your perspective</Text></View>
-      </View>
-      <View style={[styles.glass, { padding: 16, gap: 12 }]}>
-        <View style={{ gap: 5 }}>
+    <View testID="network-map" style={styles.group}>
+      <SectionHeader variant="title" title="The wish network" right={<DTag label="Your perspective" tone="neutral" />} />
+      <GlassCard>
+        <View style={styles.intro}>
           <Text style={styles.eyebrow}>A world of little connections</Text>
-          <Text style={styles.note}>
-            Everyone’s part of the picture. Follow the threads that lead back to you.
-          </Text>
+          <Text style={styles.note}>Everyone’s part of the picture. Follow the threads that lead back to you.</Text>
         </View>
         {community === undefined ? <Text style={styles.note}>Loading the network…</Text> : null}
         {community === null ? <Text style={styles.note}>Your network will appear once your profile is ready.</Text> : null}
@@ -69,26 +67,38 @@ export function MeNetwork({ deviceId }: { deviceId: string }) {
               {[[community.nodes.filter(node => node.kind === "user").length, "Users"], [[...(topology?.distances.values() ?? [])].filter(d => d === 1).length, "1 step away"], [community.links.length, "Threads"]].map(([value, label], i) => (
                 <View key={label} style={[styles.stat, i > 0 && styles.statDivider]}>
                   <Text style={styles.statNumber}>{value}</Text>
-                  <Text style={styles.micro}>{label}</Text>
+                  <Text style={styles.statLabel}>{label}</Text>
                 </View>
               ))}
             </View>
-            <TextInput testID="network-search" accessibilityLabel="Find someone in the network"
-              placeholder="Find someone in the network" placeholderTextColor={lv.mutedFg}
-              value={search} onChangeText={value => { setSearch(value); setSearchLimit(8); }} style={styles.searchInput} />
+            <View style={styles.search}>
+              <Icon name="search" size={16} color={lv.mutedFg} />
+              <TextInput testID="network-search" accessibilityLabel="Find someone in the network"
+                placeholder="Find someone in the network" placeholderTextColor={lv.tertiaryFg} selectionColor={lv.thread}
+                {...keyboardInputProps({})} returnKeyType="search"
+                value={search} onChangeText={value => { setSearch(value); setSearchLimit(8); }} style={styles.searchInput} />
+              {search ? (
+                <Pressable accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={10} onPress={() => setSearch("")} style={styles.clear}>
+                  <Icon name="close" size={9} color="#FFFFFF" weight="bold" />
+                </Pressable>
+              ) : null}
+            </View>
             {search.trim() ? (
-              <View style={{ gap: 2 }}>
-                {matches.slice(0, searchLimit).map(node => (
+              <View style={styles.results}>
+                {matches.slice(0, searchLimit).map((node, i) => (
                   <Pressable key={node.key} accessibilityRole="button" accessibilityLabel={`Show ${node.name} in the network`}
-                    style={styles.searchResult} onPress={() => { setSelected(node.key); setSelectedAlias(null); setSearch(""); }}>
-                    <Text style={[styles.name, { flex: 1 }]}>{node.name}</Text>
+                    style={({ pressed }) => [styles.searchResult, i > 0 && styles.resultDivider, pressed && styles.rowPressed]}
+                    onPress={() => { setSelected(node.key); setSelectedAlias(null); setSearch(""); }}>
+                    <LvAvatar name={node.name} size={28} />
+                    <Text style={[styles.name, styles.flex]} numberOfLines={1}>{node.name}</Text>
                     <Text style={styles.muted}>{topology?.distances.has(node.key) ? `${topology.distances.get(node.key)} steps away` : "Wider network"}</Text>
+                    <Icon name="forward" size={12} color={lv.tertiaryFg} />
                   </Pressable>
                 ))}
-                {!matches.length ? <Text style={styles.note}>No matching people in the network shown.</Text> : null}
+                {!matches.length ? <Text style={[styles.note, styles.resultEmpty]}>No matching people in the network shown.</Text> : null}
                 {matches.length > searchLimit ? (
-                  <Pressable accessibilityRole="button" onPress={() => setSearchLimit(limit => limit + 8)} style={styles.searchResult}>
-                    <Text style={styles.muted}>Show more · {matches.length} matches</Text>
+                  <Pressable accessibilityRole="button" onPress={() => setSearchLimit(limit => limit + 8)} style={[styles.searchResult, styles.resultDivider]}>
+                    <Text style={styles.more}>Show more · {matches.length} matches</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -98,30 +108,28 @@ export function MeNetwork({ deviceId }: { deviceId: string }) {
           </>
         ) : null}
         {coach ? <CoachProgress {...coach} /> : null}
-      </View>
+      </GlassCard>
 
       {sel ? (
-        <View testID={`network-detail-${sel.name}`} style={[styles.glass, styles.detail]}>
-          <View style={styles.sectionHeading}>
+        <GlassCard testID={`network-detail-${sel.name}`} style={styles.detail}>
+          <View style={styles.headRow}>
             <Text style={[styles.eyebrow, { color: lv.thread }]}>Your connection</Text>
-            <Text style={styles.micro}>Private to you</Text>
+            <DTag label="Private to you" tone="neutral" />
           </View>
           <View style={styles.row}>
-            <LvAvatar name={detailName ?? sel.name} size={40} />
-            <View style={{ flex: 1, gap: 3 }}>
-              <Text style={styles.name}>{detailName ?? sel.name}</Text>
+            <LvAvatar name={detailName ?? sel.name} size={44} ring />
+            <View style={styles.personText}>
+              <Text style={styles.detailName}>{detailName ?? sel.name}</Text>
               <Text style={styles.muted}>{selLinks.length} {selLinks.length === 1 ? "connection" : "connections"} · {detailTags} {detailTags === 1 ? "tag" : "tags"}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close connection details" onPress={clearSelection} style={styles.close}>
-              <Text style={styles.muted}>Close</Text>
-            </Pressable>
+            <CloseButton onPress={clearSelection} />
           </View>
           {selLinks.map((l) => (
             <View key={l.edgeId} testID={`network-tag-${sel.name}-${l.tag}`} style={styles.tagRow}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={[styles.chip, l.source === "daily" && styles.chipDaily]}>{l.tag}</Text>
+              <View style={styles.tagBody}>
+                <DTag label={l.tag} tone={l.source === "daily" ? "thread" : "neutral"} />
                 {l.reason ? <Text style={styles.reason}>“{l.reason}”</Text> : null}
-                <Text style={styles.micro}>
+                <Text style={styles.muted}>
                   {l.source === "daily" ? "From a daily wish" : "Picked by you"} · {new Date(l.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </Text>
               </View>
@@ -130,77 +138,92 @@ export function MeNetwork({ deviceId }: { deviceId: string }) {
                 accessibilityRole="button"
                 accessibilityLabel={`Forget ${l.tag} for ${sel.name}`}
                 onPress={() => void forgetEdge({ deviceId, edgeId: l.edgeId })}
-                style={styles.forgetButton}
+                style={({ pressed }) => [styles.forgetButton, pressed && { opacity: 0.5 }]}
               >
                 <Text style={styles.forgetText}>Forget</Text>
               </Pressable>
             </View>
           ))}
-          <Text style={styles.micro}>Remembered from your passes. Yours to keep or forget.</Text>
-        </View>
+          <Text style={styles.footnote}>Remembered from your passes. Yours to keep or forget.</Text>
+        </GlassCard>
       ) : null}
 
       {selectedNode && !sel ? (
-        <View testID="network-community-detail" style={[styles.glass, styles.detail]}>
+        <GlassCard testID="network-community-detail" style={styles.detail}>
           <View style={styles.row}>
-            <LvAvatar name={selectedNode.name} size={40} />
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.name}>{selectedNode.name}</Text>
+            <LvAvatar name={selectedNode.name} size={44} ring />
+            <View style={styles.personText}>
+              <Text style={styles.detailName}>{selectedNode.name}</Text>
               <Text style={styles.muted}>{distance === undefined ? "In the wider network" : `${distance} ${distance === 1 ? "step" : "steps"} away from you`}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close connection details" onPress={clearSelection} style={styles.close}>
-              <Text style={styles.muted}>Close</Text>
-            </Pressable>
+            <CloseButton onPress={clearSelection} />
           </View>
-          <Text style={styles.note}>{route.length > 0 ? route.join(" → ") : "No shared path to you in the connections shown yet."}</Text>
-        </View>
+          {route.length > 0 ? (
+            <View style={styles.route}>
+              {route.map((name, i) => (
+                <View key={`${name}-${i}`} style={styles.routeStep}>
+                  {i > 0 ? <View style={styles.routeDash} /> : null}
+                  <Text style={[styles.routeName, (i === 0 || i === route.length - 1) && styles.routeEnd]}>{name}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.note}>No shared path to you in the connections shown yet.</Text>
+          )}
+        </GlassCard>
       ) : null}
 
       {nodes.length > 0 ? (
-        <View style={[styles.glass, { overflow: "hidden" }]}>
-          <View style={styles.listHeader}>
-            <Text style={styles.eyebrow}>Your saved connections</Text>
-            <Text style={styles.micro}>{nodes.length}</Text>
-          </View>
-          {nodes.map((p, i) => (
-            <View
-              key={p.personKey}
-              style={[styles.listRow, i > 0 && styles.divider, p.personKey === sel?.personKey && styles.selectedRow]}
-            >
-              <Pressable
-                testID={`network-person-${p.name}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Explore ${p.name}, ${p.edgeCount} ${p.edgeCount === 1 ? "connection" : "connections"}`}
-                accessibilityState={{ selected: p.personKey === sel?.personKey }}
-                onPress={() => selectPerson(p.personKey)}
-                style={styles.personButton}
-              >
-                <LvAvatar name={p.name} size={34} />
-                <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-                  <Text style={styles.name}>{p.name}</Text>
-                  <Text numberOfLines={1} style={styles.muted}>
-                    {p.tags.join(" · ")}
-                  </Text>
-                </View>
-                <Text style={styles.connectionCount}>{p.edgeCount}</Text>
-              </Pressable>
-              <Pressable
-                testID={`network-forget-${p.name}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Forget ${p.name}`}
-                onPress={() => {
-                  if (sel?.personKey === p.personKey) clearSelection();
-                  void forget({ deviceId, personName: p.name });
-                }}
-                style={styles.forgetButton}
-              >
-                <Text style={styles.forgetText}>Forget</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
+        <>
+          <SectionHeader title="Your saved connections" right={<Text style={styles.count}>{nodes.length}</Text>} />
+          <GlassCard style={styles.list}>
+            {nodes.map((p, i) => (
+              <View key={p.personKey} style={[styles.listRow, p.personKey === sel?.personKey && styles.selectedRow]}>
+                {i > 0 ? <View style={styles.listDivider} /> : null}
+                <Pressable
+                  testID={`network-person-${p.name}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Explore ${p.name}, ${p.edgeCount} ${p.edgeCount === 1 ? "connection" : "connections"}`}
+                  accessibilityState={{ selected: p.personKey === sel?.personKey }}
+                  onPress={() => selectPerson(p.personKey)}
+                  style={({ pressed }) => [styles.personButton, pressed && { opacity: 0.6 }]}
+                >
+                  <LvAvatar name={p.name} size={36} />
+                  <View style={styles.personText}>
+                    <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
+                    <Text numberOfLines={1} style={styles.muted}>
+                      {p.tags.join(" · ")}
+                    </Text>
+                  </View>
+                  <View style={styles.connectionCount}><Text style={styles.connectionCountText}>{p.edgeCount}</Text></View>
+                </Pressable>
+                <Pressable
+                  testID={`network-forget-${p.name}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Forget ${p.name}`}
+                  onPress={() => {
+                    if (sel?.personKey === p.personKey) clearSelection();
+                    void forget({ deviceId, personName: p.name });
+                  }}
+                  style={({ pressed }) => [styles.forgetButton, pressed && { opacity: 0.5 }]}
+                >
+                  <Text style={styles.forgetText}>Forget</Text>
+                </Pressable>
+              </View>
+            ))}
+          </GlassCard>
+        </>
       ) : null}
     </View>
+  );
+}
+
+function CloseButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="Close connection details" onPress={onPress} hitSlop={8}
+      style={({ pressed }) => [styles.close, pressed && { opacity: 0.6 }]}>
+      <Icon name="close" size={11} color={lv.mutedFg} weight="bold" />
+    </Pressable>
   );
 }
 
@@ -208,9 +231,12 @@ function CoachProgress({ ready, edgeCount, threshold }: { ready: boolean; edgeCo
   const pct = Math.min(1, threshold > 0 ? edgeCount / threshold : 1);
   return (
     <View testID="coach-progress" style={styles.coach}>
-      <View style={styles.sectionHeading}>
-        <Text style={styles.eyebrow}>AI coach</Text>
-        <Text style={[styles.micro, ready && { color: lv.thread }]}>{ready ? "Ready to help" : `${edgeCount} / ${threshold}`}</Text>
+      <View style={styles.headRow}>
+        <View style={styles.coachTitle}>
+          <Icon name="sparkles" size={13} color={lv.thread} />
+          <Text style={styles.eyebrow}>AI coach</Text>
+        </View>
+        <Text style={[styles.muted, ready && styles.ready]}>{ready ? "Ready to help" : `${edgeCount} / ${threshold}`}</Text>
       </View>
       <Text style={styles.body}>
         {ready
@@ -226,49 +252,57 @@ function CoachProgress({ ready, edgeCount, threshold }: { ready: boolean; edgeCo
 }
 
 const styles = StyleSheet.create({
-  sectionHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  h2: { fontSize: 17, fontWeight: "600", color: lv.fg, paddingHorizontal: 4, marginTop: 8, flexShrink: 1 },
-  privateBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: lv.secondary, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 },
-  privateDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: lv.mutedFg },
-  glass: { backgroundColor: lv.card, borderRadius: lv.radiusXl, borderWidth: StyleSheet.hairlineWidth, borderColor: lv.border, ...lv.shadow },
-  note: { fontSize: 13, color: lv.mutedFg, lineHeight: 18 },
-  body: { fontSize: 13, lineHeight: 19, color: lv.fg },
-  micro: { fontSize: 10, lineHeight: 15, color: lv.mutedFg },
-  searchInput: { minHeight: 44, borderRadius: lv.radiusSm, backgroundColor: lv.bg, paddingHorizontal: 12, fontSize: 13, color: lv.fg },
-  searchResult: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 8 },
-  summary: { flexDirection: "row", borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: lv.border, paddingVertical: 12, marginTop: 2 },
-  stat: { flex: 1, alignItems: "center", gap: 3 },
-  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderColor: lv.border },
-  statNumber: { fontSize: 22, fontWeight: "500", color: lv.fg, fontVariant: ["tabular-nums"] },
-  detail: { padding: 16, gap: 12, borderColor: lv.thread },
-  reason: { fontSize: 13, lineHeight: 19, color: lv.fg },
-  close: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
-  coach: { gap: 8, backgroundColor: lv.bg, padding: 12, borderRadius: lv.radiusSm, marginTop: 4 },
-  eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", color: lv.mutedFg },
-  track: { height: 6, borderRadius: 3, backgroundColor: lv.muted, overflow: "hidden" },
-  fill: { height: 6, borderRadius: 3, backgroundColor: lv.thread },
-  row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tagRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: lv.border },
-  listHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 },
-  listRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingVertical: 6 },
-  personButton: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10, minHeight: 52 },
-  selectedRow: { backgroundColor: lv.accent },
-  connectionCount: { fontSize: 11, fontWeight: "600", color: lv.thread, backgroundColor: lv.bg, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8, overflow: "hidden" },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: lv.border },
-  name: { fontSize: 15, fontWeight: "500", color: lv.fg },
-  muted: { fontSize: 12, color: lv.mutedFg },
-  chip: {
-    alignSelf: "flex-start",
-    fontSize: 13,
-    fontWeight: "600",
-    color: lv.fg,
-    backgroundColor: lv.secondary,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    overflow: "hidden",
-  },
-  chipDaily: { color: lv.thread, backgroundColor: lv.accent },
+  group: { gap: 16 },
+  flex: { flex: 1 },
+  intro: { gap: 4 },
+  eyebrow: { ...type.eyebrow, color: lv.mutedFg },
+  note: { ...type.footnote, color: lv.mutedFg },
+  body: { ...type.footnote, color: lv.fg },
+  footnote: { ...type.caption1, color: lv.mutedFg },
+  muted: { ...type.footnote, color: lv.mutedFg },
+  name: { ...type.body, fontWeight: "500", color: lv.fg },
+  summary: { flexDirection: "row", borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: lv.separator, paddingVertical: 12 },
+  stat: { flex: 1, alignItems: "center", gap: 2 },
+  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderColor: lv.separator },
+  statNumber: { ...type.title2, fontWeight: "600", color: lv.fg, fontVariant: ["tabular-nums"] },
+  statLabel: { ...type.caption1, color: lv.mutedFg },
+  search: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 40, borderRadius: lv.radiusSm, borderCurve: "continuous", backgroundColor: lv.fill, paddingHorizontal: 10 },
+  searchInput: { flex: 1, ...type.body, color: lv.fg, paddingVertical: 8, outlineWidth: 0 },
+  clear: { width: 18, height: 18, borderRadius: 9, backgroundColor: lv.tertiaryFg, alignItems: "center", justifyContent: "center" },
+  results: { borderRadius: lv.radiusSm, borderCurve: "continuous", backgroundColor: "rgba(255,255,255,0.55)", overflow: "hidden" },
+  searchResult: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12 },
+  resultDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: lv.separator },
+  resultEmpty: { padding: 12 },
+  rowPressed: { backgroundColor: lv.fill },
+  more: { ...type.subheadline, fontWeight: "500", color: lv.thread },
+  detail: { borderColor: lv.thread, borderWidth: 1 },
+  headRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  personText: { flex: 1, minWidth: 0, gap: 2 },
+  detailName: { ...type.headline, color: lv.fg },
+  close: { width: 30, height: 30, borderRadius: 15, backgroundColor: lv.fill, alignItems: "center", justifyContent: "center" },
+  tagRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: lv.separator },
+  tagBody: { flex: 1, gap: 6 },
+  reason: { ...type.subheadline, color: lv.fg },
+  route: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", rowGap: 6 },
+  routeStep: { flexDirection: "row", alignItems: "center" },
+  routeDash: { width: 14, height: 2, borderRadius: 1, backgroundColor: lv.thread, marginHorizontal: 6 },
+  routeName: { ...type.footnote, color: lv.mutedFg },
+  routeEnd: { color: lv.fg, fontWeight: "600" },
+  count: { ...type.footnote, fontWeight: "600", color: lv.mutedFg },
+  list: { padding: 0, gap: 0 },
+  listRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: layout.cardPadding, paddingRight: 8 },
+  // Inset separator, lined up with the names (after the avatar), like an iOS list.
+  listDivider: { position: "absolute", top: 0, right: 0, left: layout.cardPadding + 36 + 12, height: StyleSheet.hairlineWidth, backgroundColor: lv.separator },
+  selectedRow: { backgroundColor: lv.threadTint },
+  personButton: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 12, minHeight: 60 },
+  connectionCount: { minWidth: 26, height: 22, paddingHorizontal: 7, borderRadius: 11, backgroundColor: lv.threadTint, alignItems: "center", justifyContent: "center" },
+  connectionCountText: { ...type.caption1, fontWeight: "600", color: lv.thread, fontVariant: ["tabular-nums"] },
   forgetButton: { minHeight: 44, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" },
-  forgetText: { color: lv.mutedFg, fontSize: 12, textDecorationLine: "underline" },
+  forgetText: { ...type.subheadline, color: lv.mutedFg },
+  coach: { gap: 8, backgroundColor: lv.fill, padding: 12, borderRadius: lv.radiusSm, borderCurve: "continuous" },
+  coachTitle: { flexDirection: "row", alignItems: "center", gap: 6 },
+  ready: { color: lv.thread, fontWeight: "600" },
+  track: { height: 6, borderRadius: 3, backgroundColor: lv.fillStrong, overflow: "hidden" },
+  fill: { height: 6, borderRadius: 3, backgroundColor: lv.thread },
 });

@@ -5,6 +5,7 @@ import { aiAllowed } from "./aiLimits";
 import { COACH_THRESHOLD, COACH_TURNS_MAX, WISH_TEXT_MAX, type Candidate } from "./graphShared";
 import { isCoachReady } from "./graphRank";
 import { LIMITS, clampText, requireDeviceId } from "./lib";
+import { FACTS_RULES, checkDraft, firstName, wishGist } from "./greetings";
 import { wishType } from "./schema";
 
 const STYLE =
@@ -320,23 +321,53 @@ export const draftPassMessage = action({
       throw new Error("This wish isn't traveling anymore");
     }
     if (context.passMessage) return context.passMessage;
-    const hoursLeft = Math.max(0, Math.round((context.expiresAt - Date.now()) / 3600000));
-    const wishGist = context.wishText.split(/(?<=[.!?])\s/)[0].replace(/[.!?]$/, "");
-    const gist = wishGist.charAt(0).toLowerCase() + wishGist.slice(1);
-    const rippleText = context.depth === 1 ? "1st ripple" : `${context.depth} ripples in`;
-    const fallback =
-      `A wish just landed with you, ${context.holderName}: ${context.wisherName} wants ${gist}. ` +
-      `Know anyone? It's ${rippleText}, ${hoursLeft}h left.`;
-    const message = (await aiAllowed(ctx, `hop:${hopId}`))
-      ? await respond(
-          `Write a playful 1-2 sentence message from ${context.senderName} passing a wish to ${context.holderName}` +
-            (context.tags.length ? ` (they're into: ${context.tags.join(", ")})` : "") +
-            `. Wish by ${context.wisherName}: "${context.wishText}". Mention it's ${rippleText} and ${hoursLeft}h left, and ask if they know anyone (or if it's them). ` +
-            `Example: "A wish just landed with you: Louise wants someone to jam on drums with. Know anyone? It's 2 ripples in, 31h left."`,
-          fallback,
-        )
-      : fallback;
+    const message = await draftPass(ctx, `hop:${hopId}`, context);
     await ctx.runMutation(internal.hops.setPassMessage, { hopId, message });
     return message;
   },
 });
+
+const PASS_MAX = 200;
+
+type PassFacts = {
+  senderName: string;
+  holderName: string;
+  wisherName: string;
+  wishText: string;
+  introVouch: string | null;
+  chain: string[];
+};
+
+/** Deterministic pass-on text: the wish, the sender's own reason, then a question. */
+export function passFallback(c: PassFacts) {
+  const vouch = c.introVouch?.trim().replace(/[.!?]+$/, "");
+  const why = vouch ? ` I thought of you: ${vouch}.` : "";
+  return `${firstName(c.wisherName) || "Someone"} is looking for ${wishGist(c.wishText)}.${why} Is it you, or someone you know?`;
+}
+
+/** The FACTS block for a pass-on draft. Only fields allowed to reach the holder (no tags, no phones). */
+export function passFacts(c: PassFacts) {
+  const chain = [...c.chain.slice(0, -1), "you"].join(" → ");
+  return (
+    `FACTS: from=${firstName(c.senderName)}; to=${firstName(c.holderName)}; wisher=${firstName(c.wisherName)}; ` +
+    `wish="${c.wishText}"; why_you="${c.introVouch ?? ""}"; chain=${chain}.`
+  );
+}
+
+async function draftPass(ctx: ActionCtx, key: string, c: PassFacts): Promise<string> {
+  const fallback = passFallback(c);
+  if (!(await aiAllowed(ctx, key))) return fallback;
+  const from = firstName(c.senderName);
+  const to = firstName(c.holderName);
+  const raw = await respond(
+    `${passFacts(c)} Write a text from ${from} to ${to}, max 2 sentences, max ${PASS_MAX} chars. ` +
+      `Sentence 1: the wish in plain words plus why_you (skip why_you if empty), in the sender's voice. ` +
+      `Sentence 2: ask if it's them or someone they know, ending with a question mark. No link (the app appends it).`,
+    "",
+    { instructions: `${STYLE} ${FACTS_RULES}` },
+  );
+  const facts = [c.senderName, c.holderName, c.wisherName, c.wishText, c.introVouch ?? "", ...c.chain];
+  const ok = checkDraft(raw, facts, PASS_MAX);
+  if (!ok && raw) console.warn(JSON.stringify({ event: "ai.pass_draft_rejected" }));
+  return ok ?? fallback;
+}

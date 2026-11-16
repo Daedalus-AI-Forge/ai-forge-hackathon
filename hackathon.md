@@ -186,6 +186,16 @@ Typecheck, 30 src tests, ESLint (no new errors) and 20 Expo Doctor checks pass;
 web screens verified in iPhone-sized Chrome. Real blur and SF Symbols need a new
 dev build; not yet verified on a device or simulator.
 
+### 2026-11-15 - claude/glass-network — network map in the glass style
+Brought the Me-tab wish network onto the iOS glass system without touching its
+logic: glass section cards, an iOS search field with grouped results, an inset map
+canvas with glass recenter/zoom controls (SF Symbols), round close buttons, tag
+capsules, a route drawn as red-thread steps, and an inset-separator list of saved
+connections. SVG labels use the system font on web (they fell back to serif).
+All testIDs kept (`src/components/lv/me/MeNetwork.tsx`, `EgoGraph.tsx`).
+Typecheck, 227 tests and ESLint (no new errors) pass; verified in iPhone-sized
+Chrome with sample network data, including a selected connection.
+
 ### 2026-11-15 - claude/night-pool-polish — one night scene on the Pool
 After #36 (iOS glass) and #37 (night-garden pool) met on the Pool tab, the voyage log,
 friends' wish cards and the tab bar were still in the light style inside the night

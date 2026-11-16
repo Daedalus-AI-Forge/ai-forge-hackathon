@@ -41,6 +41,20 @@ async function senderOf(ctx: QueryCtx, hop: Doc<"hops">, wish: Doc<"wishes">) {
   return { name: creator?.name ?? "Someone", userId: creator?._id };
 }
 
+/** First names along the chain: wisher, then each ancestor holder, ending with this hop's holder. */
+async function chainNames(ctx: QueryCtx, hop: Doc<"hops">, wisherName: string) {
+  const names: string[] = [hop.holderName];
+  let parentId = hop.parentHopId;
+  for (let i = 0; parentId && i < 50; i++) {
+    const parent = await ctx.db.get("hops", parentId);
+    if (!parent) break;
+    names.unshift(parent.holderName);
+    parentId = parent.parentHopId;
+  }
+  names.unshift(wisherName);
+  return names.map((n) => n.trim().split(/\s+/)[0]).filter(Boolean);
+}
+
 async function loadOpen(ctx: MutationCtx, hopId: Id<"hops">) {
   const hop = await ctx.db.get("hops", hopId);
   if (!hop) throw new Error("This link doesn't exist");
@@ -351,7 +365,11 @@ export const aiContext = internalQuery({
       holderName: hop.holderName,
       senderName: sender.name,
       depth: hop.depth,
-      tags: hop.recipientTags,
+      // Never expose recipientTags here: they are the sender's private labels and
+      // this context feeds text that is sent TO the holder.
+      introVouch: hop.introVouch?.trim() || null,
+      chain: await chainNames(ctx, hop, creator?.name ?? "Someone"),
+      itsMeIntro: hop.itsMeIntro?.trim() || hop.claimAnswers?.[0]?.trim() || null,
       ripples: rippleSummary(await wishHops(ctx, wish._id)).ripples,
       expiresAt: wish.expiresAt,
       status: wish.status,
