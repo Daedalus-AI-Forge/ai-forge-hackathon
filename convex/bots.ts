@@ -116,10 +116,9 @@ export async function actOnHop(ctx: MutationCtx, hop: Doc<"hops">, bots: Doc<"us
   const route = await ctx.db.query("hops").withIndex("by_wishId", (q) => q.eq("wishId", wish._id)).take(200);
   const visited = new Set(route.map((h) => personKey(h.holderName)));
   const candidates = bots.filter((b) => b.city !== holder.city && !visited.has(personKey(b.name)));
-  const next = hop.depth < MAX_RIPPLES ? bestBot(wish.text, candidates) : null;
-  if (!next) return hop.depth >= ITS_ME_DEPTH ? await claim() : null;
-
-  const to = next.bot;
+  if (hop.depth >= MAX_RIPPLES || candidates.length === 0) return hop.depth >= ITS_ME_DEPTH ? await claim() : null;
+  // No keyword match anywhere: wander to a deterministic other-city bot so the boat never stalls.
+  const to = bestBot(wish.text, candidates)?.bot ?? candidates[dwellMs(hop._id) % candidates.length];
   const tags = cleanTags(to.botProfile?.tags ?? []);
   const reason = clampText(`Thought of you for ${wishGist(wish.text)}`, REASON_MAX);
   await ctx.db.patch("hops", hop._id, {
