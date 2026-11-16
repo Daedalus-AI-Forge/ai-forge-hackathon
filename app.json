@@ -38,7 +38,8 @@
         {
           "contactsPermission": "Wishwell lets you pick a friend to send your paper boat to. Contacts never leave your phone."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
