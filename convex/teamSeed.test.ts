@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
-import { DEMO_WISH_TEXT, TEAM_KEYS, generateFriends, teamDeviceId } from "./teamSeed";
+import { DEMO_WISH_TEXT, GLOBAL_CITIES, TEAM_KEYS, VOYAGES, generateFriends, teamDeviceId } from "./teamSeed";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -158,5 +158,62 @@ describe("teamSeed.run", () => {
     await expect(
       t.run(async (ctx) => (await ctx.db.query("wishes").filter((q) => q.eq(q.field("teamKey"), "darren")).first())!._id),
     ).resolves.toBeTruthy();
+  });
+
+  test("global friends: deterministic, same names as Bay-only, half abroad with lat/lng and a city slug tag", () => {
+    for (const key of TEAM_KEYS) {
+      const bay = generateFriends(key);
+      const global = generateFriends(key, [], { global: true });
+      expect(global).toEqual(generateFriends(key, [], { global: true }));
+      expect(global.map((f) => f.name)).toEqual(bay.map((f) => f.name));
+      const abroad = global.filter((f) => f.lat !== undefined);
+      expect(abroad).toHaveLength(10);
+      for (const f of abroad) {
+        const city = GLOBAL_CITIES.find((c) => c.label === f.city)!;
+        expect(city).toBeDefined();
+        expect(f).toMatchObject({ lat: city.lat, lng: city.lng, country: city.country });
+        expect(f.tags).toContain(city.slug);
+      }
+      for (const f of bay) expect(f.lat).toBeUndefined();
+    }
+  });
+
+  test("global: true seeds voyages across the world, is idempotent, and keeps the drums chain first", async () => {
+    const t = setup();
+    const seeded = await t.mutation(internal.teamSeed.run, { members: MEMBERS, bindDevices: true, global: true });
+    const once = await counts(t);
+    await t.mutation(internal.teamSeed.run, { members: MEMBERS, bindDevices: true, global: true });
+    expect(await counts(t)).toEqual(once);
+    expect(once.wishes).toBe(4 + VOYAGES.length);
+
+    const summary = await t.query(internal.teamSeed.globalSummary, {});
+    expect(summary.voyages).toHaveLength(VOYAGES.length);
+    expect(new Set(summary.voyages.map((v) => v.status))).toEqual(new Set(["traveling", "found", "granted"]));
+    expect(summary.countries).toBeGreaterThanOrEqual(10);
+    expect(summary.friendCities).toBeGreaterThanOrEqual(5);
+    await t.run(async (ctx) => {
+      for (const h of await ctx.db.query("hops").collect()) {
+        if (h.city) expect(typeof h.lat).toBe("number");
+      }
+    });
+
+    // A granted voyage renders an unlocked ending with its global route.
+    const granted = await t.run(async (ctx) =>
+      (await ctx.db.query("wishes").filter((q) => q.eq(q.field("status"), "granted")).collect()).find((w) => w.teamKey === "darren")!,
+    );
+    const ending = await t.query(api.link.ending, { wishId: granted._id });
+    expect(ending?.locked).toBe(false);
+    expect(ending?.route.length).toBeGreaterThanOrEqual(3);
+
+    const id = (key: string) => seeded.find((r) => r.key === key)!.userId;
+    const top = async (key: string) =>
+      (await t.action(internal.graphRank.rankForWish, { ownerUserId: id(key), wishText: DEMO_WISH_TEXT, useMemory: false }))[0]?.name;
+    expect(await top("darren")).toBe("Louise");
+    expect(await top("louise")).toBe("Katie");
+    expect(await top("katie")).toBe("Dazi");
+
+    // Dropping global removes the voyages again.
+    await t.mutation(internal.teamSeed.run, { members: MEMBERS, bindDevices: true });
+    expect((await counts(t)).wishes).toBe(4);
   });
 });
