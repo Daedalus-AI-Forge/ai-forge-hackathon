@@ -2,8 +2,9 @@ import { describe, expect, test } from "vitest";
 
 import type { CommunityNetwork } from "@/lib/graphApi.types";
 import {
-  arcPoints, cameraFacing, layoutGlobe, lerpCamera, nearestAt, polarFor, project, reach, rotate, splitPath, THREAD_LOOK, threadKind,
+  arcPoints, cameraFacing, fromLatLng, layoutGlobe, lerpCamera, nearestAt, project, reach, rotate, splitPath, THREAD_LOOK, threadKind,
 } from "./globeLayout";
+import { earthPaths, earthProjection } from "./earth";
 
 function network(extra = 0): CommunityNetwork {
   const keys = ["me", "a", "b", "c", "d", "e", "isolated", ...Array.from({ length: extra }, (_, i) => `x${i}`)];
@@ -16,43 +17,43 @@ function network(extra = 0): CommunityNetwork {
   };
 }
 
-const angleFromViewer = (v: { z: number }) => Math.acos(Math.max(-1, Math.min(1, v.z)));
 const close = (a: number, b: number) => Math.abs(a - b) < 1e-9;
 
-describe("globe layout", () => {
-  test("pins the viewer in front and pushes each step farther round the planet", () => {
-    const { byKey } = layoutGlobe(network());
-    expect(byKey.get("me")!.v).toEqual({ x: 0, y: 0, z: 1 });
-    const [a, b, d] = ["a", "b", "d"].map((key) => angleFromViewer(byKey.get(key)!.v));
-    expect(a).toBeLessThan(b!);
-    expect(b).toBeLessThan(d!);
-    // Unconnected people wait on the far side.
-    expect(byKey.get("d")!.v.z).toBeLessThan(0);
-    expect(byKey.get("isolated")!.v.z).toBeLessThan(0);
+const CITY: Record<string, string> = { me: "San Francisco", a: "Tokyo", b: "Tokyo", c: "London", d: "Lagos", e: "Nowhereville" };
+
+function geoNetwork(): CommunityNetwork {
+  const graph = network();
+  graph.nodes = graph.nodes.map((n) => (CITY[n.key] ? { ...n, city: CITY[n.key] } : n));
+  return graph;
+}
+
+describe("globe layout (real geography)", () => {
+  test("places people at their city's true latitude/longitude, unmoved", () => {
+    const { byKey } = layoutGlobe(geoNetwork());
+    expect(byKey.get("me")!.v).toEqual(fromLatLng(37.77, -122.42));
+    expect(byKey.get("c")!.v).toEqual(fromLatLng(51.5, -0.12));
+    expect(byKey.get("d")!.v).toEqual(fromLatLng(6.52, 3.38));
+    for (const n of layoutGlobe(geoNetwork()).nodes) if (n.v) expect(Math.hypot(n.v.x, n.v.y, n.v.z)).toBeCloseTo(1, 9);
   });
 
-  test("keeps every node on the unit sphere, once, and deterministic", () => {
-    const first = layoutGlobe(network(30));
-    const second = layoutGlobe(network(30));
-    expect(first.nodes).toHaveLength(37);
-    for (const node of first.nodes) expect(Math.hypot(node.v.x, node.v.y, node.v.z)).toBeCloseTo(1, 6);
-    expect(second.nodes.map((n) => n.v)).toEqual(first.nodes.map((n) => n.v));
+  test("exact hop coordinates win over the city table", () => {
+    const graph = geoNetwork();
+    graph.nodes[1] = { ...graph.nodes[1]!, city: "Tokyo", lat: 35.0, lng: 135.0 };
+    expect(layoutGlobe(graph).byKey.get("a")!.v).toEqual(fromLatLng(35, 135));
   });
 
-  test("a crowded near ring still keeps people apart", () => {
-    const { nodes } = layoutGlobe(network(30));
-    const ring = nodes.filter((n) => n.distance === 1);
-    let nearest = Infinity;
-    for (let i = 0; i < ring.length; i++) for (let j = i + 1; j < ring.length; j++) {
-      const a = ring[i]!.v;
-      const b = ring[j]!.v;
-      nearest = Math.min(nearest, Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z));
-    }
-    expect(nearest).toBeGreaterThan(0.12);
+  test("people in the same city share one marker; unknown places stay off the globe", () => {
+    const { markers, markerOf, unplaced, byKey } = layoutGlobe(geoNetwork());
+    expect(markerOf.get("a")).toBe(markerOf.get("b"));
+    expect(markerOf.get("a")!.members.map((n) => n.key)).toEqual(["a", "b"]);
+    expect(markers).toHaveLength(4); // SF, Tokyo, London, Lagos
+    expect(byKey.get("e")!.v).toBeNull();
+    expect(byKey.get("isolated")!.v).toBeNull();
+    expect(unplaced).toBe(2);
   });
 
   test("identical display names remain different people and dangling edges cannot invent anyone", () => {
-    const graph = network();
+    const graph = geoNetwork();
     graph.nodes.forEach((node) => { node.name = "Alex"; });
     graph.links.push({ key: "missing", source: "me", target: "missing" });
     const { nodes, distances } = layoutGlobe(graph);
@@ -66,8 +67,22 @@ describe("globe layout", () => {
     graph.nodes = [];
     graph.links = [];
     expect(layoutGlobe(graph).nodes).toEqual([]);
-    graph.nodes = [{ key: "me", name: "You", kind: "user", personKeys: [], edgeIds: [] }];
-    expect(layoutGlobe(graph).byKey.get("me")).toMatchObject({ distance: 0, v: { x: 0, y: 0, z: 1 } });
+    graph.nodes = [{ key: "me", name: "You", kind: "user", personKeys: [], edgeIds: [], city: "Paris" }];
+    expect(layoutGlobe(graph).byKey.get("me")).toMatchObject({ distance: 0, v: fromLatLng(48.86, 2.35) });
+  });
+
+  test("the d3 land projection agrees with the marker projection", () => {
+    for (const camera of [{ yaw: 0, pitch: 0 }, { yaw: 2.1, pitch: 0.6 }, { yaw: -1.2, pitch: -0.4 }]) {
+      const proj = earthProjection(camera, 100, 100, 80);
+      for (const [lat, lng] of [[37.77, -122.42], [35.68, 139.69], [-33.87, 151.21], [51.5, -0.12]] as const) {
+        const p = project(fromLatLng(lat, lng), camera, 100, 100, 80);
+        if (p.z <= 0.05) continue;
+        const q = proj([lng, lat])!;
+        expect(q[0]).toBeCloseTo(p.x, 6);
+        expect(q[1]).toBeCloseTo(p.y, 6);
+      }
+    }
+    expect(earthPaths({ yaw: 0, pitch: 0 }, 100, 100, 80).land.length).toBeGreaterThan(500);
   });
 
   test("closer threads are brighter and thicker; only threads outside your reach are aqua", () => {
@@ -78,12 +93,6 @@ describe("globe layout", () => {
     expect(looks.map((l) => l.width)).toEqual([...looks.map((l) => l.width)].sort((a, b) => b - a));
     expect(looks.every((l) => l.tone !== "aqua")).toBe(true);
     expect(THREAD_LOOK.wide.tone).toBe("aqua");
-  });
-
-  test("polar distance grows with steps and stops before the back pole", () => {
-    const angles = [0, 1, 2, 3, 4, 9].map(polarFor);
-    expect(angles).toEqual([...angles].sort((x, y) => x - y));
-    expect(polarFor(9)).toBeLessThan(polarFor(null));
   });
 });
 

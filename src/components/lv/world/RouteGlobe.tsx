@@ -7,16 +7,11 @@ import Svg, { Circle, Defs, G, Path, RadialGradient, Stop, Text as SvgText } fro
 import { cityOf } from "@/components/lv/threads/threadData";
 import { night } from "@/theme/tokens";
 
-import { arcPoints, cameraFacing, graticule, project, splitPath, type Vec3 } from "./globeLayout";
+import { arcPoints, cameraFacing, fromLatLng, graticule, project, splitPath, type Vec3 } from "./globeLayout";
 
 const FONT = Platform.OS === "web" ? "-apple-system, BlinkMacSystemFont, system-ui, sans-serif" : undefined;
 
-/** Unit vector for a latitude/longitude, in the globe's frame (north up, longitude 0 facing you). */
-export function fromLatLng(lat: number, lng: number): Vec3 {
-  const a = (lat * Math.PI) / 180;
-  const b = (lng * Math.PI) / 180;
-  return { x: Math.cos(a) * Math.sin(b), y: Math.sin(a), z: Math.cos(a) * Math.cos(b) };
-}
+export { fromLatLng };
 
 /** Consecutive distinct known cities along the chain; people in unknown cities are skipped, not guessed. */
 export function routeStops(cities: (string | null)[]) {

@@ -1,5 +1,5 @@
-// The wish network as a glowing planet: you face the camera, your threads arc around the globe,
-// wishes that came true run across it as red threads, and the wider world waits round the back.
+// The wish network on the real Earth: true coastlines, everyone at their real city, your threads
+// as great-circle arcs, and wishes that came true as red threads across the map.
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import { PanResponder, Platform, StyleSheet, Text, View, type GestureResponderEvent, type PointerEvent, type ViewStyle } from "react-native";
@@ -14,7 +14,6 @@ import { night, type } from "@/theme/tokens";
 import {
   arcPoints,
   cameraFacing,
-  graticule,
   layoutGlobe,
   lerpCamera,
   nearestAt,
@@ -24,13 +23,15 @@ import {
   THREAD_LOOK,
   threadKind,
   type Camera,
+  type GlobeMarker,
   type GlobeNode,
   type Projected,
   type ThreadKind,
 } from "./globeLayout";
+import { earthPaths } from "./earth";
 
-const REST: Camera = { yaw: 0, pitch: 0.1 };
-const INTRO_FROM: Camera = { yaw: -1.5, pitch: 0.42 };
+const DEFAULT_REST: Camera = { yaw: 1.7, pitch: 0.5 }; // North America, when we don't know where you are
+const QUANT = 0.004; // radians: the land is re-projected only when the camera moves this much
 const SWAY = 0.2; // radians either side of rest
 const SWAY_PERIOD_MS = 18000;
 const FONT = Platform.OS === "web" ? "-apple-system, BlinkMacSystemFont, system-ui, sans-serif" : undefined;
@@ -79,8 +80,12 @@ export function Globe({
   const center = size / 2;
 
   // ---- camera + motion ----
-  const [camera, setCameraState] = useState<Camera>(INTRO_FROM);
-  const cameraRef = useRef<Camera>(INTRO_FROM);
+  // Rest faces your own city; the intro spins in to it from the east.
+  const restRef = useRef<Camera>(DEFAULT_REST);
+  const meV = layout.byKey.get(graph.meKey)?.v ?? layout.markers[0]?.v ?? null;
+  restRef.current = meV ? cameraFacing(meV) : DEFAULT_REST;
+  const [camera, setCameraState] = useState<Camera>(() => ({ yaw: restRef.current.yaw - 1.5, pitch: restRef.current.pitch + 0.2 }));
+  const cameraRef = useRef<Camera>(camera);
   const motion = useRef<Motion | null>(null);
   const frame = useRef<number | null>(null);
   const lastPaint = useRef(0);
@@ -146,7 +151,7 @@ export function Globe({
   useFocusEffect(useCallback(() => {
     if (!introduced.current) {
       introduced.current = true;
-      flyTo(REST, 1800);
+      flyTo(restRef.current, 1800);
     } else if (!touched.current && !live.current.reduce) {
       run({ kind: "sway", base: cameraRef.current, start: performance.now() });
     }
@@ -156,24 +161,25 @@ export function Globe({
   // Bring whoever is selected (from a tap, search or the list) round to the front.
   const selectedNode = selectedKey ? layout.byKey.get(selectedKey) : undefined;
   useEffect(() => {
-    if (selectedNode) flyTo(cameraFacing(selectedNode.v));
+    if (selectedNode?.v) flyTo(cameraFacing(selectedNode.v));
   }, [selectedNode, flyTo]);
 
   const recenter = () => {
     touched.current = false;
     onSelect(null);
-    flyTo(REST);
+    flyTo(restRef.current);
   };
 
   // ---- geometry for this frame ----
   const projected = useMemo(
-    () => layout.nodes.map((node) => ({ key: node.key, node, p: project(node.v, camera, center, center, radius) })),
+    () => layout.markers.map((marker) => ({ key: marker.id, marker, node: marker.members[0]!, p: project(marker.v, camera, center, center, radius) })),
     [layout, camera, center, radius],
   );
   const arcs = useMemo(() => graph.links.flatMap((link) => {
     const a = layout.byKey.get(link.source);
     const b = layout.byKey.get(link.target);
-    return a && b ? [{ key: link.key, a, b, style: arcStyle(a, b), points: arcPoints(a.v, b.v) }] : [];
+    return a?.v && b?.v && layout.markerOf.get(a.key) !== layout.markerOf.get(b.key)
+      ? [{ key: link.key, a, b, style: arcStyle(a, b), points: arcPoints(a.v, b.v) }] : [];
   }), [graph.links, layout]);
   const chainArcs = useMemo(() => {
     const out: { key: string; points: ReturnType<typeof arcPoints> }[] = [];
@@ -183,7 +189,7 @@ export function Globe({
         const a = layout.byKey.get(chain[i - 1]!);
         const b = layout.byKey.get(chain[i]!);
         const key = [a?.key, b?.key].sort().join("|");
-        if (!a || !b || a.key === b.key || seen.has(key)) continue;
+        if (!a?.v || !b?.v || layout.markerOf.get(a.key) === layout.markerOf.get(b.key) || seen.has(key)) continue;
         seen.add(key);
         out.push({ key, points: arcPoints(a.v, b.v, 1.5) });
       }
@@ -197,12 +203,17 @@ export function Globe({
     return keys.slice(1).flatMap((key, i) => {
       const a = layout.byKey.get(keys[i]!);
       const b = layout.byKey.get(key);
-      return a && b ? [arcPoints(a.v, b.v)] : [];
+      return a?.v && b?.v && layout.markerOf.get(a.key) !== layout.markerOf.get(b.key) ? [arcPoints(a.v, b.v)] : [];
     });
   }, [path, layout]);
   const focused = selectedKey !== null && path.size > 1;
 
-  const grid = useMemo(() => (size ? graticule(camera, center, center, radius) : ""), [camera, center, radius, size]);
+  const qYaw = Math.round(camera.yaw / QUANT);
+  const qPitch = Math.round(camera.pitch / QUANT);
+  const earth = useMemo(
+    () => (size ? earthPaths({ yaw: qYaw * QUANT, pitch: qPitch * QUANT }, center, center, radius) : { land: "", grid: "" }),
+    [qYaw, qPitch, center, radius, size],
+  );
   const proj = (points: ReturnType<typeof arcPoints>) => points.map((pt) => project(pt, camera, center, center, radius));
 
   const arcPaths: Record<ArcStyle, { front: string; back: string }> = {
@@ -216,24 +227,30 @@ export function Globe({
   const chainPath = chainArcs.map((arc) => splitPath(proj(arc.points)));
   const selectedPath = pathArcs.map((points) => splitPath(proj(points)));
 
-  const backDots = projected.filter(({ p, key }) => !p.front && key !== graph.meKey).map(({ p }) => dot(p, 1.5)).join("");
+  const meMarker = layout.markerOf.get(graph.meKey);
+  const backDots = projected.filter(({ p, marker }) => !p.front && marker !== meMarker).map(({ p }) => dot(p, 1.5)).join("");
   const front = projected.filter(({ p }) => p.front).sort((a, b) => a.p.z - b.p.z);
+  const hasSelected = (m: GlobeMarker) => selectedKey !== null && m.members.some((n) => n.key === selectedKey);
+  const others = (m: GlobeMarker) => m.members.filter((n) => n.key !== graph.meKey);
 
   // Names: you, the selected person, then the people on your chains and nearest ring, without overlaps.
-  const me = projected.find((n) => n.key === graph.meKey);
+  const me = projected.find((n) => n.marker === meMarker);
+  const meLabel = meMarker && meMarker.members.length > 1 ? `You +${meMarker.members.length - 1}` : "You";
   const labels: { key: string; x: number; y: number; text: string; strong: boolean }[] = [];
   const boxes: { x: number; y: number; w: number }[] = me?.p.front ? [{ x: me.p.x, y: me.p.y + 22, w: 40 }, { x: me.p.x, y: me.p.y, w: 24 }] : [];
-  const priority = (key: string, node: GlobeNode) =>
-    key === selectedKey ? 0 : chainMembers.has(key) ? 1 : node.distance === 1 ? 2 : 9;
-  for (const { key, node, p } of [...front].filter(({ key, node, p }) => key !== graph.meKey && p.z > 0.3 && priority(key, node) < 9)
-    .sort((a, b) => priority(a.key, a.node) - priority(b.key, b.node) || b.p.z - a.p.z)) {
-    if (labels.length >= 9 && key !== selectedKey) break;
-    const text = node.name.length > 12 ? `${node.name.slice(0, 11)}…` : node.name;
+  const priority = (m: GlobeMarker, node: GlobeNode) =>
+    hasSelected(m) ? 0 : m.members.some((n) => chainMembers.has(n.key)) ? 1 : node.distance === 1 ? 2 : 9;
+  for (const { key, marker, node, p } of [...front].filter(({ marker, node, p }) => marker !== meMarker && p.z > 0.3 && priority(marker, node) < 9)
+    .sort((a, b) => priority(a.marker, a.node) - priority(b.marker, b.node) || b.p.z - a.p.z)) {
+    if (labels.length >= 9 && !hasSelected(marker)) break;
+    const who = marker.members.find((n) => n.key === selectedKey) ?? node;
+    const short = who.name.length > 12 ? `${who.name.slice(0, 11)}…` : who.name;
+    const text = marker.members.length > 1 ? `${short} +${marker.members.length - 1}` : short;
     const w = text.length * 6.4 + 6;
     const y = p.y - 10;
     if (boxes.some((b) => Math.abs(b.x - p.x) < (b.w + w) / 2 && Math.abs(b.y - y) < 14)) continue;
     boxes.push({ x: p.x, y, w });
-    labels.push({ key, x: p.x, y, text, strong: key === selectedKey });
+    labels.push({ key, x: p.x, y, text, strong: hasSelected(marker) });
   }
 
   // ---- gestures ----
@@ -241,9 +258,12 @@ export function Globe({
   const canvas = useRef<ComponentRef<typeof View>>(null);
   const handlers = useRef({ tap: (_x: number, _y: number) => {}, onInteract });
   const tap = (x: number, y: number) => {
+    // Tapping a city cycles through the people there, then clears.
     const hit = nearestAt(projected, x, y);
-    if (!hit || hit.key === graph.meKey) onSelect(null);
-    else onSelect(hit.key === selectedKey ? null : hit.key);
+    const people = hit ? others(hit.marker) : [];
+    if (!people.length) return onSelect(null);
+    const at = people.findIndex((n) => n.key === selectedKey);
+    onSelect(at === -1 ? people[0]!.key : people[at + 1]?.key ?? null);
   };
   useLayoutEffect(() => {
     handlers.current = { tap, onInteract };
@@ -306,6 +326,7 @@ export function Globe({
   } : responder.panHandlers;
 
   const direct = layout.nodes.filter((n) => n.distance === 1).length;
+  const placed = layout.nodes.length - layout.unplaced;
 
   return (
     <View style={styles.wrap} onLayout={(e) => setSize(e.nativeEvent.layout.width)}>
@@ -314,7 +335,7 @@ export function Globe({
         testID="world-globe"
         accessible
         accessibilityRole="image"
-        accessibilityLabel={`Your wish network as a globe: ${layout.nodes.length} people, ${direct} connected to you directly.`}
+        accessibilityLabel={`Your wish network on a globe of the Earth: ${placed} of ${layout.nodes.length} people shown at their city across ${layout.markers.length} places, ${direct} connected to you directly.`}
         accessibilityHint="Drag to turn the globe and tap a person. The list below lets you find anyone."
         style={[styles.canvas, { height: size }, Platform.OS === "web" && webGestureStyle]}
         {...webHandlers}
@@ -346,7 +367,8 @@ export function Globe({
 
             <Circle cx={center} cy={center} r={radius / 0.8} fill="url(#atmo)" />
             <Circle cx={center} cy={center} r={radius} fill="url(#ocean)" />
-            <Path d={grid} stroke={night.aqua} strokeOpacity={0.1} strokeWidth={0.7} fill="none" />
+            <Path testID="world-globe-land" d={earth.land} fill={night.gold} fillOpacity={0.16} stroke={night.goldBright} strokeOpacity={0.4} strokeWidth={0.6} strokeLinejoin="round" />
+            <Path d={earth.grid} stroke={night.aqua} strokeOpacity={0.1} strokeWidth={0.6} fill="none" />
 
             {/* The far side, faintly through the glass. */}
             {(Object.keys(ARC) as ArcStyle[]).map((style) => (
@@ -380,20 +402,24 @@ export function Globe({
               </G>
             ))}
 
-            {front.map(({ key, node, p }) => {
-              if (key === graph.meKey) return null;
+            {front.map(({ key, marker, node, p }) => {
+              if (marker === meMarker) return null;
               const depth = Math.max(0, p.z);
-              const base = node.distance === 1 ? 5.2 : node.distance === 2 ? 3.8 : node.distance === null ? 2.4 : 3;
+              const count = marker.members.length;
+              const base = (node.distance === 1 ? 5.2 : node.distance === 2 ? 3.8 : node.distance === null ? 2.6 : 3) + Math.min(3, Math.log2(count));
               const r = base * (0.72 + 0.38 * depth);
               const fill = node.distance === 1 ? night.goldBright : node.distance === 2 ? night.gold : node.distance === null ? night.aqua : night.fg;
-              const selected = key === selectedKey;
-              const dim = focused && !path.has(key) ? 0.35 : 1;
+              const selected = hasSelected(marker);
+              const dim = focused && !marker.members.some((n) => path.has(n.key)) ? 0.35 : 1;
               return (
                 <G key={key} opacity={(0.4 + 0.6 * depth) * dim}>
                   {node.distance === 1 || selected ? <Circle cx={p.x} cy={p.y} r={r * 2.4} fill={fill} fillOpacity={0.14} /> : null}
-                  {chainMembers.has(key) ? <Circle cx={p.x} cy={p.y} r={r + 3} fill="none" stroke={night.thread} strokeWidth={1.4} /> : null}
+                  {marker.members.some((n) => chainMembers.has(n.key)) ? <Circle cx={p.x} cy={p.y} r={r + 3} fill="none" stroke={night.thread} strokeWidth={1.4} /> : null}
                   {selected ? <Circle cx={p.x} cy={p.y} r={r + 6} fill="none" stroke={night.fg} strokeWidth={1.5} /> : null}
                   <Circle cx={p.x} cy={p.y} r={selected ? r + 1.5 : r} fill={fill} />
+                  {count > 1 && r >= 5 ? (
+                    <SvgText fontFamily={FONT} x={p.x} y={p.y + 3.5} textAnchor="middle" fontSize={9.5} fontWeight="700" fill={night.deep}>{count}</SvgText>
+                  ) : null}
                 </G>
               );
             })}
@@ -403,8 +429,8 @@ export function Globe({
                 <Circle cx={me.p.x} cy={me.p.y} r={30} fill="url(#you)" />
                 <Circle cx={me.p.x} cy={me.p.y} r={8} fill={night.gold} stroke={night.goldBright} strokeWidth={2.5} />
                 <SvgText fontFamily={FONT} x={me.p.x} y={me.p.y + 26} textAnchor="middle" fontSize={13} fontWeight="700"
-                  stroke={night.deep} strokeWidth={3} strokeOpacity={0.7} fill={night.deep}>You</SvgText>
-                <SvgText fontFamily={FONT} x={me.p.x} y={me.p.y + 26} textAnchor="middle" fontSize={13} fontWeight="700" fill={night.goldBright}>You</SvgText>
+                  stroke={night.deep} strokeWidth={3} strokeOpacity={0.7} fill={night.deep}>{meLabel}</SvgText>
+                <SvgText fontFamily={FONT} x={me.p.x} y={me.p.y + 26} textAnchor="middle" fontSize={13} fontWeight="700" fill={night.goldBright}>{meLabel}</SvgText>
               </G>
             ) : null}
 
