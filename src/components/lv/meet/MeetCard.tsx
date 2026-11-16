@@ -18,7 +18,7 @@ import { lv, type } from "@/theme/tokens";
 
 import { GrantedCard, type GrantedEnding } from "./GrantedCard";
 import { meetCopy, otherName } from "./meetLogic";
-import { CAN_PICK_PHOTO, NATIVE_PICK_NOTE, pickPhoto } from "./pickPhoto";
+import { CAN_PICK_PHOTO, pickPhoto } from "./pickPhoto";
 
 export type MeetingView = NonNullable<FunctionReturnType<typeof api.meetings.get>>;
 
@@ -74,10 +74,10 @@ function MeetUp({ meeting, deviceId }: { meeting: MeetingView; deviceId: string 
 
   const upload = () =>
     run("upload", async () => {
-      const file = await pickPhoto();
-      if (!file) return;
+      const picked = await pickPhoto();
+      if (!picked) return;
       const url = await uploadUrl(ids);
-      const res = await fetch(url, { method: "POST", headers: { "Content-Type": file.type || "image/jpeg" }, body: file });
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": picked.type }, body: picked.blob });
       if (!res.ok) throw new Error((await res.text()) || "Upload failed. Try again.");
       const { storageId } = (await res.json()) as { storageId: Id<"_storage"> };
       await submitPhoto({ ...ids, storageId, metInPerson, thankYou: thankYou.trim() });
@@ -158,7 +158,6 @@ function MeetUp({ meeting, deviceId }: { meeting: MeetingView; deviceId: string 
             disabled={!CAN_PICK_PHOTO || busy !== null}
             testID="meet-upload"
           />
-          {!CAN_PICK_PHOTO ? <Sub>{NATIVE_PICK_NOTE}</Sub> : null}
         </View>
       ) : null}
       <DError error={error} />
