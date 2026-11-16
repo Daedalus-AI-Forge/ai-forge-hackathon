@@ -9,6 +9,8 @@ import { api } from "@/convex/_generated/api";
 import { Screen } from "@/components/ios";
 import { GetTheApp } from "@/components/link/end/GetTheApp";
 import { endingShareText, routeChain } from "@/components/link/end/logic";
+import { GrantedCard } from "@/components/lv/meet/GrantedCard";
+import { MeetForWish } from "@/components/lv/meet/MeetCard";
 import { DButton, DCard, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { photoSource } from "@/components/lv/world/Polaroid";
 import { copyLink } from "@/lib/links";
@@ -34,6 +36,9 @@ export default function EndingPage() {
   const view = useQuery(api.link.ending, wishId ? { wishId } : "skip") as EndingView | null | undefined;
   const deviceId = useDeviceId();
   const [note, setNote] = useState<string | null>(null);
+  // Real wishes end through the meet-up: locked while found, the GrantedCard reveal once granted.
+  // Daily boats and other states keep the plain polaroid.
+  const meetEnding = !!view && (view.status === "granted" || (view.status === "found" && view.locked));
 
   const share = async () => {
     if (!view || !wishId) return;
@@ -68,7 +73,17 @@ export default function EndingPage() {
       ) : (
         <>
           <Eyebrow>{STATUS[view.status] ?? "A paper boat"}</Eyebrow>
-          {/* Polaroid-style card: photo, wish, story */}
+          {/* The meet-up step for the two participants while the ending is still locked. */}
+          {view.locked ? <MeetForWish wishId={wishId} deviceId={deviceId} showEndingLink={false} /> : null}
+          {meetEnding ? (
+            <View testID="ending-card">
+              <GrantedCard ending={view} photoTestID="ending-photo" />
+              {view.status === "granted" && view.thankYou ? (
+                <Text testID="ending-story" style={[styles.story, styles.storyAfter]}>{view.story}</Text>
+              ) : null}
+            </View>
+          ) : (
+          /* Polaroid-style card: photo, wish, story */
           <View testID="ending-card" style={styles.polaroid}>
             {view.photoUrl ? (
               <Image testID="ending-photo" source={photoSource(view.photoUrl)} style={styles.photo} resizeMode="cover" />
@@ -76,6 +91,7 @@ export default function EndingPage() {
             <Text style={styles.wish}>"{view.wishText}"</Text>
             <Text testID="ending-story" style={styles.story}>{view.story}</Text>
           </View>
+          )}
           {view.route.length ? (
             <DCard testID="ending-route">
               <Eyebrow>Route · {view.ripples} hop{view.ripples === 1 ? "" : "s"}</Eyebrow>
@@ -109,5 +125,6 @@ const styles = StyleSheet.create({
   photo: { width: "100%", aspectRatio: 1, borderRadius: 6, backgroundColor: polaroid.photoBg },
   wish: { ...type.title3, fontWeight: "700", color: polaroid.ink },
   story: { ...type.callout, color: polaroid.ink },
+  storyAfter: { marginTop: 14, paddingHorizontal: 4 },
   route: { ...type.subheadline, color: lv.fg },
 });

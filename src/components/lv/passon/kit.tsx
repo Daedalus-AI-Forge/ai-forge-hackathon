@@ -18,6 +18,11 @@ import { Glass as GlassSurface, GlassCard, Icon, type IconName } from "@/compone
 import { keyboardInputProps } from "@/components/keyboard";
 import { lv, night, shadows, type } from "@/theme/tokens";
 
+import { useSurfaceTone } from "../tone";
+
+/** Night card surface: dark glass with a faint gold edge, for controls inside the pool's sheets. */
+const NIGHT_CARD: ViewStyle = { backgroundColor: "rgba(7,20,26,0.55)", borderColor: "rgba(233,199,102,0.28)", borderWidth: 1 };
+
 /**
  * thread: the primary action, a glowing gold capsule (the same as the Well tab's) · ink: cream filled ·
  * ghost: a faint light fill · tinted: gold label on a gold tint · plain: gold text only ·
@@ -56,7 +61,7 @@ export function DButton({
   testID,
   size = "md",
   icon,
-  tone = "light",
+  tone: toneProp,
   style,
 }: {
   title: string;
@@ -71,6 +76,10 @@ export function DButton({
   tone?: "light" | "night";
   style?: StyleProp<ViewStyle>;
 }) {
+  const ctxTone = useSurfaceTone();
+  const tone = toneProp ?? ctxTone;
+  // On a night surface the red/ink primaries become the pool's gold.
+  if (tone === "night" && (variant === "thread" || variant === "ink")) variant = "gold";
   const inactive = !!disabled || !!busy;
   const nightTone = tone === "night" && (variant === "ghost" || variant === "plain");
   const fg = nightTone
@@ -135,8 +144,9 @@ export function DButton({
 
 /** Frosted content card. */
 export function Glass({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
+  const isNight = useSurfaceTone() === "night";
   return (
-    <GlassCard testID={testID} style={style}>
+    <GlassCard variant={isNight ? "dark" : undefined} testID={testID} style={[isNight && NIGHT_CARD, style]}>
       {children}
     </GlassCard>
   );
@@ -144,15 +154,17 @@ export function Glass({ children, style, testID }: { children: ReactNode; style?
 
 /** Content card for forms and dense text: the same glass, a little more opaque, with roomier rows. */
 export function DCard({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
+  const isNight = useSurfaceTone() === "night";
   return (
-    <GlassCard variant="thick" testID={testID} style={[s.formCard, style]}>
+    <GlassCard variant={isNight ? "dark" : "thick"} testID={testID} style={[s.formCard, isNight && NIGHT_CARD, style]}>
       {children}
     </GlassCard>
   );
 }
 
 export function Eyebrow({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
-  return <Text style={[s.eyebrow, style]}>{children}</Text>;
+  const isNight = useSurfaceTone() === "night";
+  return <Text style={[s.eyebrow, isNight && { color: night.mutedFg }, style]}>{children}</Text>;
 }
 
 export function Sub({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
@@ -174,12 +186,13 @@ export function DField({
   ...props
 }: TextInputProps & { label?: string; grow?: boolean; containerStyle?: StyleProp<ViewStyle> }) {
   const [focused, setFocused] = useState(false);
+  const isNight = useSurfaceTone() === "night";
   return (
     <View style={[s.fieldWrap, grow && s.fieldGrow, containerStyle]}>
-      {label ? <Text style={s.label}>{label}</Text> : null}
+      {label ? <Text style={[s.label, isNight && { color: night.mutedFg }]}>{label}</Text> : null}
       <TextInput
-        placeholderTextColor={lv.tertiaryFg}
-        selectionColor={lv.tint}
+        placeholderTextColor={isNight ? "rgba(181,203,201,0.75)" : lv.tertiaryFg}
+        selectionColor={isNight ? night.gold : lv.tint}
         accessibilityLabel={label}
         {...keyboardInputProps(props)}
         onFocus={(e) => {
@@ -190,7 +203,14 @@ export function DField({
           setFocused(false);
           onBlur?.(e);
         }}
-        style={[s.field, props.multiline && s.fieldMulti, focused && s.fieldFocused, props.editable === false && s.fieldOff, props.style]}
+        style={[
+          s.field,
+          isNight && s.fieldNight,
+          props.multiline && s.fieldMulti,
+          focused && (isNight ? s.fieldNightFocused : s.fieldFocused),
+          props.editable === false && s.fieldOff,
+          props.style,
+        ]}
       />
     </View>
   );
@@ -309,6 +329,8 @@ export const s = StyleSheet.create({
   },
   fieldMulti: { minHeight: 96, textAlignVertical: "top", paddingTop: 12 },
   fieldFocused: { backgroundColor: "rgba(255,255,255,0.12)", borderColor: lv.tint },
+  fieldNight: { backgroundColor: "rgba(4,14,18,0.6)", borderColor: "rgba(248,242,226,0.18)", color: night.fg },
+  fieldNightFocused: { backgroundColor: "rgba(4,14,18,0.75)", borderColor: night.gold },
   fieldOff: { color: lv.mutedFg, backgroundColor: lv.fillStrong },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {

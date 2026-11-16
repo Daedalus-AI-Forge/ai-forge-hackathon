@@ -11,7 +11,7 @@ import { phoneFromParts } from "@/lib/phoneNumber";
 import { lv, type } from "@/theme/tokens";
 
 import { cleanError, isSixDigitCode } from "./claim/errors";
-import { canPickPhoto, pickPhotoWeb, uploadPhoto } from "./claim/photo";
+import { canPickPhoto, pickPhoto, uploadPhoto } from "./claim/photo";
 
 // Lands in convex/linkAi.ts at merge; typed here so this file compiles before then.
 
@@ -61,13 +61,13 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
 
   async function onPickPhoto() {
     setError(null);
-    const file = await pickPhotoWeb();
-    if (!file) return;
+    const picked = await pickPhoto();
+    if (!picked) return;
     setUploading(true);
     try {
       const url = await generateUploadUrl({});
-      const storageId = await uploadPhoto(url, file);
-      setPhoto({ storageId, name: file.name });
+      const storageId = await uploadPhoto(url, picked.blob, picked.type);
+      setPhoto({ storageId, name: picked.name });
     } catch (e) {
       setError(cleanError(e));
     } finally {

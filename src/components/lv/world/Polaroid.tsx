@@ -12,7 +12,10 @@ const useNativeDriver = Platform.OS !== "web";
 const BUNDLED: Record<string, ImageSourcePropType> = { "asset:drum-meet": lvImages.drumMeet };
 
 export function photoSource(url: string): ImageSourcePropType {
-  return BUNDLED[url] ?? { uri: url };
+  const bundled = BUNDLED[url];
+  // On web a bundled image arrives as { uri, width, height }; drop the pixel size so the style decides.
+  if (bundled && typeof bundled === "object" && !Array.isArray(bundled) && "uri" in bundled) return { uri: bundled.uri };
+  return bundled ?? { uri: url };
 }
 
 /** The camera's date imprint: '26 11 15. */

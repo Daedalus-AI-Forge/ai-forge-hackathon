@@ -26,8 +26,9 @@ export function BoatCard({
   return (
     <GlassCard testID={`help-card-${hopId}`} variant="dark">
       <View style={styles.head}>
-        <Text style={styles.label} numberOfLines={1}>
-          ✦ {creatorName}’s real wish
+        {/* Someone else's wish, pushed to you to help. The ✦ may become a boat icon. */}
+        <Text style={styles.label}>
+          ✦ {creatorName}’s real wish · pushed to you
         </Text>
         <Text style={styles.meta}>
           {ordinal(depth)} hop · {timeLeft(expiresAt, now)}
@@ -43,7 +44,8 @@ export function BoatCard({
 }
 
 const styles = StyleSheet.create({
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  // Wraps instead of truncating, so the label stays readable on narrow phones.
+  head: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 8, rowGap: 2 },
   label: { ...type.footnote, color: night.gold, flexShrink: 1 },
   meta: { ...type.footnote, color: night.mutedFg, flexShrink: 0 },
   text: { fontSize: 24, lineHeight: 29, color: night.fg, fontFamily: night.serif },

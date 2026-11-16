@@ -111,16 +111,46 @@ describe("chains.mine", () => {
     expect(chain!.people[2]).toMatchObject({ name: "Cy", userKey: null });
   });
 
-  test("the meeting photo wins over the finder's proof photo", async () => {
+  test("a real wish shows its meet-up photo only once both people confirmed it", async () => {
     const t = convexTest(schema, modules);
-    const proofStorageId = await t.run((ctx) => ctx.storage.store(new Blob(["proof"], { type: "image/jpeg" })));
-    const { wishId } = await world(t, { status: "granted" }, { proofStorageId });
-    const [withProof] = await t.query(api.chains.mine, { deviceId: "dev_Ann" });
-    expect(withProof!.photoUrl).toEqual(expect.any(String));
-    expect(withProof!.status).toBe("granted");
-    await t.run((ctx) => ctx.db.patch("wishes", wishId, { photoUrl: "https://example.com/us.jpg" }));
-    const [withMeeting] = await t.query(api.chains.mine, { deviceId: "dev_Ann" });
-    expect(withMeeting!.photoUrl).toBe("https://example.com/us.jpg");
+    const [proofStorageId, meetStorageId] = await t.run(async (ctx) => [
+      await ctx.storage.store(new Blob(["proof"], { type: "image/jpeg" })),
+      await ctx.storage.store(new Blob(["us"], { type: "image/jpeg" })),
+    ]);
+    const { wishId } = await world(t, { status: "found" }, { proofStorageId });
+    const meetingPhoto = { storageId: meetStorageId, uploaderRole: "creator" as const, metInPerson: true, thankYou: "Thank you!" };
+    // Found, photo uploaded but not yet confirmed by the other person: still developing for everyone.
+    await t.run((ctx) => ctx.db.patch("wishes", wishId, { meetingPhoto }));
+    const [pending] = await t.query(api.chains.mine, { deviceId: "dev_Bo" });
+    expect(pending).toMatchObject({ status: "found", photoUrl: null });
+    // Granted: the confirmed meet-up photo, never the claim's proof photo.
+    await t.run((ctx) => ctx.db.patch("wishes", wishId, { status: "granted" }));
+    const [granted] = await t.query(api.chains.mine, { deviceId: "dev_Bo" });
+    const meetUrl = await t.run((ctx) => ctx.storage.getUrl(meetStorageId));
+    expect(granted).toMatchObject({ status: "granted", photoUrl: meetUrl });
+    // Older granted rows without a meeting photo fall back to the wish's own photo.
+    await t.run((ctx) => ctx.db.patch("wishes", wishId, { meetingPhoto: undefined, photoUrl: "https://example.com/us.jpg" }));
+    const [legacy] = await t.query(api.chains.mine, { deviceId: "dev_Bo" });
+    expect(legacy!.photoUrl).toBe("https://example.com/us.jpg");
+  });
+
+  test("a daily boat's ending photo is the finder's proof photo", async () => {
+    const t = convexTest(schema, modules);
+    const proofUrl = await t.run(async (ctx) => {
+      const well = await addUser(ctx, "Well", { demoKey: "well", deviceId: undefined });
+      const a = await addUser(ctx, "Al");
+      const b = await addUser(ctx, "Bea");
+      const proofStorageId = await ctx.storage.store(new Blob(["proof"], { type: "image/jpeg" }));
+      const wishId = await ctx.db.insert("wishes", {
+        creatorId: well, type: "same_boat", text: "Daily", status: "traveling", expiresAt: Date.now() + 1000,
+        daily: { date: "2026-11-15", steps: [], reasoning: "" },
+      });
+      const al = await addHop(ctx, wishId, { id: a, name: "Al" }, { action: "pass" });
+      await addHop(ctx, wishId, { id: b, name: "Bea" }, { parentHopId: al, depth: 2, action: "its_me", actedAt: 5, proofStorageId });
+      return await ctx.storage.getUrl(proofStorageId);
+    });
+    const [chain] = await t.query(api.chains.mine, { deviceId: "dev_Al" });
+    expect(chain!.photoUrl).toBe(proofUrl);
   });
 
   test("daily boats count the first landing below my own hop", async () => {

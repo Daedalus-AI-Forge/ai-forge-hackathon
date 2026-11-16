@@ -110,7 +110,13 @@ export default function ChainScreen() {
           tilt={tiltFor(chain.wishId, 2.2)}
           accessibilityLabel={chain.photoUrl ? `Photo from the end of the chain: ${chain.text}` : "The photo from this chain is still developing"}
         />
-        {!chain.photoUrl ? <Text style={[styles.muted, styles.center]}>The photo from when you met lands here once it’s added.</Text> : null}
+        {!chain.photoUrl ? (
+          <Text style={[styles.muted, styles.center]}>
+            {chain.status === "found"
+              ? `It develops once ${photoNames(chain).join(" and ")} meet up and both confirm the photo.`
+              : "No photo from this one, just the story."}
+          </Text>
+        ) : null}
       </View>
 
       {chain.story ? (

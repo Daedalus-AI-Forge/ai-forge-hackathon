@@ -1,3 +1,5 @@
+import type { EndingHolder } from "../components/lv/meet/meetLogic";
+
 // Link page contract (docs/superpowers/plans/2026-11-15-link-page.md). Shared by all link-page tasks.
 export type LinkEvent = "open" | "wish_written" | "skip_wish" | "claim" | "push" | "contact" | "download_click";
 
@@ -45,4 +47,9 @@ export type EndingView = {
   story: string;
   route: string[]; // cities in hop order
   ripples: number;
+  locked: boolean; // a real wish stays locked until both participants confirm the meet-up photo
+  thankYou: string;
+  tier: "gold" | "silver" | "bronze" | "red" | null;
+  metInPerson: boolean | null;
+  holders?: EndingHolder[];
 };

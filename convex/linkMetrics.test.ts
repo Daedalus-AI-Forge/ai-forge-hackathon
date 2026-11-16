@@ -124,9 +124,10 @@ describe("OG HTML", () => {
 describe("ending", () => {
   test("route dedupes consecutive cities in depth order, story is two sentences", async () => {
     const t = setup();
-    const { wishId } = await seedChain(t);
+    const { wishId, h3 } = await seedChain(t);
+    await t.run(ctx => ctx.db.patch("wishes", wishId, { status: "granted", winningHopId: h3 }));
     const view = await t.query(api.link.ending, { wishId });
-    expect(view).toMatchObject({ status: "found", route: ["SF", "Tokyo"], ripples: 3, photoUrl: null });
+    expect(view).toMatchObject({ status: "granted", route: ["SF", "Tokyo"], ripples: 3, photoUrl: null });
     expect(view?.story.split(/(?<=\.)\s/).length).toBe(2);
     expect(await t.query(api.link.ending, { wishId: "nope" })).toBeNull();
   });

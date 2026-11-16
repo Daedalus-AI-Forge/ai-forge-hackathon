@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { DButton, DCard, DField } from "@/components/lv/passon/kit";
 import { phoneTail } from "@/lib/contactPick";
 import { copyLink, hopUrl, shareLink, smsLink } from "@/lib/links";
+import { useToneColors } from "@/components/lv/tone";
 import { lv, type } from "@/theme/tokens";
 
 /** One share row for a boat link: editable AI message, the link, and share actions. */
@@ -34,24 +35,25 @@ export function ShareLink({
     onTextChange?.(t);
   };
   const url = hopUrl(hopId);
+  const c = useToneColors();
   return (
     <DCard testID={`share-card-${hopId}`}>
-      <Text style={styles.to}>{label ?? `For ${name}`}</Text>
+      <Text style={[styles.to, { color: c.fg }]}>{label ?? `For ${name}`}</Text>
       {to ? (
-        <Text style={styles.muted} testID={`share-sms-to-${hopId}`}>
+        <Text style={[styles.muted, { color: c.mutedFg }]} testID={`share-sms-to-${hopId}`}>
           SMS goes to the number ending {phoneTail(to)}
         </Text>
       ) : null}
       {message === null && !text ? (
         <View style={styles.drafting}>
-          <ActivityIndicator color={lv.tint} />
-          <Text style={styles.muted}>AI is drafting your message…</Text>
+          <ActivityIndicator color={c.accent} />
+          <Text style={[styles.muted, { color: c.mutedFg }]}>AI is drafting your message…</Text>
         </View>
       ) : (
         <DField value={text} onChangeText={edit} multiline style={{ minHeight: 96 }} testID={`share-message-${hopId}`} />
       )}
-      <View style={styles.linkWell}>
-        <Text testID={`share-link-${hopId}`} selectable numberOfLines={1} style={styles.link}>
+      <View style={[styles.linkWell, { backgroundColor: c.fill }]}>
+        <Text testID={`share-link-${hopId}`} selectable numberOfLines={1} style={[styles.link, { color: c.accent }]}>
           {url}
         </Text>
       </View>
@@ -79,7 +81,7 @@ export function ShareLink({
           }}
         />
       </View>
-      {note ? <Text style={styles.note}>{note}</Text> : null}
+      {note ? <Text style={[styles.note, { color: c.mutedFg }]}>{note}</Text> : null}
     </DCard>
   );
 }

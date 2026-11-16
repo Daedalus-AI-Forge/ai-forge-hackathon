@@ -122,6 +122,15 @@ describe("firstScreen", () => {
 });
 
 describe("pushOne", () => {
+  test("records the pusher's profile city on their hop", async () => {
+    const t = convexTest(schema, modules);
+    const { benHop } = await boatToBen(t);
+    await player(t, "dev_ben", "Ben", "Seattle");
+    await t.mutation(api.link.pushOne, { hopId: benHop, deviceId: "dev_ben", ...push });
+    const hop = await t.run(async (ctx) => ctx.db.get("hops", benHop));
+    expect(hop?.city).toBe("Seattle");
+  });
+
   test("writes one child hop with vouch/relation, marks the parent, counts progress, records the edge", async () => {
     const t = convexTest(schema, modules);
     const { benHop } = await boatToBen(t);

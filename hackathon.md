@@ -13,6 +13,7 @@
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
 - **Last updated:** 2026-11-16T00:01:46Z
+- **Last updated:** 2026-11-16T00:24:43Z
 
 ## Log
 
@@ -221,9 +222,36 @@ card came along unchanged; Me keeps a link card. New `chains.mine` query (bounde
 who pushed the winning branch, or the finder) with the final photo; the World tab
 shows them as a polaroid strip, each opening `/chain/[wishId]` with the photo, the
 finder's words and the real route on a small globe. Coin and boat endings show the
-same polaroid. Photo order: `wish.photoUrl`, then the finder's proof photo; the
-meeting-backend branch's approved `meetingPhoto` should slot in first
-(`convex/chains.ts` `chainPhotoUrl`). The seed adds a gold chain through Mia (Yui ->
+same polaroid. Photos follow the public ending's rules (`convex/chains.ts`
+`chainPhotoUrl`): a real wish shows its meet-up photo only once both people confirmed
+it (granted), else it stays "developing"; a daily boat shows the finder's proof photo.
+Merged with main (#43-#55): `GrantedCard` now prints dark ink on its paper under the
+night palette, and `chromeTone` stays removed since every screen is night. The seed adds a gold chain through Mia (Yui ->
 Kenji -> Mia -> Priya) using the bundled drum-meet photo (`asset:` source). Typecheck,
 264 tests and ESLint (no new errors in touched code) pass; checked in iPhone-sized
 Chrome against a local backend. Not yet run on a device; nothing deployed.
+### 2026-11-15 - bda7705 — backend meeting completion
+Added participant-scoped meeting queries, revision-bound image upload tickets,
+photo submission and other-person approval/rejection. Verified claim confirmation
+starts a single seven-day window; the server enforces expiry and atomically awards
+completion rewards once. Pending outcome data stays private; granted endings expose
+the photo, thank-you, winning route and tier, with an optional two-sentence story.
+Existing no-device hop calls and verified-phone claim response contracts remain
+compatible. Convex features: indexed queries, mutations, HTTP actions, file storage
+and scheduled cleanup (`convex/meetings.ts`, `convex/meetingUploadHttp.ts`,
+`convex/link.ts`, `convex/schema.ts`).
+Per the user's final scope, all UI, assets, app configuration and dependencies remain
+unchanged from main. New upload/review controls are not part of this PR and need a
+separate UI integration. Historical unbound verified claims retain their old behavior
+without guessing a participant identity. Full tests passed (252 tests / 27 files),
+as did root/Convex TypeScript. Validation used in-memory Convex tests; no deployment
+or live-user messages were performed.
+
+### 2026-11-15 - claude/clearer-home — say whose wish is whose on the Pool
+The fountain's wish card was unlabeled, so it was unclear whether it was your wish or
+someone else's. It now carries a gold "Your wish" label ("Your wish · 1 of N" when
+several are in flight, newest shown); today's boat on the fountain adds "Everyone gets
+this boat today"; friends' wish cards in the pool read "✦ Oliver's real wish · pushed to
+you" (the header wraps instead of truncating); and the header counters read
+"1 coin · 2 boats to next coin". Copy follows the shared vocabulary (boat / push /
+Today's boat). Typecheck, 258 tests and ESLint pass; checked in iPhone-sized Chrome.

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, ImageBackground, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { CenterScreen, Glass, Icon, LargeTitle, Screen } from "@/components/ios";
+import { CenterScreen, Glass, Icon, LargeTitle, Screen, TAB_BAR_HEIGHT, tabBarBottom } from "@/components/ios";
 import { FountainScene } from "@/components/lv/fountain/FountainScene";
 import { DIVE_MS, diveMemory } from "@/components/lv/fountain/logic";
 import { DButton } from "@/components/lv/passon/kit";
@@ -14,7 +14,11 @@ import { CoinsFloor, type PoolCoin } from "@/components/lv/pool/CoinsFloor";
 import { ProgressDots } from "@/components/lv/pool/ProgressDots";
 import { TodayBoatCard } from "@/components/lv/pool/TodayBoatCard";
 import { VoyageLogCard, type VoyageLog } from "@/components/lv/pool/VoyageLogCard";
-import { NightPool, useReduceMotion } from "@/components/lv/pool/NightPool";
+import { NightPool, useReduceMotion, type PoolToss } from "@/components/lv/pool/NightPool";
+import { TossSheet } from "@/components/lv/pool/TossSheet";
+import { WishComposer } from "@/components/lv/pool/WishComposer";
+import { tossToast } from "@/lib/tossWish";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, errorMessage } from "@/components/ui";
 import { useMe } from "@/lib/device";
 import { layout, night, poolImages, type } from "@/theme/tokens";
@@ -57,6 +61,38 @@ export default function ThePool() {
   const [poolIn] = useState(() => new Animated.Value(diveMemory.dived() ? 1 : 0));
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
+
+  // Tossing happens in the pool (Katie-Lan's design): the composer shows after a "toss" dive or the
+  // pool's own Toss button; a coin sinks, a toast confirms, then the sheet picks who it reaches first.
+  const insets = useSafeAreaInsets();
+  const [composing, setComposing] = useState(false);
+  const [wish, setWish] = useState("");
+  const [tosses, setTosses] = useState<PoolToss[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const [sheetWish, setSheetWish] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const sheetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(
+    () => () => {
+      clearTimeout(toastTimer.current);
+      clearTimeout(sheetTimer.current);
+    },
+    [],
+  );
+  const tossCoin = (x?: number, y?: number) => {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.random() * 0.35;
+    const id = Date.now();
+    setTosses((list) => [...list, { id, x: x ?? 0.5 + Math.cos(a) * r * 0.5, y: y ?? 0.5 + Math.sin(a) * r * 0.5, variant: Math.random() < 0.5 ? 0 : 1 }]);
+    const text = wish.trim();
+    setToast(tossToast(text));
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2800);
+    setWish("");
+    // A quiet wish only sinks. A spoken one sails on: once the coin lands, ask who it reaches first.
+    clearTimeout(sheetTimer.current);
+    if (text) sheetTimer.current = setTimeout(() => setSheetWish(text), still ? 400 : 1300);
+  };
 
   const dive = (then?: () => void) => {
     if (phase !== "fountain") return;
@@ -151,7 +187,7 @@ export default function ThePool() {
     }
   };
 
-  const tossFromFountain = () => dive(() => router.push("/toss"));
+  const tossFromFountain = () => dive(() => setComposing(true));
   // Challenge: dive, then open today's boat through api.daily.join, as the pool's TodayBoatCard does.
   const challengeFromFountain = () =>
     dive(() => {
@@ -172,7 +208,9 @@ export default function ThePool() {
       <Avatar name={user.name} color={user.avatar} size={40} />
     </Pressable>
   );
-  const eyebrow = `${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${progress}/5 boats`;
+  // What the two counters mean: coins you can toss now, and pushed boats still needed for the next coin.
+  const toNext = Math.max(1, 5 - progress);
+  const eyebrow = `${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${toNext} boat${toNext === 1 ? "" : "s"} to next coin`;
   const inPool = phase === "pool";
 
   return (
@@ -201,7 +239,7 @@ export default function ThePool() {
             <VoyageLogCard log={voyageLog as VoyageLog} onDismiss={() => void AsyncStorage.setItem(LOG_DISMISS_KEY, date).then(() => setLogDismissed(true))} />
           ) : null}
 
-          <NightPool size={poolSize} coins={coins.length} />
+          <NightPool size={poolSize} coins={coins.length} tosses={tosses} onWaterTap={composing ? (x, y) => tossCoin(x, y) : undefined} />
 
           <View style={styles.boats}>
             {friends.map((c) => (
@@ -218,7 +256,7 @@ export default function ThePool() {
             <DButton testID="primary-action" title="Push today's boat" variant="gold" size="lg" busy={busy} onPress={pushBoat} />
           ) : primary === "toss" ? (
             <View testID="toss-button">
-              <DButton testID="primary-action" title="Toss a coin" variant="gold" size="lg" onPress={() => router.push("/toss")} />
+              <DButton testID="primary-action" title="Toss a coin" variant="gold" size="lg" onPress={() => setComposing(true)} />
             </View>
           ) : (
             <Text testID="pool-done" style={styles.done}>
@@ -238,8 +276,24 @@ export default function ThePool() {
               onPress={() => void claimDemo({ deviceId })}
             />
           ) : null}
+          {composing ? <View style={styles.composerSpace} /> : null}
         </Screen>
+        {toast ? (
+          <View style={[styles.toastWrap, { bottom: tabBarBottom(insets.bottom) + TAB_BAR_HEIGHT + 120 }]} pointerEvents="none">
+            <Glass variant="dark" radius={999} style={styles.toast}>
+              <Text testID="toss-toast" accessibilityLiveRegion="polite" style={styles.toastText}>
+                {toast}
+              </Text>
+            </Glass>
+          </View>
+        ) : null}
+        {composing && inPool ? (
+          <WishComposer value={wish} onChange={setWish} onToss={() => tossCoin()} bottom={tabBarBottom(insets.bottom) + TAB_BAR_HEIGHT + 12} />
+        ) : null}
       </Animated.View>
+      {sheetWish ? (
+        <TossSheet wish={sheetWish} deviceId={deviceId} needsProfile={!user.name} still={still} onClose={() => setSheetWish(null)} />
+      ) : null}
 
       {inPool ? null : (
         <FountainScene
@@ -337,4 +391,8 @@ const styles = StyleSheet.create({
   },
   error: { ...type.footnote, color: "#FF8A80", textAlign: "center" },
   demo: { alignSelf: "center" },
+  composerSpace: { height: 96 },
+  toastWrap: { position: "absolute", left: 0, right: 0, alignItems: "center", zIndex: 20 },
+  toast: { maxWidth: "86%", paddingHorizontal: 20, paddingVertical: 10 },
+  toastText: { fontFamily: night.serif, fontSize: 16, lineHeight: 22, color: night.fg, textAlign: "center" },
 });

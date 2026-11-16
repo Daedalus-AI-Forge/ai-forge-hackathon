@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { errorMessage } from "@/components/ui";
 import { lv, type } from "@/theme/tokens";
 
+import { useToneColors } from "../tone";
 import { Eyebrow, LvAvatar, LvButton, LvCard } from "./parts";
 
 export type CoachPick = { name: string; why: string };
@@ -74,17 +75,18 @@ export function CoachPanel({
   }
 
   const ready = readiness?.ready === true;
+  const c = useToneColors();
 
   return (
     <LvCard testID="ask-the-well">
-      <Eyebrow color={lv.tint}>✦ Suggested by AI</Eyebrow>
+      <Eyebrow color={c.accent}>✦ Suggested by AI</Eyebrow>
       {readiness === undefined ? (
-        <ActivityIndicator color={lv.tint} />
+        <ActivityIndicator color={c.accent} />
       ) : ready ? (
         <View testID="toss-coach" style={{ gap: 10 }}>
           {result ? (
             <>
-              <Text testID="toss-coach-message" style={s.msg}>
+              <Text testID="toss-coach-message" style={[s.msg, { color: c.fg }]}>
                 {result.message}
               </Text>
               {result.suggestions.map((sg, i) => (
@@ -97,12 +99,12 @@ export function CoachPanel({
                 >
                   <LvAvatar name={sg.name} size={36} />
                   <View style={{ flex: 1 }}>
-                    <Text style={s.name}>{sg.name}</Text>
-                    <Text style={s.why} numberOfLines={2}>
+                    <Text style={[s.name, { color: c.fg }]}>{sg.name}</Text>
+                    <Text style={[s.why, { color: c.mutedFg }]} numberOfLines={2}>
                       {sg.why}
                     </Text>
                   </View>
-                  <Text style={s.add}>{taken(sg.name) ? "Added" : "+ Add"}</Text>
+                  <Text style={[s.add, { color: c.accent }]}>{taken(sg.name) ? "Added" : "+ Add"}</Text>
                 </Pressable>
               ))}
               <LvButton
@@ -116,7 +118,7 @@ export function CoachPanel({
             </>
           ) : (
             <>
-              <Text style={s.hint}>The well knows who you’ve pushed boats to. Ask it who should get this one first.</Text>
+              <Text style={[s.hint, { color: c.mutedFg }]}>The well knows who you’ve pushed boats to. Ask it who should get this one first.</Text>
               <LvButton
                 testID="ask-the-well-button"
                 compact
@@ -131,29 +133,29 @@ export function CoachPanel({
         </View>
       ) : (
         <View testID="toss-coach-empty" style={{ gap: 10 }}>
-          <Text style={s.hint}>
+          <Text style={[s.hint, { color: c.mutedFg }]}>
             The well is still learning your circle ({readiness.edgeCount}/{readiness.threshold}). Pass a few daily wishes and
             it'll start suggesting who to ask.
           </Text>
           {advice === null ? (
             <LvButton testID="ask-the-well-button" compact variant="ghost" title="Ask the well anyway" busy={busy} onPress={runAsk} />
           ) : advice === "none" ? (
-            <Text style={s.hint}>The well doesn't know your friends yet.</Text>
+            <Text style={[s.hint, { color: c.mutedFg }]}>The well doesn't know your friends yet.</Text>
           ) : (
             <Pressable testID="ask-the-well-add" disabled={taken(advice.name)} onPress={() => onPick(advice)} style={s.row}>
               <LvAvatar name={advice.name} size={36} />
               <View style={{ flex: 1 }}>
-                <Text testID="ask-the-well-answer" style={s.name}>
+                <Text testID="ask-the-well-answer" style={[s.name, { color: c.fg }]}>
                   Start with {advice.name}
                 </Text>
-                <Text style={s.why}>{advice.why}</Text>
+                <Text style={[s.why, { color: c.mutedFg }]}>{advice.why}</Text>
               </View>
-              <Text style={s.add}>{taken(advice.name) ? "Added" : "+ Add"}</Text>
+              <Text style={[s.add, { color: c.accent }]}>{taken(advice.name) ? "Added" : "+ Add"}</Text>
             </Pressable>
           )}
         </View>
       )}
-      {error ? <Text style={s.err}>{error}</Text> : null}
+      {error ? <Text style={[s.err, { color: c.err }]}>{error}</Text> : null}
     </LvCard>
   );
 }

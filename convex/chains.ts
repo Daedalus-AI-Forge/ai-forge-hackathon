@@ -37,11 +37,19 @@ export const chainValidator = v.object({
 
 export type Chain = Infer<typeof chainValidator>;
 
-/** The final photo of a chain that came true: the meeting photo, else the finder's proof photo. */
+/**
+ * The final photo of a chain that came true, under the same rules as the public ending (link.ending):
+ * a real wish shows its meet-up photo only once both people confirmed it (status "granted"); until
+ * then it is theirs alone. A daily boat has no meet-up, so its finder's proof photo is the ending.
+ */
 async function chainPhotoUrl(ctx: QueryCtx, wish: Doc<"wishes">, finder: Hop) {
-  // An approved meeting photo (meeting-backend's `wish.meetingPhoto`) should go first once it lands.
-  if (wish.photoUrl) return wish.photoUrl;
-  return finder.proofStorageId ? await ctx.storage.getUrl(finder.proofStorageId) : null;
+  if (wish.daily) {
+    const proof = finder.proofStorageId ? await ctx.storage.getUrl(finder.proofStorageId) : null;
+    return proof ?? wish.photoUrl ?? null;
+  }
+  if (wish.status !== "granted") return null;
+  const met = wish.meetingPhoto ? await ctx.storage.getUrl(wish.meetingPhoto.storageId) : null;
+  return met ?? wish.photoUrl ?? null;
 }
 
 /** Who said "it's me" and made this wish come true, or null if it hasn't. */
