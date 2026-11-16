@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "re
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
 import { DButton, DCard, DError, DField, DHint, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { phoneFromParts } from "@/lib/phoneNumber";
 import { lv, type } from "@/theme/tokens";
@@ -15,9 +16,9 @@ import { canPickPhoto, pickPhoto, uploadPhoto } from "./claim/photo";
 
 // Lands in convex/linkAi.ts at merge; typed here so this file compiles before then.
 
-export type ClaimStepProps = { hopId: string; deviceId: string; kind: "daily" | "real"; onDone: () => void };
+export type ClaimStepProps = { hopId: string; wishId: string; deviceId: string; kind: "daily" | "real"; onDone: () => void };
 
-export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
+export function ClaimStep({ hopId, wishId, deviceId, kind, onDone }: ClaimStepProps) {
   const hop = hopId as Id<"hops">;
   const claim = useMutation(api.link.claim);
   const generateUploadUrl = useMutation(api.link.generateUploadUrl);
@@ -61,10 +62,10 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
 
   async function onPickPhoto() {
     setError(null);
-    const picked = await pickPhoto();
-    if (!picked) return;
     setUploading(true);
     try {
+      const picked = await pickPhoto();
+      if (!picked) return;
       const url = await generateUploadUrl({});
       const storageId = await uploadPhoto(url, picked.blob, picked.type);
       setPhoto({ storageId, name: picked.name });
@@ -137,9 +138,10 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
     return (
       <DCard testID="claim-waiting">
         <Eyebrow>Claimed</Eyebrow>
-        <Text style={styles.title}>Waiting for the wish-maker to confirm</Text>
-        <Sub>We'll let you know as soon as they do.</Sub>
+        <Text style={styles.title}>{kind === "daily" ? "This boat landed" : "Waiting for the wish-maker to confirm"}</Text>
+        {kind === "real" ? <Sub>We’ll let you know as soon as they do.</Sub> : null}
         <DButton title="Continue" onPress={onDone} testID="claim-continue" />
+        <WishProgressButton wishId={wishId} testID="claim-progress-link" />
       </DCard>
     );
   }

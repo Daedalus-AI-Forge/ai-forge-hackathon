@@ -32,6 +32,7 @@ type Props = {
   /** Your wishes (api.wishes.mine); the newest traveling one shows above the buttons. */
   wishes: readonly WishLike[] | undefined;
   challenge: FountainChallenge;
+  pendingActions?: ReactNode;
   onToss: () => void;
   onChallenge: () => void;
 };
@@ -41,7 +42,7 @@ type Props = {
  * fountain seen from the front, gold sparkles and drifting motes, the Wishwell title, your wish in
  * flight, "Toss a coin", and today's boat with its countdown. Diving zooms into the water.
  */
-export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishes, challenge, onToss, onChallenge }: Props) {
+export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishes, challenge, pendingActions, onToss, onChallenge }: Props) {
   const insets = useSafeAreaInsets();
   // The ticking clock lives here, so only the fountain re-renders each second (and only while shown).
   const now = useNow(1000);
@@ -90,7 +91,7 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
             resizeMode="cover"
             accessibilityIgnoresInvertColors
             accessible
-            accessibilityLabel="A white marble fountain glowing with golden stars in a night garden"
+            accessibilityLabel="A white marble fountain in a night garden, glowing paper boats floating on the water"
           />
         </Animated.View>
         {SPARKLES.map((s, i) => (
@@ -131,6 +132,7 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
           </View>
           {avatar}
         </View>
+        {pendingActions ? <View style={styles.pending}>{pendingActions}</View> : null}
 
         <View style={styles.bottom}>
           {wish ? (
@@ -358,6 +360,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
   },
   bottom: { marginTop: "auto", gap: 12 },
+  pending: { marginTop: 8 },
   wish: { paddingHorizontal: 16, paddingVertical: 12, alignItems: "center" },
   wishText: {
     fontFamily: serif,

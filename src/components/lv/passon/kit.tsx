@@ -123,7 +123,8 @@ export function DButton({
       testID={testID}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: !!busy }}
-      onPress={inactive ? undefined : onPress}
+      disabled={inactive}
+      onPress={onPress}
       hitSlop={size === "sm" ? 4 : undefined}
       style={({ pressed }) => [
         s.btn,

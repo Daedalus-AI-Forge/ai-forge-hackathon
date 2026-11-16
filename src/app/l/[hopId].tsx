@@ -183,7 +183,7 @@ export default function LinkPage() {
         </View>
       ) : null}
       {step === "handle" && choice === "claim" ? (
-        <ClaimStep hopId={hopId} deviceId={deviceId} kind={screen.boat.kind} onDone={() => go("handle")} />
+        <ClaimStep hopId={hopId} wishId={screen.wishId} deviceId={deviceId} kind={screen.boat.kind} onDone={() => go("handle")} />
       ) : null}
       {step === "handle" && choice === "push" ? (
         <PushStep hopId={hopId} deviceId={deviceId} onDone={() => go("handle")} />
@@ -202,7 +202,7 @@ export default function LinkPage() {
       ) : null}
 
       {step === "done" && result ? (
-        <DoneStep result={result} wishText={skipped || !wishText.trim() ? null : wishText.trim()} />
+        <DoneStep result={result} boatWishId={screen.wishId} wishText={skipped || !wishText.trim() ? null : wishText.trim()} />
       ) : null}
     </Shell>
   );

@@ -15,6 +15,7 @@ import type * as auth from "../auth.js";
 import type * as authAdmin from "../authAdmin.js";
 import type * as authRedirect from "../authRedirect.js";
 import type * as authUsers from "../authUsers.js";
+import type * as bots from "../bots.js";
 import type * as chains from "../chains.js";
 import type * as crons from "../crons.js";
 import type * as daily from "../daily.js";
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   authAdmin: typeof authAdmin;
   authRedirect: typeof authRedirect;
   authUsers: typeof authUsers;
+  bots: typeof bots;
   chains: typeof chains;
   crons: typeof crons;
   daily: typeof daily;

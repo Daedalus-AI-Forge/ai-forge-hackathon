@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { CenterScreen, Glass, Icon, LargeTitle, Screen, TAB_BAR_HEIGHT, tabBarBottom } from "@/components/ios";
 import { FountainScene } from "@/components/lv/fountain/FountainScene";
 import { DIVE_MS, diveMemory } from "@/components/lv/fountain/logic";
+import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
 import { DButton } from "@/components/lv/passon/kit";
 import { BoatCard } from "@/components/lv/pool/BoatCard";
 import { CoinsFloor, type PoolCoin } from "@/components/lv/pool/CoinsFloor";
@@ -21,6 +22,7 @@ import { tossToast } from "@/lib/tossWish";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, errorMessage } from "@/components/ui";
 import { useMe } from "@/lib/device";
+import { useNow } from "@/lib/time";
 import { layout, night, poolImages, type } from "@/theme/tokens";
 
 const ONBOARDED_KEY = "wishwell.onboarded";
@@ -39,6 +41,9 @@ export default function ThePool() {
   const { deviceId } = useMe();
   const home = useQuery(api.wishes.home, deviceId ? { deviceId } : "skip");
   const mine = useQuery(api.wishes.mine, deviceId ? { deviceId } : "skip");
+  const claims = useQuery(api.link.pendingClaims, deviceId ? { deviceId } : "skip");
+  const now = useNow(60000);
+  const meetings = useQuery(api.meetings.list, deviceId ? { deviceId, now } : "skip");
   const claimDemo = useMutation(api.users.claimDemo);
   const demoEnabled = useQuery(api.users.demoEnabled);
   const join = useMutation(api.daily.join);
@@ -212,6 +217,39 @@ export default function ThePool() {
   const toNext = Math.max(1, 5 - progress);
   const eyebrow = `${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${toNext} boat${toNext === 1 ? "" : "s"} to next coin`;
   const inPool = phase === "pool";
+  const activeMeetings = meetings?.filter((m) => m.stage !== "expired" && m.stage !== "granted") ?? [];
+  const nextMeeting = activeMeetings[0];
+  const pendingActions = !!claims?.length || nextMeeting ? (
+    <View style={styles.pending}>
+      {claims?.length ? (
+        <DButton
+          title={claims.length === 1 ? "Review claim" : `Review ${claims.length} claims`}
+          variant="ghost"
+          tone="night"
+          size="sm"
+          onPress={() => router.push("/voyages")}
+          testID="pool-claims"
+        />
+      ) : null}
+      {nextMeeting && activeMeetings.length === 1 ? (
+        <WishProgressButton
+          wishId={nextMeeting.wishId}
+          title={nextMeeting.stage === "review" ? "Review photo" : nextMeeting.stage === "upload" ? "Meet up" : "Meet-up status"}
+          testID="pool-meeting"
+          tone="night"
+        />
+      ) : nextMeeting ? (
+        <DButton
+          title={`Meet-ups (${activeMeetings.length})`}
+          variant="ghost"
+          tone="night"
+          size="sm"
+          onPress={() => router.push("/voyages")}
+          testID="pool-meeting"
+        />
+      ) : null}
+    </View>
+  ) : null;
 
   return (
     <View style={styles.root}>
@@ -234,6 +272,7 @@ export default function ThePool() {
             <Text style={styles.surfaceText}>Fountain</Text>
           </Glass>
           <LargeTitle eyebrowColor={night.mutedFg} eyebrow={eyebrow} title={<Text style={styles.brand}>Wishwell</Text>} right={avatar} />
+          {inPool ? pendingActions : null}
 
           {voyageLog && !logDismissed ? (
             <VoyageLogCard log={voyageLog as VoyageLog} onDismiss={() => void AsyncStorage.setItem(LOG_DISMISS_KEY, date).then(() => setLogDismissed(true))} />
@@ -305,6 +344,7 @@ export default function ThePool() {
           avatar={avatar}
           wishes={mine}
           challenge={today ? { title: today.title, done: today.passedTo > 0 } : null}
+          pendingActions={pendingActions}
           onToss={tossFromFountain}
           onChallenge={challengeFromFountain}
         />
@@ -382,6 +422,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
   },
   boats: { gap: 14 },
+  pending: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   avatar: { borderRadius: 999, boxShadow: "0px 4px 12px rgba(0,0,0,0.3)" },
   done: {
     ...type.footnote,
