@@ -191,7 +191,7 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
             <Switch
               value={showNameAndCity}
               onValueChange={setShowNameAndCity}
-              trackColor={{ true: lv.thread, false: lv.fillStrong }}
+              trackColor={{ true: lv.tint, false: lv.fillStrong }}
               ios_backgroundColor={lv.fillStrong}
               testID="claim-show-name"
             />
@@ -201,7 +201,7 @@ export function ClaimStep({ hopId, deviceId, kind, onDone }: ClaimStepProps) {
         <View style={styles.section}>
           {questions === null ? (
             <View style={styles.row}>
-              <ActivityIndicator color={lv.thread} />
+              <ActivityIndicator color={lv.tint} />
               <Sub>Getting a few questions…</Sub>
             </View>
           ) : (

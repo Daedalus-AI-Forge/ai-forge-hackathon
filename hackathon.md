@@ -2,7 +2,7 @@
 
 - **Project:** Wishwell
 - **Event:** YC Consumer Mobile Hack 2026-11-15
-- **What it does:** Toss a wish into the well; friends pass it on with vouches, ripple by ripple, until it reaches the right person
+- **What it does:** Toss a coin into the well; your wish sails as a paper boat that friends push on with vouches, hop by hop, until it reaches the right person
 - **Live app:** not deployed
 - **Repo:** private
 - **Frontend:** not deployed
@@ -206,3 +206,24 @@ Pool sets on focus, next to its status-bar switch); the status-bar scroll strip 
 the loading screen are night too. Other tabs keep the light glass. Typecheck, 229
 tests and ESLint (no new errors) pass; checked in iPhone-sized Chrome, including
 switching tabs back and forth.
+
+### 2026-11-15 - working tree — World tab: the wish network as a globe, polaroid endings
+The network moved out of Me into its own night "World" tab (second in the tab bar).
+It is drawn as a rotating globe: you face the camera, each step away sits farther
+round the sphere and people not yet connected wait on the far side, seen faintly
+through the glass. Placement is by relationship distance, not geography; the live
+team network is almost all Bay Area, so real positions would collapse into one dot.
+Drag turns it, tapping a person turns them to the front and lights the path back to
+you, and wishes that came true run across it as red threads. A short intro spin and
+a gentle sway respect Reduce Motion. Search, private notes with Forget and the coach
+card came along unchanged; Me keeps a link card. New `chains.mine` query (bounded:
+15 candidates per role, 12 chains) returns wishes that came true through the caller (wisher, someone
+who pushed the winning branch, or the finder) with the final photo; the World tab
+shows them as a polaroid strip, each opening `/chain/[wishId]` with the photo, the
+finder's words and the real route on a small globe. Coin and boat endings show the
+same polaroid. Photo order: `wish.photoUrl`, then the finder's proof photo; the
+meeting-backend branch's approved `meetingPhoto` should slot in first
+(`convex/chains.ts` `chainPhotoUrl`). The seed adds a gold chain through Mia (Yui ->
+Kenji -> Mia -> Priya) using the bundled drum-meet photo (`asset:` source). Typecheck,
+264 tests and ESLint (no new errors in touched code) pass; checked in iPhone-sized
+Chrome against a local backend. Not yet run on a device; nothing deployed.

@@ -8,12 +8,13 @@ export const KEYBOARD_DONE_ID = "keyboard-done";
 /**
  * Keyboard defaults for every TextInput wrapper. Caller props always win.
  * - single-line: return key "done" that blurs and submits (callers' onSubmitEditing still fires)
- * - iOS: a "Done" bar above the keyboard, so multiline and phone/number pads can always close it
+ * - iOS: a "Done" bar above the keyboard, so multiline and phone/number pads can always close it,
+ *   and the dark keyboard, to sit on the night palette
  */
 export function keyboardInputProps(props: TextInputProps): TextInputProps {
   return {
     ...(props.multiline ? null : { returnKeyType: "done", submitBehavior: "blurAndSubmit" }),
-    ...(Platform.OS === "ios" ? { inputAccessoryViewID: KEYBOARD_DONE_ID } : null),
+    ...(Platform.OS === "ios" ? { inputAccessoryViewID: KEYBOARD_DONE_ID, keyboardAppearance: "dark" } : null),
     ...props,
   };
 }
@@ -45,9 +46,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: "rgba(246,246,248,0.97)",
+    backgroundColor: "rgba(20,38,44,0.97)",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: lv.separator,
   },
-  done: { fontSize: 17, fontWeight: "600", color: lv.thread },
+  done: { fontSize: 17, fontWeight: "600", color: lv.tint },
 });

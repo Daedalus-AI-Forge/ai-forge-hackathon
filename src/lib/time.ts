@@ -31,10 +31,13 @@ export function ordinal(n: number) {
   return `${n}${suffix}`;
 }
 
-export function rippleLine(ripples: number, holding: number, expiresAt: number, now: number) {
-  const left = timeLeft(expiresAt, now);
-  const first = ripples === 0 ? "In the well" : `${ordinal(ripples)} ripple`;
-  return `${first} · ${holding} holding it · ${left}`;
+/** How far a boat has come, the one way the UI counts it: "Just set sail", "1 hop", "2 hops". */
+export function hopCount(hops: number) {
+  return hops === 0 ? "Just set sail" : `${hops} hop${hops === 1 ? "" : "s"}`;
+}
+
+export function hopLine(hops: number, holding: number, expiresAt: number, now: number) {
+  return `${hopCount(hops)} · ${holding} holding it · ${timeLeft(expiresAt, now)}`;
 }
 
 /** Start of the next UTC day: today's boat is keyed by the UTC date, so it rolls over here. */

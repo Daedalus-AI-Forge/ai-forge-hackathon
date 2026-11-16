@@ -2,7 +2,7 @@
 
 export type ContactKind = "phone" | "email";
 
-export const CONTACT_REQUIRED = "Leave a phone number or email so we can tell you when your wish lands";
+export const CONTACT_REQUIRED = "Leave a phone number or email so we can tell you when your boat lands";
 
 /** Basic client-side format check; the server normalizes and dedupes. */
 export function validateContact(kind: ContactKind, raw: string): { ok: true; value: string } | { ok: false; error: string } {

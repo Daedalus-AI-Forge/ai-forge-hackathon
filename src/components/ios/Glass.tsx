@@ -1,5 +1,5 @@
 // Frosted glass surfaces: real iOS materials on device, CSS backdrop-filter on the web,
-// translucent white where neither exists (Android, or a dev client built without expo-blur).
+// translucent night where neither exists (Android, or a dev client built without expo-blur).
 import { BlurView, type BlurTint } from "expo-blur";
 import { GlassView } from "expo-glass-effect";
 import type { ReactNode } from "react";
@@ -31,38 +31,40 @@ type Material = {
   fallback: string;
 };
 
+// Every material is a night glass now (the whole app sits on the night garden); the variants differ
+// in how much of the backdrop shows through. `dark` is the pool's original card glass.
 const MATERIALS: Record<GlassVariant, Material> = {
   regular: {
-    tint: "systemThinMaterialLight",
+    tint: "systemMaterialDark",
     intensity: 80,
-    overlay: "rgba(255,255,255,0.34)",
-    web: "rgba(255,255,255,0.58)",
-    webFilter: "blur(28px) saturate(180%)",
-    fallback: "rgba(255,255,255,0.86)",
+    overlay: "rgba(18,36,42,0.34)",
+    web: "rgba(20,38,44,0.66)",
+    webFilter: "blur(28px) saturate(160%)",
+    fallback: "rgba(20,40,46,0.92)",
   },
   thin: {
-    tint: "systemUltraThinMaterialLight",
+    tint: "systemUltraThinMaterialDark",
     intensity: 70,
-    overlay: "rgba(255,255,255,0.14)",
-    web: "rgba(255,255,255,0.40)",
-    webFilter: "blur(22px) saturate(170%)",
-    fallback: "rgba(255,255,255,0.72)",
+    overlay: "rgba(18,36,42,0.16)",
+    web: "rgba(20,38,44,0.44)",
+    webFilter: "blur(22px) saturate(150%)",
+    fallback: "rgba(20,40,46,0.8)",
   },
   thick: {
-    tint: "systemMaterialLight",
+    tint: "systemThickMaterialDark",
     intensity: 90,
-    overlay: "rgba(255,255,255,0.5)",
-    web: "rgba(255,255,255,0.76)",
-    webFilter: "blur(30px) saturate(180%)",
-    fallback: "rgba(255,255,255,0.93)",
+    overlay: "rgba(16,32,38,0.48)",
+    web: "rgba(16,32,38,0.8)",
+    webFilter: "blur(30px) saturate(160%)",
+    fallback: "rgba(16,34,40,0.96)",
   },
   chrome: {
-    tint: "systemChromeMaterialLight",
+    tint: "systemChromeMaterialDark",
     intensity: 90,
-    overlay: "rgba(255,255,255,0.2)",
-    web: "rgba(250,250,252,0.62)",
-    webFilter: "blur(24px) saturate(190%)",
-    fallback: "rgba(250,250,252,0.94)",
+    overlay: "rgba(14,30,36,0.3)",
+    web: "rgba(14,30,36,0.72)",
+    webFilter: "blur(24px) saturate(170%)",
+    fallback: "rgba(14,30,36,0.95)",
   },
   dark: {
     tint: "systemThickMaterialDark",
@@ -75,10 +77,10 @@ const MATERIALS: Record<GlassVariant, Material> = {
 };
 
 const FRAME: Record<GlassVariant, ViewStyle> = {
-  regular: { borderColor: "rgba(255,255,255,0.75)", boxShadow: shadows.card },
-  thin: { borderColor: "rgba(255,255,255,0.6)", boxShadow: shadows.card },
-  thick: { borderColor: "rgba(255,255,255,0.8)", boxShadow: shadows.card },
-  chrome: { borderColor: "rgba(255,255,255,0.65)", boxShadow: shadows.float },
+  regular: { borderColor: "rgba(255,255,255,0.14)", boxShadow: shadows.card },
+  thin: { borderColor: "rgba(255,255,255,0.12)", boxShadow: shadows.card },
+  thick: { borderColor: "rgba(255,255,255,0.14)", boxShadow: shadows.card },
+  chrome: { borderColor: "rgba(255,255,255,0.16)", boxShadow: shadows.float },
   dark: { borderColor: "rgba(255,255,255,0.12)", boxShadow: shadows.dark },
 };
 
@@ -96,7 +98,7 @@ export function GlassFill({ variant = "regular", radius = 0, liquid = true }: { 
     return <View style={[fill, web]} />;
   }
   if (variant === "chrome" && liquid && canLiquidGlass) {
-    return <GlassView glassEffectStyle="regular" colorScheme="light" style={fill} />;
+    return <GlassView glassEffectStyle="regular" colorScheme="dark" style={fill} />;
   }
   if (canBlur) {
     return (
@@ -183,6 +185,6 @@ const styles = StyleSheet.create({
   frame: { overflow: "hidden", borderWidth: StyleSheet.hairlineWidth },
   card: { padding: layout.cardPadding, gap: layout.stackGap },
   pressed: { transform: [{ scale: 0.98 }] },
-  pressWash: { backgroundColor: "rgba(0,0,0,0.04)", pointerEvents: "none" },
+  pressWash: { backgroundColor: "rgba(255,255,255,0.06)", pointerEvents: "none" },
   pressWashDark: { backgroundColor: "rgba(255,255,255,0.06)" },
 });

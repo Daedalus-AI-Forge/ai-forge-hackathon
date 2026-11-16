@@ -10,7 +10,7 @@ import { Backdrop, Glass } from "@/components/ios";
 import { DButton } from "@/components/lv/passon/kit";
 import { Avatar } from "@/components/ui";
 import { AUTH_ENABLED } from "@/lib/authFlag";
-import { lv, lvImages, type } from "@/theme/tokens";
+import { lv, lvImages, night, type } from "@/theme/tokens";
 
 const useNativeDriver = Platform.OS !== "web";
 
@@ -18,7 +18,7 @@ const ONBOARDED_KEY = "wishwell.onboarded";
 
 const BANK = [
   { name: "Amy", color: lv.thread },
-  { name: "Ben", color: lv.primary },
+  { name: "Ben", color: lv.water },
   { name: "Priya", color: lv.gold },
   { name: "Sam", color: "#8E8E93" },
 ];
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
-  title: { ...type.largeTitle, color: lv.fg, textAlign: "center" },
+  title: { ...type.largeTitle, fontFamily: night.serif, fontWeight: "400", color: lv.fg, textAlign: "center" },
   sub: { ...type.callout, color: lv.mutedFg, textAlign: "center", maxWidth: 320, marginTop: 4 },
   scene: { width: "100%", paddingVertical: 28 },
   rim: { padding: 6 },

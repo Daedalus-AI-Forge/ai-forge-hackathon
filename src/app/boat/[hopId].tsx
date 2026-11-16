@@ -1,12 +1,14 @@
 import { useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Share, StyleSheet, Text, View } from "react-native";
+import { Share, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { BackButton, GlassCard, Icon, LargeTitle, NavBar, Screen, SectionHeader } from "@/components/ios";
 import { DAvatar, DButton } from "@/components/lv/passon/kit";
+import { photoNames } from "@/components/lv/world/chainText";
+import { Polaroid, tiltFor } from "@/components/lv/world/Polaroid";
 import { useMe } from "@/lib/device";
-import { lv, shadows, type } from "@/theme/tokens";
+import { layout, lv, type } from "@/theme/tokens";
 
 import type { VoyageCard } from "@/components/lv/voyages/voyageData";
 
@@ -22,6 +24,8 @@ export default function BoatDetail() {
   const voyages = useQuery(api.pool.voyages, deviceId ? { deviceId } : "skip");
   const card = voyages?.find((v) => v.hopId === hopId);
   const page = useQuery(api.hops.page, hopId ? { hopId } : "skip");
+  const chains = useQuery(api.chains.mine, deviceId ? { deviceId } : "skip");
+  const { width } = useWindowDimensions();
 
   const nav = (
     <NavBar
@@ -46,6 +50,7 @@ export default function BoatDetail() {
   }
 
   const found = card.found && (card.status === "landed" || card.status === "granted") ? card.found : null;
+  const endChain = chains?.find((c) => c.wishId === card.wishId);
   const source =
     card.source === "daily"
       ? `Today's boat · ${dateLabel(card.pushedAt)}`
@@ -60,7 +65,7 @@ export default function BoatDetail() {
 
   const chain = [
     ...page.chain.map((h, i) => ({ name: h.name, color: h.avatar, prev: i > 0 ? page.chain[i - 1]!.name : null, vouch: h.vouch })),
-    { name: page.hop.holderName, color: lv.primary, prev: null, vouch: null, me: true },
+    { name: page.hop.holderName, color: lv.water, prev: null, vouch: null, me: true },
   ];
 
   return (
@@ -115,14 +120,29 @@ export default function BoatDetail() {
       </GlassCard>
 
       {found ? (
-        <View testID="boat-ending" style={styles.polaroid}>
-          <Text style={styles.polaroidName}>
-            {found.name}
-            {found.city ? ` · ${found.city}` : ""}
-          </Text>
-          <Text style={styles.polaroidStory}>“{found.story}”</Text>
-          <Text style={styles.polaroidApart}>{peopleApart(card.hops)}</Text>
-          <DButton title="Share" icon="share" testID="boat-share" onPress={() => void share(found)} />
+        <View testID="boat-ending" style={styles.ending}>
+          {/* The final photo on the chain, as a polaroid; tap it for the whole chain. */}
+          <Polaroid
+            testID="boat-polaroid"
+            photoUrl={endChain?.photoUrl ?? null}
+            caption={card.text}
+            sub={endChain ? photoNames(endChain).join(" & ") : found.name}
+            names={endChain?.people.map((p) => p.name) ?? [found.name]}
+            date={endChain?.endedAt ?? null}
+            width={Math.min(Math.min(width, layout.maxWidth) - layout.margin * 2 - 40, 320)}
+            tilt={tiltFor(card.wishId, 2)}
+            onPress={endChain ? () => router.push({ pathname: "/chain/[wishId]", params: { wishId: endChain.wishId } }) : undefined}
+            accessibilityLabel={endChain?.photoUrl ? `Photo from the end of the chain: ${card.text}` : "The photo from this chain is still developing"}
+          />
+          <GlassCard style={styles.endingCard}>
+            <Text style={styles.endingName}>
+              {found.name}
+              {found.city ? ` · ${found.city}` : ""}
+            </Text>
+            <Text style={styles.endingStory}>“{found.story}”</Text>
+            <Text style={styles.endingApart}>{peopleApart(card.hops)}</Text>
+            <DButton title="Share" icon="share" testID="boat-share" onPress={() => void share(found)} />
+          </GlassCard>
         </View>
       ) : (
         <GlassCard style={styles.locked}>
@@ -146,28 +166,17 @@ const styles = StyleSheet.create({
   timeline: { gap: 0 },
   row: { flexDirection: "row", gap: 12 },
   rail: { width: 28, alignItems: "center" },
-  dot: { width: 12, height: 12, borderRadius: 6, marginTop: 5, backgroundColor: lv.thread, borderWidth: 2, borderColor: "#fff" },
+  dot: { width: 12, height: 12, borderRadius: 6, marginTop: 5, backgroundColor: lv.thread, borderWidth: 2, borderColor: lv.card },
   stem: { width: 2, flex: 1, minHeight: 12, marginVertical: 3, borderRadius: 1, backgroundColor: lv.thread },
   rowGap: { paddingBottom: 16 },
   city: { flex: 1, ...type.body, fontWeight: "500", color: lv.fg },
   chainText: { flex: 1, ...type.subheadline, color: lv.fg, paddingTop: 4 },
   strong: { fontWeight: "600", color: lv.fg },
-  polaroid: {
-    width: "90%",
-    alignSelf: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderCurve: "continuous",
-    padding: 16,
-    paddingBottom: 22,
-    gap: 10,
-    marginTop: 8,
-    transform: [{ rotate: "-1.5deg" }],
-    boxShadow: shadows.float,
-  },
-  polaroidName: { ...type.title2, color: lv.fg },
-  polaroidStory: { ...type.subheadline, color: lv.fg },
-  polaroidApart: { ...type.footnote, color: lv.mutedFg },
+  ending: { alignItems: "center", gap: 20, marginTop: 12 },
+  endingCard: { alignSelf: "stretch", gap: 8 },
+  endingName: { ...type.title2, color: lv.fg },
+  endingStory: { ...type.subheadline, color: lv.fg },
+  endingApart: { ...type.footnote, color: lv.mutedFg },
   locked: { alignItems: "center", gap: 8, paddingVertical: 22 },
   lockedText: { ...type.subheadline, color: lv.mutedFg, textAlign: "center" },
 });

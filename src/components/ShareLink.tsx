@@ -44,7 +44,7 @@ export function ShareLink({
       ) : null}
       {message === null && !text ? (
         <View style={styles.drafting}>
-          <ActivityIndicator color={lv.thread} />
+          <ActivityIndicator color={lv.tint} />
           <Text style={styles.muted}>AI is drafting your message…</Text>
         </View>
       ) : (
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   drafting: { flexDirection: "row", gap: 8, alignItems: "center", paddingVertical: 8 },
   muted: { ...type.subheadline, color: lv.mutedFg },
   linkWell: { borderRadius: lv.radiusSm, borderCurve: "continuous", backgroundColor: lv.fill, paddingHorizontal: 12, paddingVertical: 10 },
-  link: { fontFamily: lv.font.mono, fontSize: 13, color: lv.thread },
+  link: { fontFamily: lv.font.mono, fontSize: 13, color: lv.tint },
   row: { flexDirection: "row", gap: 8 },
   btn: { flex: 1, paddingHorizontal: 8 },
   note: { ...type.footnote, color: lv.mutedFg },

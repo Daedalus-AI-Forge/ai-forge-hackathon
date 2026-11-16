@@ -1,4 +1,4 @@
-import { countdown } from "../../../lib/time";
+import { countdown, hopCount } from "../../../lib/time";
 
 /** Length of the dive from the fountain into the pool (the prototype's 750 ms). */
 export const DIVE_MS = 750;
@@ -51,13 +51,12 @@ export type WishLike = {
   expiresAt: number;
 };
 
-/** The fountain's "your wish" card: the newest traveling wish, its ripple and time left. */
+/** The fountain's "your wish" card: the newest traveling wish, how many hops it has made, and time left. */
 export function wishLine(mine: readonly WishLike[] | undefined, now: number) {
   const w = mine?.find((x) => x.status === "traveling");
   if (!w) return null;
-  const where = w.ripples > 0 ? `Ripple ${w.ripples}` : "In the well";
   return {
     text: w.text,
-    meta: `${where} · ${countdown(w.expiresAt, now)} left`,
+    meta: `${hopCount(w.ripples)} · ${countdown(w.expiresAt, now)} left`,
   };
 }

@@ -77,9 +77,9 @@ export function CoachPanel({
 
   return (
     <LvCard testID="ask-the-well">
-      <Eyebrow color={lv.thread}>✦ Suggested by AI</Eyebrow>
+      <Eyebrow color={lv.tint}>✦ Suggested by AI</Eyebrow>
       {readiness === undefined ? (
-        <ActivityIndicator color={lv.thread} />
+        <ActivityIndicator color={lv.tint} />
       ) : ready ? (
         <View testID="toss-coach" style={{ gap: 10 }}>
           {result ? (
@@ -116,7 +116,7 @@ export function CoachPanel({
             </>
           ) : (
             <>
-              <Text style={s.hint}>The well knows who you've passed wishes to. Ask it who should get this one first.</Text>
+              <Text style={s.hint}>The well knows who you’ve pushed boats to. Ask it who should get this one first.</Text>
               <LvButton
                 testID="ask-the-well-button"
                 compact
@@ -164,6 +164,6 @@ const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6, minHeight: 52 },
   name: { ...type.subheadline, fontWeight: "600", color: lv.fg },
   why: { ...type.caption1, color: lv.mutedFg, marginTop: 2 },
-  add: { ...type.subheadline, fontWeight: "600", color: lv.thread },
+  add: { ...type.subheadline, fontWeight: "600", color: lv.tint },
   err: { ...type.footnote, color: lv.destructive },
 });

@@ -65,7 +65,7 @@ export function ThreadMap({
       {width > 0 ? (
         <>
           <Image
-            source={lvImages.worldMap}
+            source={lvImages.worldMapNight}
             style={{ position: "absolute", left: ox, top: oy, width: 1000 * scale, height: 500 * scale }}
             resizeMode="stretch"
           />
@@ -112,7 +112,7 @@ export function ThreadMap({
 }
 
 const styles = StyleSheet.create({
-  box: { overflow: "hidden", borderCurve: "continuous", backgroundColor: "#E9E6E1", width: "100%" },
+  box: { overflow: "hidden", borderCurve: "continuous", backgroundColor: lv.muted, width: "100%" },
   label: {
     position: "absolute",
     width: 20,

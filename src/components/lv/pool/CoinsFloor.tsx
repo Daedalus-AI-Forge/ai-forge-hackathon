@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "@/components/ios";
 import { CopperCoin } from "@/components/lv/pool/NightPool";
-import { timeLeft, useNow } from "@/lib/time";
+import { hopCount, timeLeft, useNow } from "@/lib/time";
 import { night, type } from "@/theme/tokens";
 
 export type PoolCoin = {
@@ -28,7 +28,7 @@ export function CoinsFloor({ coins }: { coins: PoolCoin[] }) {
               ? "Granted"
               : c.status === "found"
                 ? "Someone said that's me"
-                : `${c.ripples} hops · ${timeLeft(c.expiresAt, now)}`;
+                : `${hopCount(c.ripples)} · ${timeLeft(c.expiresAt, now)}`;
           return (
             <Pressable
               key={c._id}

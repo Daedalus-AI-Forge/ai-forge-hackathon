@@ -1,15 +1,17 @@
 import { useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { BackButton, GlassCard, LargeTitle, NavBar, Screen, SectionHeader } from "@/components/ios";
 import { DAvatar, DTag } from "@/components/lv/passon/kit";
 import { ThreadMap } from "@/components/lv/threads/ThreadMap";
 import { STATUS_LABEL, TIER_LABEL, actionLabel, badgesFor, totalKm } from "@/components/lv/threads/threadData";
+import { photoNames } from "@/components/lv/world/chainText";
+import { Polaroid, tiltFor } from "@/components/lv/world/Polaroid";
 import { useMe } from "@/lib/device";
-import { countdown, useNow } from "@/lib/time";
-import { lv, shadows, type } from "@/theme/tokens";
+import { countdown, hopCount, useNow } from "@/lib/time";
+import { layout, lv, type } from "@/theme/tokens";
 
 const TIER_BG = { gold: lv.gold, silver: lv.silver, bronze: lv.bronze, red: lv.accent } as const;
 const INSET = 8; // map inset inside the card; its radius stays concentric
@@ -22,6 +24,9 @@ export default function ThreadDetail() {
   const wishes = useQuery(api.wishes.mine, deviceId ? { deviceId } : "skip");
   const now = useNow(1000);
   const w = wishes?.find((x) => x._id === id);
+  const chains = useQuery(api.chains.mine, deviceId ? { deviceId } : "skip");
+  const endChain = chains?.find((c) => c.wishId === id);
+  const { width } = useWindowDimensions();
 
   const nav = (
     <NavBar
@@ -87,21 +92,31 @@ export default function ThreadDetail() {
         </GlassCard>
       ) : null}
 
-      {w.status === "granted" ? (
-        <View testID="thread-ending" style={styles.polaroid}>
-          <View style={[styles.tierPill, { backgroundColor: w.tier ? TIER_BG[w.tier] : lv.muted }]}>
-            <Text style={styles.tierText}>
-              {w.tier ? TIER_LABEL[w.tier] : "Wish granted"} · {w.ripples} ripples
-            </Text>
-          </View>
-          <ThreadMap holders={w.holders} compact radius={6} />
-          {badges.length ? (
-            <View style={styles.badges}>
-              {badges.map((b) => (
-                <DTag key={b} label={b} tone="neutral" />
-              ))}
+      {endChain ? (
+        <View testID="thread-ending" style={styles.ending}>
+          {/* The final photo on the chain, as a polaroid; tap it for the whole chain. */}
+          <Polaroid
+            testID="thread-polaroid"
+            photoUrl={endChain.photoUrl}
+            caption={w.text}
+            sub={photoNames(endChain).join(" & ")}
+            names={endChain.people.map((p) => p.name)}
+            date={endChain.endedAt}
+            width={Math.min(Math.min(width, layout.maxWidth) - layout.margin * 2 - 40, 320)}
+            tilt={tiltFor(endChain.wishId, 2)}
+            onPress={() => router.push({ pathname: "/chain/[wishId]", params: { wishId: endChain.wishId } })}
+            accessibilityLabel={endChain.photoUrl ? `Photo from the end of your wish's chain: ${w.text}` : "The photo from this chain is still developing"}
+          />
+          <View style={styles.badges}>
+            <View style={[styles.tierPill, { backgroundColor: w.tier ? TIER_BG[w.tier] : lv.muted }]}>
+              <Text style={[styles.tierText, w.tier && w.tier !== "red" ? styles.tierTextOnLight : null]}>
+                {w.tier ? TIER_LABEL[w.tier] : w.status === "granted" ? "Wish granted" : "Found"} · {hopCount(w.ripples)}
+              </Text>
             </View>
-          ) : null}
+            {badges.map((b) => (
+              <DTag key={b} label={b} tone="neutral" />
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -155,21 +170,11 @@ const styles = StyleSheet.create({
   center: { alignItems: "center" },
   centerText: { textAlign: "center" },
   cardTitle: { ...type.title3, color: lv.fg },
-  polaroid: {
-    width: "90%",
-    alignSelf: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderCurve: "continuous",
-    padding: 12,
-    paddingBottom: 20,
-    gap: 12,
-    transform: [{ rotate: "-1.5deg" }],
-    boxShadow: shadows.float,
-  },
+  ending: { alignItems: "center", gap: 18, marginTop: 8 },
   tierPill: { alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 12, height: 26, justifyContent: "center" },
   tierText: { ...type.caption1, fontWeight: "600", color: lv.fg },
-  badges: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tierTextOnLight: { color: lv.onLight },
+  badges: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6 },
   timeline: { gap: 0 },
   row: { flexDirection: "row", gap: 12 },
   rail: { width: 28, alignItems: "center" },

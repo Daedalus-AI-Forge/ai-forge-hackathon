@@ -58,7 +58,7 @@ export default function RevylAuth() {
           {error}
         </Text>
       ) : (
-        <ActivityIndicator color={lv.thread} />
+        <ActivityIndicator color={lv.tint} />
       )}
     </CenterScreen>
   );

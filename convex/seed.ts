@@ -144,7 +144,7 @@ export const run = internalMutation({
       vouch: "Amy is my college roommate, known her 10 years, super reliable.",
       tags: ["reliable", "drums"],
       intro: "I've drummed in a garage band for 8 years and live 10 minutes from Louise!",
-      message: "Ben! Louise in SF wants a drum buddy. 2 ripples in, 40h left. Is it you?",
+      message: "Ben! Louise in SF wants a drum buddy. 2 hops in, 40h left. Is it you?",
       hoursAgo: 66,
     });
     const oliverHop = await hop(drums, "oliver", {
@@ -208,7 +208,7 @@ export const run = internalMutation({
       parent: hannahHop,
       depth: 2,
       tags: ["travel", "adventurous"],
-      message: "A wish just landed with you, Mia: Oliver wants someone who has been to Antarctica. 2 ripples in, 1h left!",
+      message: "A wish just landed with you, Mia: Oliver wants someone who has been to Antarctica. 2 hops in, 1h left!",
     });
     const rajHop = await hop(antarctica, "raj", {
       depth: 1,
@@ -228,6 +228,49 @@ export const run = internalMutation({
       hoursAgo: 12,
     });
     await hop(antarctica, "lin", { parent: marcusHop, depth: 3, tags: ["polar", "photography"] });
+
+    // 3b. Granted chain that passed through Mia (the demo profile): Tokyo -> Tokyo -> SF -> SF.
+    // Her "Wishes that came true" polaroid on the World tab comes from this one; `asset:` points
+    // at a photo bundled with the app (src/components/lv/world/Polaroid.tsx).
+    const jam = await ctx.db.insert("wishes", {
+      creatorId: users.yui.id,
+      type: "do_together",
+      mode: "serious",
+      text: "Someone to jam on drums with while I'm in San Francisco. I DJ, but I've always wanted to play live.",
+      status: "granted",
+      expiresAt: now - 3 * 24 * HOUR,
+      photoUrl: "asset:drum-meet",
+      metInPerson: true,
+      tier: "gold",
+    });
+    const kenjiJamHop = await hop(jam, "kenji", {
+      depth: 1,
+      action: "pass",
+      aboutKey: "yui",
+      vouch: "Yui DJs at a tiny bar in Shimokitazawa and has the best taste of anyone I know.",
+      tags: ["music", "sf"],
+      hoursAgo: 120,
+    });
+    const miaJamHop = await hop(jam, "me", {
+      parent: kenjiJamHop,
+      depth: 2,
+      action: "pass",
+      aboutKey: "kenji",
+      vouch: "Kenji roasts the best coffee in Nakameguro and never stops exploring.",
+      tags: ["music", "drums"],
+      hoursAgo: 110,
+    });
+    const priyaJamHop = await hop(jam, "priya", {
+      parent: miaJamHop,
+      depth: 3,
+      action: "its_me",
+      aboutKey: "me",
+      vouch: "Mia is my co-working buddy, known her 3 years, always says yes to an adventure.",
+      tags: ["drums", "sf"],
+      intro: "I play at a Mission jam night every Thursday and I have spare sticks. Come play!",
+      hoursAgo: 100,
+    });
+    await ctx.db.patch("wishes", jam, { winningHopId: priyaJamHop });
 
     // 4. Mia's ego graph (docs/api/graph-coach.md): 12 people, 23 edges, oldest first so
     // `_creationTime` follows insertion order. Two older wishes of hers, yesterday's daily

@@ -221,14 +221,14 @@ export default function Toss() {
       {step === "share" ? (
         <>
           <View style={styles.header}>
-            <Eyebrow color={lv.thread}>Your coin is live</Eyebrow>
+            <Eyebrow color={lv.tint}>Your coin is live</Eyebrow>
             <Text style={styles.h1}>Plop! Your coin is in the pool.</Text>
           </View>
           <Well size={200} />
           <View>
             <View style={styles.orb} />
             <Glass variant="dark" radius={30} style={styles.prophecy}>
-              <Text style={styles.prophecyText}>It might ripple toward {typeInfo.label}.</Text>
+              <Text style={styles.prophecyText}>It might drift toward {typeInfo.label}.</Text>
               <Text style={styles.prophecySub}>Send each person their own link. Every link carries the trust chain forward.</Text>
             </Glass>
           </View>

@@ -4,9 +4,10 @@ import { Platform, Share, StyleSheet, Switch, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { AccountCard } from "@/components/AccountCard";
-import { GlassCard, Screen, SectionHeader } from "@/components/ios";
-import { LvAvatar } from "@/components/lv/me/EgoGraph";
-import { MeNetwork } from "@/components/lv/me/MeNetwork";
+import { useRouter } from "expo-router";
+
+import { Glass, GlassCard, Icon, Screen, SectionHeader } from "@/components/ios";
+import { LvAvatar } from "@/components/lv/me/LvAvatar";
 import { DButton, DCard, DField } from "@/components/lv/passon/kit";
 import { copyLink } from "@/lib/links";
 import { AUTH_ENABLED } from "@/lib/authFlag";
@@ -16,6 +17,7 @@ import { lv, type } from "@/theme/tokens";
 /** Me: how friends see me, my network map, coins & boat progress, privacy, profile. */
 export default function Me() {
   const { deviceId, user } = useMe();
+  const router = useRouter();
   const updateProfile = useMutation(api.users.updateProfile);
   const setShowInLogs = useMutation(api.pool.setShowInLogs);
   const claimDemo = useMutation(api.users.claimDemo);
@@ -115,7 +117,18 @@ export default function Me() {
         {shareNote ? <Text style={[styles.note, styles.inset]}>{shareNote}</Text> : null}
       </View>
 
-      {deviceId ? <MeNetwork deviceId={deviceId} /> : null}
+      <Glass testID="me-open-world" accessibilityLabel="Open your wish network on the World tab" onPress={() => router.push("/world")} style={styles.worldLink}>
+        <View style={styles.worldIcon}>
+          <Icon name="worldFill" size={20} color={lv.tint} />
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.rowLabel}>Your wish network</Text>
+          <Text style={styles.note}>
+            {coach?.edgeCount ?? 0} connections · see how you’re tied to everyone, and the wishes that came true
+          </Text>
+        </View>
+        <Icon name="forward" size={13} color={lv.mutedFg} />
+      </Glass>
 
       <View style={styles.group}>
         <SectionHeader title="Privacy" />
@@ -131,7 +144,7 @@ export default function Me() {
               onValueChange={(value) => {
                 if (deviceId) void setShowInLogs({ deviceId, value });
               }}
-              trackColor={{ true: lv.thread, false: lv.fillStrong }}
+              trackColor={{ true: lv.tint, false: lv.fillStrong }}
               ios_backgroundColor={lv.fillStrong}
             />
           </View>
@@ -191,6 +204,8 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
   tag: { borderRadius: 999, paddingHorizontal: 10, height: 24, justifyContent: "center", backgroundColor: lv.fill },
   tagText: { ...type.caption1, fontWeight: "500", color: lv.fg },
+  worldLink: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
+  worldIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(233,199,102,0.14)" },
   switchRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   switchText: { flex: 1, gap: 2 },
   rowLabel: { ...type.body, color: lv.fg },

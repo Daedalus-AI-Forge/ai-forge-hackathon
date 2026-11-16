@@ -3,7 +3,7 @@ import { doneTitle, endingShareText, progressDots, pushMoreLine, routeChain, val
 
 describe("validateContact", () => {
   it("requires a value", () => {
-    expect(validateContact("phone", "  ")).toEqual({ ok: false, error: "Leave a phone number or email so we can tell you when your wish lands" });
+    expect(validateContact("phone", "  ")).toEqual({ ok: false, error: "Leave a phone number or email so we can tell you when your boat lands" });
   });
   it("accepts phone with spaces and plus", () => {
     expect(validateContact("phone", "+1 415 555 0100")).toEqual({ ok: true, value: "+14155550100" });

@@ -29,7 +29,7 @@ const ios = Platform.OS === "ios";
 const modalHeader = {
   presentation: "modal",
   headerTransparent: ios,
-  headerBlurEffect: ios ? "systemChromeMaterialLight" : undefined,
+  headerBlurEffect: ios ? "systemChromeMaterialDark" : undefined,
   headerStyle: ios ? undefined : { backgroundColor: lv.bg },
   headerTitleStyle: { fontWeight: "600", color: lv.fg },
 } as const;
@@ -50,7 +50,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: lv.bg },
           headerShadowVisible: false,
           headerStyle: { backgroundColor: lv.bg },
-          headerTintColor: lv.thread,
+          headerTintColor: lv.tint,
           headerTitleStyle: { color: lv.fg },
         }}
       >
@@ -61,16 +61,15 @@ export default function RootLayout() {
         <Stack.Screen name="toss" options={{ ...modalHeader, title: "Toss a coin" }} />
         <Stack.Screen name="sign-in" options={{ ...modalHeader, title: "Sign in" }} />
         <Stack.Screen name="revyl-auth" options={{ headerShown: false }} />
-        <Stack.Screen name="w/[hopId]" options={{ headerShown: false, title: "A wish for you" }} />
-        <Stack.Screen name="daily" options={{ headerShown: false, title: "Today's wish" }} />
+        <Stack.Screen name="w/[hopId]" options={{ headerShown: false, title: "A boat for you" }} />
       </Stack>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <KeyboardDoneBar />
     </Backend>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { ...type.largeTitle, color: lv.thread },
+  title: { ...type.largeTitle, color: lv.tint },
   body: { ...type.callout, color: lv.mutedFg, textAlign: "center" },
 });

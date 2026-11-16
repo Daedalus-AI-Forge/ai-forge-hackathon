@@ -19,9 +19,9 @@ import { keyboardInputProps } from "@/components/keyboard";
 import { lv, night, shadows, type } from "@/theme/tokens";
 
 /**
- * thread: brand red, filled (primary action) · ink: dark filled · ghost: iOS gray fill ·
- * tinted: red label on a red tint · plain: text only · glass: frosted capsule for floating over the backdrop ·
- * gold: the night pool's gold capsule.
+ * thread: the primary action, a glowing gold capsule (the same as the Well tab's) · ink: cream filled ·
+ * ghost: a faint light fill · tinted: gold label on a gold tint · plain: gold text only ·
+ * glass: frosted capsule for floating over the backdrop · gold: the pool's gold capsule (same as thread).
  */
 type Variant = "thread" | "ink" | "ghost" | "tinted" | "plain" | "glass" | "gold";
 type Size = "sm" | "md" | "lg";
@@ -30,19 +30,19 @@ type Size = "sm" | "md" | "lg";
 const HEIGHT: Record<Size, number> = { sm: 40, md: 48, lg: 54 };
 const FONT: Record<Size, number> = { sm: 15, md: 16, lg: 17 };
 const FG: Record<Variant, string> = {
-  thread: lv.threadFg,
+  thread: lv.tintFg,
   ink: lv.primaryFg,
   ghost: lv.fg,
-  tinted: lv.thread,
-  plain: lv.thread,
+  tinted: lv.tint,
+  plain: lv.tint,
   glass: lv.fg,
   gold: night.goldFg,
 };
 const BG: Record<Exclude<Variant, "glass">, ViewStyle> = {
-  thread: { backgroundColor: lv.thread },
+  thread: { backgroundColor: lv.tint },
   ink: { backgroundColor: lv.primary },
   ghost: { backgroundColor: lv.fill },
-  tinted: { backgroundColor: lv.threadTint },
+  tinted: { backgroundColor: lv.tintSoft },
   plain: { backgroundColor: "transparent" },
   gold: { backgroundColor: night.gold, boxShadow: "0px 4px 18px rgba(233,199,102,0.55)" },
 };
@@ -160,7 +160,7 @@ export function Sub({ children, style }: { children: ReactNode; style?: StylePro
 }
 
 /**
- * iOS text field: gray fill with a faint outline; a red ring while focused.
+ * iOS text field: faint light fill with a hairline outline; a gold ring while focused.
  * The wrapper never flexes by default: in a column it takes its content's height (a `flexBasis: 0`
  * wrapper collapses to 0px on react-native-web). Side by side in a row, pass `grow`
  * (or `containerStyle={{ flex: 1 }}`) so the fields share the row.
@@ -179,7 +179,7 @@ export function DField({
       {label ? <Text style={s.label}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={lv.tertiaryFg}
-        selectionColor={lv.thread}
+        selectionColor={lv.tint}
         accessibilityLabel={label}
         {...keyboardInputProps(props)}
         onFocus={(e) => {
@@ -236,7 +236,7 @@ type TagTone = "thread" | "threadSolid" | "gold" | "neutral" | "ink";
 const TAG: Record<TagTone, { bg: string; fg: string }> = {
   thread: { bg: lv.threadTint, fg: lv.thread },
   threadSolid: { bg: lv.thread, fg: lv.threadFg },
-  gold: { bg: lv.goldTint, fg: "#7A5A12" },
+  gold: { bg: lv.goldTint, fg: night.goldBright },
   neutral: { bg: lv.fill, fg: lv.mutedFg },
   ink: { bg: lv.fg, fg: lv.primaryFg },
 };
@@ -308,7 +308,7 @@ export const s = StyleSheet.create({
     outlineWidth: 0,
   },
   fieldMulti: { minHeight: 96, textAlignVertical: "top", paddingTop: 12 },
-  fieldFocused: { backgroundColor: "rgba(255,255,255,0.85)", borderColor: lv.thread },
+  fieldFocused: { backgroundColor: "rgba(255,255,255,0.12)", borderColor: lv.tint },
   fieldOff: { color: lv.mutedFg, backgroundColor: lv.fillStrong },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {

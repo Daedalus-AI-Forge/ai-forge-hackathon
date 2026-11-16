@@ -19,7 +19,7 @@ const BANDS = 24;
 export type FountainChallenge = { title: string; done: boolean } | null;
 
 type Props = {
-  /** 0 = standing at the fountain, 1 = dived (zoomed into the water). Driven by the Pool tab. */
+  /** 0 = standing at the fountain, 1 = dived (zoomed into the water). Driven by the Well tab. */
   zoom: Animated.Value;
   /** Opacity of the copy and buttons; fades out as the dive starts. */
   ui: Animated.Value;
@@ -37,9 +37,9 @@ type Props = {
 };
 
 /**
- * The Pool tab's first page, ported from Katie-Lan's prototype FountainScene: the night-garden
+ * The Well tab's first page, ported from Katie-Lan's prototype FountainScene: the night-garden
  * fountain seen from the front, gold sparkles and drifting motes, the Wishwell title, your wish in
- * flight, "Toss a wish", and today's challenge with its countdown. Diving zooms into the water.
+ * flight, "Toss a coin", and today's boat with its countdown. Diving zooms into the water.
  */
 export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishes, challenge, onToss, onChallenge }: Props) {
   const insets = useSafeAreaInsets();
@@ -143,13 +143,13 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
           <Pressable
             testID="fountain-toss"
             accessibilityRole="button"
-            accessibilityLabel="Toss a wish"
+            accessibilityLabel="Toss a coin"
             onPress={onToss}
             style={({ pressed }) => [styles.gold, pressed && styles.pressed]}
           >
             <View style={styles.goldSheen} />
             <Icon name="sparkles" size={20} color={night.goldFg} />
-            <Text style={styles.goldText}>Toss a wish</Text>
+            <Text style={styles.goldText}>Toss a coin</Text>
           </Pressable>
 
           <Glass
@@ -157,7 +157,7 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
             variant="dark"
             radius={20}
             onPress={onChallenge}
-            accessibilityLabel={challenge ? `Today's challenge: ${challenge.title}` : "Today's challenge"}
+            accessibilityLabel={challenge ? (challenge.done ? "Today's boat, pushed" : `Today's boat: ${challenge.title}`) : "Today's boat"}
             accessibilityHint="Dives into the pool and opens today's boat"
             style={styles.challenge}
           >
@@ -165,7 +165,7 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
               <Text style={styles.starGlyph}>{challenge?.done ? "✓" : "★"}</Text>
             </View>
             <View style={styles.challengeText}>
-              <Text style={styles.challengeLabel}>{challenge?.done ? "Today's challenge · done" : `Today's challenge · ${left}`}</Text>
+              <Text style={styles.challengeLabel}>{challenge?.done ? "Today's boat · pushed" : `Today's boat · ${left} left`}</Text>
               <Text style={styles.challengeTitle} numberOfLines={1}>
                 {challenge?.title ?? " "}
               </Text>

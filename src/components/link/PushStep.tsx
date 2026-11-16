@@ -172,7 +172,7 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
         <Text style={styles.title}>Send it to {name.trim()}</Text>
         {message === null ? (
           <View style={styles.row}>
-            <ActivityIndicator color={lv.thread} />
+            <ActivityIndicator color={lv.tint} />
             <Sub>Writing your message…</Sub>
           </View>
         ) : (
@@ -210,7 +210,7 @@ export function PushStep({ hopId, deviceId, onDone }: PushStepProps) {
   return (
     <DCard testID="push-step">
       <Eyebrow>Push it to one person</Eyebrow>
-      {hint ? <Text style={styles.hint}>{hint}</Text> : <ActivityIndicator color={lv.thread} />}
+      {hint ? <Text style={styles.hint}>{hint}</Text> : <ActivityIndicator color={lv.tint} />}
       <DField label="Their name" value={name} onChangeText={setName} placeholder="Ben" maxLength={60} testID="push-name" onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)} />
       <ContactSuggestions
         testID="contact-suggest-push"

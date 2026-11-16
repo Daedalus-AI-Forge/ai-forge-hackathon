@@ -264,7 +264,7 @@ export default function PassOn() {
                     testID="its-me-show"
                     value={showNameAndCity}
                     onValueChange={setShowNameAndCity}
-                    trackColor={{ true: lv.thread, false: lv.fillStrong }}
+                    trackColor={{ true: lv.tint, false: lv.fillStrong }}
                     ios_backgroundColor={lv.fillStrong}
                   />
                 </View>
@@ -631,6 +631,6 @@ const styles = StyleSheet.create({
   prophecySub: { ...type.subheadline, color: "rgba(255,255,255,0.75)" },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   progDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: lv.fillStrong },
-  progDotOn: { backgroundColor: lv.thread },
-  saved: { ...type.subheadline, color: lv.thread },
+  progDotOn: { backgroundColor: lv.tint },
+  saved: { ...type.subheadline, color: lv.tint },
 });

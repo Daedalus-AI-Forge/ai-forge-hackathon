@@ -64,6 +64,6 @@ const styles = StyleSheet.create({
   prophecy: { ...type.body, fontStyle: "italic", color: lv.fg },
   dots: { flexDirection: "row", gap: 8, paddingVertical: 4 },
   dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: lv.fillStrong },
-  dotOn: { backgroundColor: lv.thread },
+  dotOn: { backgroundColor: lv.tint },
   more: { ...type.headline, color: lv.fg },
 });

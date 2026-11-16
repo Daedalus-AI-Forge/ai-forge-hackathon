@@ -6,10 +6,9 @@ import { GlassCard } from "@/components/ios";
 import { DButton, DField, Eyebrow as KitEyebrow } from "@/components/lv/passon/kit";
 import { lv } from "@/theme/tokens";
 
-const TONES = ["#F1E2D3", "#DCE8DC", "#DCE3EE", "#F3DCD8", "#E6E0D2"];
 
 export function LvAvatar({ name, size = 36 }: { name: string; size?: number }) {
-  const bg = TONES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % TONES.length];
+  const bg = lv.tones[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % lv.tones.length];
   return (
     <View
       style={{

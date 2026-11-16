@@ -5,7 +5,7 @@ Wish: **"someone to jam on drums with in the Bay Area"** (mode *serious*, type *
 
 | Time | Phone | Say | Show |
 | --- | --- | --- | --- |
-| 0:00-0:15 | Darren | "The person you need is 2-3 friends away. You just can't see them." | **Pool home** (night-garden fountain): my boats drifting, live ripples. |
+| 0:00-0:15 | Darren | "The person you need is 2-3 friends away. You just can't see them." | **Well home** (night-garden fountain): my boats drifting, live ripples. |
 | 0:15-0:45 | Darren | "I make a wish. The coach reads *my own* graph, the reasons I gave when I passed boats before." | **Toss** → type the wish → AI polish → **AI coach** suggests Louise with evidence ("plays bass in a Mission garage band"). Prefilled picks → **Text all N** → Messages opens; *I* tap Send. |
 | 0:45-1:05 | Louise | "Louise opens it in the app, vouches for me, and passes it on." | Boat screen: wish, hops, time left → vouch for Darren → pass to Katie with a reason → share. |
 | 1:05-1:30 | Katie | "Katie doesn't need the app at all." | Link in **Safari**: Louise's vouch at the top → **claim your free wish** (writes one, AI polish) → push to Dazi → contact → done screen "Your wish has set sail". |
