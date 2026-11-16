@@ -74,3 +74,26 @@ export function smsHref(body: string, to: string | undefined, os: "ios" | "andro
   const recipient = to?.trim() ?? "";
   return `sms:${recipient}${os === "ios" ? "&" : "?"}body=${encodeURIComponent(body)}`;
 }
+
+/** One entry from the W3C Contact Picker (`navigator.contacts.select(["name", "tel"])`). */
+export type WebPickerContact = { name?: string[]; tel?: string[] };
+
+/**
+ * Turn a Contact Picker result into the picked name + one E.164 phone. Null when nothing usable
+ * was picked (cancelled, or an entry with neither a name nor a number).
+ */
+export function fromWebPicker(
+  entries: WebPickerContact[] | undefined | null,
+  defaultCountry = "1",
+): { name: string; phone: string | null } | null {
+  const c = entries?.[0];
+  if (!c) return null;
+  const name = (c.name ?? []).map((n) => n.trim()).find(Boolean) ?? "";
+  let phone: string | null = null;
+  for (const t of c.tel ?? []) {
+    phone = toE164(t, defaultCountry);
+    if (phone) break;
+  }
+  if (!name && !phone) return null;
+  return { name, phone };
+}

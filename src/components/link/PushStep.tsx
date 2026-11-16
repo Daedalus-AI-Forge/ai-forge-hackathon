@@ -1,4 +1,4 @@
-// First-screen pass-on card: name first (Contacts on native), then a tappable reason the AI suggests
+// First-screen pass-on card: name (+ phone on the web; Contacts picker where the platform has one), then a tappable reason the AI suggests
 // (or "Something else"), then one button that pushes the boat and opens Messages with the text ready.
 // The picked reason is the vouch the next person sees, so there is nothing else to write.
 import { useAction, useMutation } from "convex/react";
@@ -10,7 +10,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { DButton, DCard, DChips, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { ContactPickButton } from "@/components/ContactPickButton";
 import { ContactSuggestions } from "@/components/ContactSuggestions";
-import { phoneTail, smsHref } from "@/lib/contactPick";
+import { phoneTail, smsHref, toE164 } from "@/lib/contactPick";
 import { copyLink } from "@/lib/links";
 import { lv, type } from "@/theme/tokens";
 
@@ -44,8 +44,11 @@ export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps)
   const [hint, setHint] = useState<string | null>(null);
   const [reasons, setReasons] = useState<string[] | null>(null);
   const [name, setName] = useState("");
-  // Picked from Contacts (native only), kept in state: pre-fills the Messages recipient.
+  // Picked from Contacts (native), kept in state only: pre-fills the Messages recipient.
   const [phone, setPhone] = useState<string | null>(null);
+  // Web: the number as typed, AutoFilled, or picked (Contact Picker API). State only: it becomes the
+  // `sms:` recipient and is never sent to the server.
+  const [phoneInput, setPhoneInput] = useState("");
   const [nameFocused, setNameFocused] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
@@ -75,6 +78,8 @@ export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps)
   const first = name.trim().split(/\s+/)[0] ?? "";
   const reason = picked === OTHER ? custom.trim() : (picked ?? "");
   const text = canText();
+  const web = Platform.OS === "web";
+  const recipient = web ? toE164(phoneInput) : phone;
 
   async function onPass() {
     const to = name.trim();
@@ -97,7 +102,7 @@ export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps)
     // We only prepare the draft: the visitor reviews it in Messages and taps Send themselves.
     // If Messages can't open (or this is a desktop browser), the next screen keeps the message one tap away.
     try {
-      if (text) await Linking.openURL(smsHref(body, phone ?? undefined, isAndroid() ? "android" : "ios"));
+      if (text) await Linking.openURL(smsHref(body, recipient ?? undefined, isAndroid() ? "android" : "ios"));
       else await copyLink(body);
     } catch {
       // Handled on the next screen ("Didn't send it?").
@@ -123,6 +128,7 @@ export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps)
         placeholder="Maya"
         maxLength={60}
         testID="push-name"
+        {...(web ? { autoComplete: "name" as const } : null)}
         onFocus={() => setNameFocused(true)}
         onBlur={() => setNameFocused(false)}
       />
@@ -135,14 +141,29 @@ export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps)
           setPhone(p);
         }}
       />
+      {web ? (
+        <DField
+          label="Their phone (optional)"
+          value={phoneInput}
+          onChangeText={setPhoneInput}
+          placeholder="So Messages opens to them"
+          maxLength={24}
+          keyboardType="phone-pad"
+          inputMode="tel"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
+          testID="push-phone"
+        />
+      ) : null}
       <ContactPickButton
         testID="contact-pick-push"
         onPick={({ name: n, phone: p }) => {
           if (n) setName(n);
           setPhone(p);
+          if (web) setPhoneInput(p ?? "");
         }}
       />
-      {phone ? <Sub>Texting the number ending in {phoneTail(phone)}.</Sub> : null}
+      {!web && phone ? <Sub>Texting the number ending in {phoneTail(phone)}.</Sub> : null}
 
       {reasons ? (
         <DChips
@@ -187,7 +208,11 @@ export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps)
         testID="push-submit"
       />
       <Sub style={styles.note}>
-        {text ? "Messages opens with the text ready. You tap Send." : "We copy the message and link for you to paste."}
+        {!text
+          ? "We copy the message and link for you to paste."
+          : recipient
+            ? "Messages opens to them with the text ready. You tap Send."
+            : "Messages opens with the text ready. Choose who gets it, then tap Send."}
       </Sub>
     </DCard>
   );
