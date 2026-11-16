@@ -27,6 +27,8 @@ import type * as lib from "../lib.js";
 import type * as link from "../link.js";
 import type * as linkAi from "../linkAi.js";
 import type * as linkMetrics from "../linkMetrics.js";
+import type * as meetingUploadHttp from "../meetingUploadHttp.js";
+import type * as meetings from "../meetings.js";
 import type * as memory from "../memory.js";
 import type * as notify from "../notify.js";
 import type * as openai from "../openai.js";
@@ -67,6 +69,8 @@ declare const fullApi: ApiFromModules<{
   link: typeof link;
   linkAi: typeof linkAi;
   linkMetrics: typeof linkMetrics;
+  meetingUploadHttp: typeof meetingUploadHttp;
+  meetings: typeof meetings;
   memory: typeof memory;
   notify: typeof notify;
   openai: typeof openai;

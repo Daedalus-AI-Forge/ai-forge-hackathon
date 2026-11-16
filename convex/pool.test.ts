@@ -42,6 +42,10 @@ test("yesterday's daily boat shows up in today's voyage log with who found it", 
   const voyages = await t.query(api.pool.voyages, { deviceId: "dev_me" });
   expect(voyages).toHaveLength(1);
   expect(voyages[0]).toMatchObject({ source: "daily", status: "landed", hops: 2 });
+  await t.run(ctx => ctx.db.patch("wishes", voyages[0]!.wishId, { status: "granted" }));
+  expect(await t.query(api.pool.voyages, { deviceId: "dev_me" })).toMatchObject([
+    { source: "daily", status: "landed", found: { name: "Mia" } },
+  ]);
 });
 
 test("a finder who hides their name shows up as Someone", async () => {

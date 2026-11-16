@@ -95,9 +95,28 @@ export const voyageLog = query({
   },
 });
 
+const wishVoyageStatus = {
+  traveling: "drifting",
+  found: "landed",
+  granted: "granted",
+  faded: "faded",
+} as const;
+
 /** Boats I pushed, newest first, each with how far it drifted past me. Coins come from wishes.mine. */
 export const voyages = query({
   args: { deviceId: v.string() },
+  returns: v.array(v.object({
+    hopId: v.id("hops"),
+    wishId: v.id("wishes"),
+    text: v.string(),
+    source: v.union(v.literal("daily"), v.literal("friend")),
+    creatorName: v.string(),
+    pushedAt: v.number(),
+    hops: v.number(),
+    cities: v.array(v.union(v.string(), v.null())),
+    status: v.union(v.literal("drifting"), v.literal("landed"), v.literal("granted"), v.literal("faded")),
+    found: v.union(v.object({ name: v.string(), city: v.union(v.string(), v.null()), story: v.string() }), v.null()),
+  })),
   handler: async (ctx, { deviceId }) => {
     const user = await userByDevice(ctx, deviceId);
     if (!user) return [];
@@ -107,6 +126,12 @@ export const voyages = query({
       if (!wish) continue;
       const creator = await ctx.db.get("users", wish.creatorId);
       const { end, found, path } = endpointOf(await wishHops(ctx, wish._id), mine);
+      // Daily boats land when someone claims them. A real wish's state applies to every branch.
+      let status = wishVoyageStatus[wish.status];
+      if (wish.daily) {
+        if (found) status = "landed";
+        else if (wish.status === "found") status = "faded";
+      }
       cards.push({
         hopId: mine._id,
         wishId: wish._id,
@@ -116,13 +141,7 @@ export const voyages = query({
         pushedAt: mine.actedAt ?? mine._creationTime,
         hops: end.depth - mine.depth,
         cities: path.map((h) => h.city ?? null),
-        status: found
-          ? ("landed" as const)
-          : wish.status === "granted"
-            ? ("granted" as const)
-            : wish.status === "traveling"
-              ? ("drifting" as const)
-              : ("faded" as const),
+        status,
         found: foundCard(found),
       });
     }
