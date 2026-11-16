@@ -21,6 +21,38 @@ const CITIES: Record<string, LatLng> = {
   fremont: { lat: 37.55, lng: -121.99, country: "USA" },
   "san mateo": { lat: 37.56, lng: -122.32, country: "USA" },
   "redwood city": { lat: 37.49, lng: -122.24, country: "USA" },
+  "san francisco bay area": { lat: 37.77, lng: -122.42, country: "USA" },
+  "bay area": { lat: 37.77, lng: -122.42, country: "USA" },
+  soma: { lat: 37.78, lng: -122.4, country: "USA" },
+  mission: { lat: 37.76, lng: -122.42, country: "USA" },
+  "mission district": { lat: 37.76, lng: -122.42, country: "USA" },
+  sunset: { lat: 37.75, lng: -122.49, country: "USA" },
+  "south san francisco": { lat: 37.65, lng: -122.41, country: "USA" },
+  "daly city": { lat: 37.69, lng: -122.47, country: "USA" },
+  "east palo alto": { lat: 37.47, lng: -122.14, country: "USA" },
+  "menlo park": { lat: 37.45, lng: -122.18, country: "USA" },
+  stanford: { lat: 37.43, lng: -122.17, country: "USA" },
+  "los altos": { lat: 37.39, lng: -122.11, country: "USA" },
+  cupertino: { lat: 37.32, lng: -122.03, country: "USA" },
+  "santa clara": { lat: 37.35, lng: -121.95, country: "USA" },
+  milpitas: { lat: 37.43, lng: -121.9, country: "USA" },
+  burlingame: { lat: 37.58, lng: -122.35, country: "USA" },
+  millbrae: { lat: 37.6, lng: -122.39, country: "USA" },
+  "foster city": { lat: 37.56, lng: -122.27, country: "USA" },
+  "half moon bay": { lat: 37.46, lng: -122.43, country: "USA" },
+  alameda: { lat: 37.77, lng: -122.24, country: "USA" },
+  emeryville: { lat: 37.83, lng: -122.29, country: "USA" },
+  richmond: { lat: 37.94, lng: -122.35, country: "USA" },
+  hayward: { lat: 37.67, lng: -122.08, country: "USA" },
+  "walnut creek": { lat: 37.91, lng: -122.07, country: "USA" },
+  "san rafael": { lat: 37.97, lng: -122.53, country: "USA" },
+  sausalito: { lat: 37.86, lng: -122.49, country: "USA" },
+  "santa cruz": { lat: 36.97, lng: -122.03, country: "USA" },
+  sacramento: { lat: 38.58, lng: -121.49, country: "USA" },
+  "san diego": { lat: 32.72, lng: -117.16, country: "USA" },
+  portland: { lat: 45.52, lng: -122.68, country: "USA" },
+  "new york city": { lat: 40.71, lng: -74.0, country: "USA" },
+  la: { lat: 34.05, lng: -118.24, country: "USA" },
   "new york": { lat: 40.71, lng: -74.0, country: "USA" },
   nyc: { lat: 40.71, lng: -74.0, country: "USA" },
   "los angeles": { lat: 34.05, lng: -118.24, country: "USA" },
@@ -30,7 +62,7 @@ const CITIES: Record<string, LatLng> = {
   chicago: { lat: 41.88, lng: -87.63, country: "USA" },
   toronto: { lat: 43.65, lng: -79.38, country: "Canada" },
   "mexico city": { lat: 19.43, lng: -99.13, country: "Mexico" },
-  "são paulo": { lat: -23.55, lng: -46.63, country: "Brazil" },
+  "sao paulo": { lat: -23.55, lng: -46.63, country: "Brazil" },
   london: { lat: 51.5, lng: -0.12, country: "UK" },
   paris: { lat: 48.86, lng: 2.35, country: "France" },
   berlin: { lat: 52.52, lng: 13.4, country: "Germany" },
@@ -42,6 +74,7 @@ const CITIES: Record<string, LatLng> = {
   dubai: { lat: 25.2, lng: 55.27, country: "UAE" },
   mumbai: { lat: 19.08, lng: 72.88, country: "India" },
   bangalore: { lat: 12.97, lng: 77.59, country: "India" },
+  bengaluru: { lat: 12.97, lng: 77.59, country: "India" },
   singapore: { lat: 1.35, lng: 103.82, country: "Singapore" },
   "hong kong": { lat: 22.32, lng: 114.17, country: "China" },
   shanghai: { lat: 31.23, lng: 121.47, country: "China" },
@@ -53,9 +86,28 @@ const CITIES: Record<string, LatLng> = {
 };
 const FALLBACK: LatLng = CITIES["san francisco"]!;
 
+/** Lowercase, accents and punctuation dropped, whitespace collapsed, a leading "the" removed. */
+function cityKey(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9, ]+/g, " ").replace(/\s+/g, " ").trim().replace(/^the /, "");
+}
+
+/**
+ * A typed city to coordinates, forgiving about case, spacing, accents and suffixes: "mountain view, CA",
+ * "San Francisco, California, USA" and "SoMa, SF" all resolve (whole text first, then each comma part).
+ */
 export function cityOf(city: string | null | undefined): LatLng | null {
   if (!city) return null;
-  return CITIES[city.trim().toLowerCase()] ?? null;
+  const key = cityKey(city);
+  if (!key) return null;
+  const whole = CITIES[key.replace(/,/g, "").replace(/\s+/g, " ")];
+  if (whole) return whole;
+  for (const part of key.split(",")) {
+    const name = part.trim().replace(/^the /, "");
+    const hit = CITIES[name] ?? CITIES[name.replace(/ (ca|calif|california|usa|us)$/, "")];
+    if (hit) return hit;
+  }
+  return null;
 }
 
 /** The ordered path drawn on the map: one representative holder per depth (the wish travels outward). */

@@ -5,6 +5,7 @@ import {
   arcPoints, cameraFacing, fromLatLng, layoutGlobe, lerpCamera, nearestAt, project, reach, rotate, splitPath, THREAD_LOOK, threadKind,
 } from "./globeLayout";
 import { earthPaths, earthProjection } from "./earth";
+import { cityOf } from "../threads/threadData";
 
 function network(extra = 0): CommunityNetwork {
   const keys = ["me", "a", "b", "c", "d", "e", "isolated", ...Array.from({ length: extra }, (_, i) => `x${i}`)];
@@ -151,5 +152,44 @@ describe("threads and taps", () => {
 
   test("reach is the farthest connected step", () => {
     expect(reach(layoutGlobe(network()).distances)).toBe(2);
+  });
+});
+
+describe("the viewer is always on the globe", () => {
+  test("city lookup forgives case, spacing, accents and state/neighborhood suffixes", () => {
+    for (const c of ["Mountain View", "  mountain   VIEW ", "Mountain View, CA", "Palo Alto CA", "oakland, california, usa", "Berkeley"]) {
+      expect(cityOf(c), c).not.toBeNull();
+    }
+    expect(cityOf("SoMa, SF")).not.toBeNull();
+    expect(cityOf("the Mission, SF")).not.toBeNull();
+    expect(cityOf("Sao Paulo")).toEqual(cityOf("São Paulo"));
+    expect(cityOf("Nowhereville")).toBeNull();
+    expect(cityOf("")).toBeNull();
+  });
+
+  test("a viewer with no known place stands at the middle of their circle, and gets a marker", () => {
+    const graph = geoNetwork();
+    graph.nodes = graph.nodes.map((n) => (n.key === "me" ? { ...n, city: "" } : n));
+    const layout = layoutGlobe(graph);
+    const me = layout.byKey.get("me")!;
+    expect(me.v).not.toBeNull();
+    // Only "a" (Tokyo) is one step away, so you land on Tokyo's marker.
+    expect(layout.markerOf.get("me")).toBe(layout.markerOf.get("a"));
+    const facing = project(me.v!, cameraFacing(me.v!), 0, 0, 1);
+    expect(close(facing.x, 0) && close(facing.y, 0)).toBe(true);
+  });
+
+  test("with nobody placed, the viewer falls back to San Francisco", () => {
+    const layout = layoutGlobe(network());
+    const me = layout.byKey.get("me")!;
+    const sf = fromLatLng(37.77, -122.42);
+    expect(close(me.v!.x, sf.x) && close(me.v!.y, sf.y) && close(me.v!.z, sf.z)).toBe(true);
+    expect(layout.markers).toHaveLength(1);
+  });
+
+  test("a typed 'Mountain View, CA' places the viewer by city", () => {
+    const graph = geoNetwork();
+    graph.nodes = graph.nodes.map((n) => (n.key === "me" ? { ...n, city: "Mountain View, CA" } : n));
+    expect(layoutGlobe(graph).byKey.get("me")!.v).not.toBeNull();
   });
 });
