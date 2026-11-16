@@ -2,9 +2,10 @@ import { useIsFocused } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { AppState, StyleSheet, View, type GestureResponderEvent } from "react-native";
 
+import { boatBounds, toPoolSpace, type PoolFrame } from "@/lib/well/geometry";
 import {
-  floorCoins, makeStars, pushStars, spawnTossedCoin, stepCoins, stepStars,
-  type Coin, type FloatStar,
+  floorCoins, makeBoats, pushBoats, spawnTossedCoin, stepBoats, stepCoins,
+  type Coin, type FloatBoat,
 } from "@/lib/well/pool-sim";
 import { WaterRenderer, type RenderCoin } from "@/lib/well/water-renderer";
 import { night, poolImages } from "@/theme/tokens";
@@ -20,12 +21,17 @@ export { waterSurfaceSupported };
 export interface WaterPoolApi {
   /** A ripple. power 1 is a finger tap; 0.2 a drip; 2 a big splash. */
   drop(x: number, y: number, power?: number): void;
-  /** A copper coin lands at (x, y): splash, push the stars, then it sinks and rests on the floor. */
+  /** A copper coin lands at (x, y): splash, push the boats, then it sinks and rests on the floor. */
   tossCoin(x: number, y: number): void;
 }
 
 export interface WaterPoolProps {
-  size: number;
+  /** The small round pool in a thin rim (circleFrame), or the Pool tab's full-bleed hero (heroFrame). */
+  frame: PoolFrame;
+  /** Hero: the shader draws the marble rim and the garden; the round pool gets the thin glass rim. */
+  hero?: boolean;
+  /** Layout y (px) where open water starts, e.g. below a header drawn over the pool; boats stay under it. */
+  openTop?: number;
   coins: number;
   /** Coins tossed this session (fractions of the pool, 0..1); each new id lands once via tossCoin. */
   tosses?: { id: number; x: number; y: number; variant: number }[];
@@ -37,18 +43,20 @@ export interface WaterPoolProps {
 }
 
 const FRAME_MS = 1000 / 60;
+const BOATS = 6;
 
 /**
  * Katie-Lan's real-time water (WebGL2 height-field ripples refracting the pool floor), running on an
  * expo-gl GLView natively and a <canvas> on web. Paused while the screen is unfocused or the app is
  * in the background; NightPool falls back to the Animated version on any GL error.
  */
-export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }: WaterPoolProps) {
+export function WaterPool({ frame, hero, openTop, coins, tosses, onWaterTap, onReady, onError }: WaterPoolProps) {
   const focused = useIsFocused();
   const [appActive, setAppActive] = useState(AppState.currentState !== "background");
   const [renderer, setRenderer] = useState<WaterRenderer | null>(null);
   const tossed = useRef<Coin[]>([]);
-  const stars = useRef<FloatStar[]>(makeStars(7));
+  const bounds = useRef(boatBounds(frame, openTop));
+  const boats = useRef<FloatBoat[]>(makeBoats(BOATS, boatBounds(frame, openTop)));
   const resting = useRef<RenderCoin[]>(floorCoins(coins));
   const time = useRef(0);
   const lastMove = useRef<{ x: number; y: number } | null>(null);
@@ -61,6 +69,13 @@ export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }:
     resting.current = floorCoins(coins);
   }, [coins]);
 
+  // The header's height is measured after the first layout: before the water has run, re-launch the
+  // boats inside the new bounds instead of letting them slide down from under the header.
+  useEffect(() => {
+    bounds.current = boatBounds(frame, openTop);
+    if (time.current < 0.5) boats.current = makeBoats(BOATS, bounds.current);
+  }, [frame, openTop]);
+
   useEffect(() => {
     const sub = AppState.addEventListener("change", (s) => setAppActive(s === "active"));
     return () => sub.remove();
@@ -70,14 +85,15 @@ export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }:
     let r: WaterRenderer;
     try {
       r = new WaterRenderer(gl, { present });
-      r.resize(size, pixelWidth, pixelHeight, { cx: size / 2, cy: size / 2, R: size / 2 });
+      r.resize(frame.width, pixelWidth, pixelHeight, { cx: frame.cx, cy: frame.cy, R: frame.R });
     } catch (err) {
       cbs.current.onError?.(err);
       return;
     }
-    // Dive-in ripple, as in the prototype.
-    r.addDrop(0, 0, 0.35, 0.06);
-    r.addDrop(0, 0, 0.12, -0.05);
+    // Dive-in ripple, as in the prototype, centred on the open water.
+    const y0 = hero ? Math.max(0, bounds.current.minY + 0.3) : 0;
+    r.addDrop(0, y0, 0.35, 0.06);
+    r.addDrop(0, y0, 0.12, -0.05);
     setRenderer(r);
     Promise.all([loadTexture(poolImages.floor), loadTexture(poolImages.coins)])
       .then(([floor, coinSheet]) => {
@@ -95,12 +111,12 @@ export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }:
     cbs.current.onReady?.({
       drop(x, y, power = 1) {
         renderer.addDrop(x, y, 0.035 + 0.01 * power, 0.03 * power);
-        pushStars(stars.current, x, y, 0.12 * power);
+        pushBoats(boats.current, x, y, 0.12 * power);
       },
       tossCoin(x, y) {
         renderer.addDrop(x, y, 0.045, 0.14);
         renderer.addDrop(x, y, 0.11, -0.04);
-        pushStars(stars.current, x, y, 0.35);
+        pushBoats(boats.current, x, y, 0.35);
         tossed.current.push(spawnTossedCoin(x, y));
       },
     });
@@ -117,7 +133,7 @@ export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }:
       const y = t.y * 2 - 1;
       renderer.addDrop(x, y, 0.045, 0.14);
       renderer.addDrop(x, y, 0.11, -0.04);
-      pushStars(stars.current, x, y, 0.35);
+      pushBoats(boats.current, x, y, 0.35);
       const coin = spawnTossedCoin(x, y);
       coin.variant = t.variant;
       tossed.current.push(coin);
@@ -147,9 +163,9 @@ export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }:
         dripAt = t + 0.6 + Math.random() * 1.2;
       }
       tossed.current = stepCoins(tossed.current, dt);
-      stepStars(stars.current, dt, t);
+      stepBoats(boats.current, dt, t, bounds.current);
       try {
-        renderer.frame(t, [...resting.current, ...tossed.current], stars.current, null);
+        renderer.frame(t, [...resting.current, ...tossed.current], boats.current, null);
         if (warmup > 0) {
           warmup--;
           renderer.sync(); // see WaterRenderer.sync: iOS expo-gl stays blank without it
@@ -163,17 +179,13 @@ export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }:
     return () => cancelAnimationFrame(raf);
   }, [running, renderer]);
 
-  const toPool = (e: GestureResponderEvent) => {
-    const { locationX, locationY } = e.nativeEvent;
-    const c = size / 2;
-    return { x: (locationX - c) / c, y: (locationY - c) / c };
-  };
+  const toPool = (e: GestureResponderEvent) => toPoolSpace(frame, e.nativeEvent.locationX, e.nativeEvent.locationY);
   const onGrant = (e: GestureResponderEvent) => {
     const p = toPool(e);
     if (!renderer || Math.hypot(p.x, p.y) > 0.95) return;
     renderer.addDrop(p.x, p.y, 0.045, 0.08);
     renderer.addDrop(p.x, p.y, 0.11, -0.02);
-    pushStars(stars.current, p.x, p.y, 0.25);
+    pushBoats(boats.current, p.x, p.y, 0.25);
     lastMove.current = p;
     onWaterTap?.((p.x + 1) / 2, (p.y + 1) / 2);
   };
@@ -187,26 +199,43 @@ export function WaterPool({ size, coins, tosses, onWaterTap, onReady, onError }:
     }
   };
 
+  const label = coins > 0 ? `The wishing pool: paper boats drifting, ${coins} of your coins on the floor` : "The wishing pool, with paper boats drifting";
+  const water = (
+    <View
+      testID="water-pool-gl"
+      style={
+        hero
+          ? { width: frame.width, height: frame.height, overflow: "hidden", backgroundColor: night.deep }
+          : { width: frame.width, height: frame.height, borderRadius: frame.R, overflow: "hidden", backgroundColor: night.bg }
+      }
+      onStartShouldSetResponder={() => true}
+      onResponderGrant={onGrant}
+      onResponderMove={onMove}
+    >
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <WaterSurface width={frame.width} height={frame.height} onContext={onContext} onError={(err) => cbs.current.onError?.(err)} />
+      </View>
+    </View>
+  );
+
+  if (hero) {
+    return (
+      <View testID="night-pool" accessible accessibilityRole="image" accessibilityLabel={label} accessibilityHint={onWaterTap ? "Tap the water to toss a coin" : undefined}>
+        {water}
+      </View>
+    );
+  }
+  const size = frame.width;
   return (
     <View
       testID="night-pool"
       accessible
       accessibilityRole="image"
-      accessibilityLabel={coins > 0 ? `The wishing pool, with ${coins} of your coins on the floor` : "The wishing pool"}
+      accessibilityLabel={label}
       accessibilityHint={onWaterTap ? "Tap the water to toss a coin" : undefined}
       style={[styles.rim, { width: size + 16, height: size + 16, borderRadius: (size + 16) / 2 }]}
     >
-      <View
-        testID="water-pool-gl"
-        style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", backgroundColor: night.bg }}
-        onStartShouldSetResponder={() => true}
-        onResponderGrant={onGrant}
-        onResponderMove={onMove}
-      >
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <WaterSurface width={size} height={size} onContext={onContext} onError={(err) => cbs.current.onError?.(err)} />
-        </View>
-      </View>
+      {water}
     </View>
   );
 }
