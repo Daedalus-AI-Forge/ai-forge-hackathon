@@ -215,6 +215,61 @@ describe("AI actions", () => {
     expect(await t.action(api.ai.draftPassMessage, { hopId: ben })).toBe("Hey Ben!");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  async function taggedBen(t: ReturnType<typeof setup>) {
+    const { ben } = await seededTree(t);
+    await t.run((ctx) =>
+      ctx.db.patch("hops", ben, { recipientTags: ["secretTagZebra", "ex-partner"], introVouch: "you drum with a Berkeley collective" }),
+    );
+    return ben;
+  }
+
+  test("draftPassMessage never sends recipientTags to the model or the text", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    const reply = "Louise wants someone to jam on drums with. Amy here, you drum with a Berkeley collective. Is it you?";
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: reply }] }] }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const t = setup();
+    const ben = await taggedBen(t);
+    const out = await t.action(api.ai.draftPassMessage, { hopId: ben });
+    const raw = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string;
+    expect(raw).not.toMatch(/secretTagZebra|ex-partner|they're into/);
+    const body = (JSON.parse(raw) as { input: string }).input;
+    expect(body).toContain("FACTS:");
+    expect(body).toContain("chain=Louise → Amy → you");
+    expect(body).toContain('why_you="you drum with a Berkeley collective"');
+    expect(body).not.toMatch(/ripple|h left/);
+    expect(out).toBe(reply);
+    expect(out).not.toMatch(/secretTagZebra|ex-partner/);
+  });
+
+  test.each([
+    ["an invented name", "Louise and her cousin Priya want a drummer. Is it you?"],
+    ["an invented place", "Louise wants a drummer in Oakland. Is it you?"],
+    ["a number not in FACTS", "Louise wants a drummer, 3 nights a week. Is it you?"],
+    ["a URL", "Louise wants a drummer: see wishwell.app/x. Is it you?"],
+    ["countdown pressure", "Louise wants a drummer. 2 ripples in, 31h left. Know anyone?"],
+    ["a too-long draft", `Louise wants a drummer. ${"So fun. ".repeat(30)}Is it you?`],
+  ])("draftPassMessage falls back to the template on %s", async (_label, reply) => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ output: [{ content: [{ type: "output_text", text: reply }] }] }), { status: 200 }),
+    ));
+    const t = setup();
+    const ben = await taggedBen(t);
+    expect(await t.action(api.ai.draftPassMessage, { hopId: ben })).toBe(
+      "Louise is looking for someone to jam on drums with. I thought of you: you drum with a Berkeley collective. Is it you, or someone you know?",
+    );
+  });
+
+  test("draftPassMessage fallback without a vouch stays generic and ends in a question", async () => {
+    const t = setup();
+    const { ben } = await seededTree(t);
+    const out = await t.action(api.ai.draftPassMessage, { hopId: ben });
+    expect(out).toBe("Louise is looking for someone to jam on drums with. Is it you, or someone you know?");
+  });
 });
 
 describe("seed", () => {

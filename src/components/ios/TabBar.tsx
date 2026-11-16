@@ -3,8 +3,9 @@ import { useEffect, useState, type ComponentProps } from "react";
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { lv } from "@/theme/tokens";
+import { lv, night } from "@/theme/tokens";
 
+import { useChromeTone } from "./chromeTone";
 import { Glass } from "./Glass";
 import { TAB_BAR_HEIGHT, tabBarBottom } from "./metrics";
 
@@ -16,6 +17,8 @@ const PAD = 5;
 /** Floating glass tab bar (iOS 26): a capsule above the home indicator with a sliding selection lens. */
 export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  // Over the night pool the bar turns dark with gold, like the pool's own controls.
+  const isNight = useChromeTone() === "night";
   const [width, setWidth] = useState(0);
   // `href: null` tabs arrive as hidden routes; they get no button.
   const visible = state.routes.filter((r) => !(descriptors[r.key]?.options as { hidden?: boolean } | undefined)?.hidden);
@@ -29,13 +32,13 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabB
 
   return (
     <View style={[styles.wrap, { bottom: tabBarBottom(insets.bottom) }]}>
-      <Glass variant="chrome" radius={TAB_BAR_HEIGHT / 2} curve="circular" style={styles.bar}>
+      <Glass variant={isNight ? "dark" : "chrome"} radius={TAB_BAR_HEIGHT / 2} curve="circular" style={styles.bar}>
         <View style={styles.row} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-          {slot > 0 ? <Animated.View style={[styles.lens, { width: slot, transform: [{ translateX: x }] }]} /> : null}
+          {slot > 0 ? <Animated.View style={[styles.lens, isNight && styles.lensNight, { width: slot, transform: [{ translateX: x }] }]} /> : null}
           {visible.map((route) => {
             const { options } = descriptors[route.key]!;
             const focused = route.key === focusedKey;
-            const color = focused ? lv.thread : lv.fg;
+            const color = focused ? (isNight ? night.gold : lv.thread) : isNight ? night.fg : lv.fg;
             const title = typeof options.title === "string" ? options.title : route.name;
             const onPress = () => {
               const event = emitter.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
@@ -77,6 +80,7 @@ const styles = StyleSheet.create({
     borderRadius: TAB_BAR_HEIGHT / 2 - PAD,
     backgroundColor: "rgba(118,118,128,0.14)",
   },
+  lensNight: { backgroundColor: "rgba(255,255,255,0.13)" },
   item: { flex: 1, alignItems: "center", justifyContent: "center", gap: 1 },
   pressed: { transform: [{ scale: 0.94 }] },
   label: { fontSize: 10, lineHeight: 12, fontWeight: "500" },

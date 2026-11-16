@@ -1,169 +1,104 @@
-import { useAction, useMutation } from "convex/react";
-import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useAction } from "convex/react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
+import { useCallback, useState } from "react";
+import { ImageBackground, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
-import { Glass, Screen } from "@/components/ios";
-import { Well } from "@/components/lv/home/Well";
-import { ShareLink } from "@/components/ShareLink";
-import { TextAll } from "@/components/TextAll";
+import { Screen, setChromeTone } from "@/components/ios";
 import { errorMessage } from "@/components/ui";
-import { CoachPanel, type CoachPick } from "@/components/lv/toss/CoachPanel";
-import { DButton } from "@/components/lv/passon/kit";
-import { Eyebrow, LvButton, LvCard, LvField } from "@/components/lv/toss/parts";
-import { RecipientCard, emptyPerson, type Person } from "@/components/lv/toss/RecipientCard";
+import { DButton, DField } from "@/components/lv/passon/kit";
+import { NightPool } from "@/components/lv/pool/NightPool";
+import { NightTitle, TossPeopleStep, TossShareStep } from "@/components/lv/toss/TossSteps";
 import { TypeGrid } from "@/components/lv/toss/TypeGrid";
+import { useTossWish } from "@/components/lv/toss/useTossWish";
 import { useMe } from "@/lib/device";
 import { LV_WISH_TYPES, fromApiType, type ApiWishType } from "@/lib/lvWishTypes";
-import { toE164 } from "@/lib/contactPick";
-import { prefillPeople } from "@/lib/tossPeople";
-import { lv, type } from "@/theme/tokens";
+import { night, poolImages, type } from "@/theme/tokens";
 
-const MAX_PEOPLE = 3;
-// The contact field holds a phone (picked or typed) or an @handle; only a phone pre-fills SMS.
-const smsRecipient = (contact?: string) => (contact && !contact.trim().startsWith("@") ? (toE164(contact) ?? undefined) : undefined);
-// Server error text (convex/lib.ts REASON_REQUIRED); shown inline under the card missing a reason.
-const REASON_REQUIRED = "Add one line on why you picked them";
-
-/** Toss a coin: write one line (AI polish), pick 1–3 starting friends, then splash + prophecy. */
+/** Toss a coin (any entry point other than the pool): write one line, pick 1–3 friends, share. Night look. */
 export default function Toss() {
   const router = useRouter();
   const { deviceId, user } = useMe();
-  const toss = useMutation(api.wishes.toss);
   const polish = useAction(api.ai.polishWish);
-  const draftMessage = useAction(api.ai.draftPassMessage);
+  const t = useTossWish(deviceId);
 
   const [step, setStep] = useState<"write" | "people" | "share">("write");
   const [type, setType] = useState<ApiWishType>("do_together");
   const [text, setText] = useState("");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
-  const [people, setPeople] = useState<Person[]>([emptyPerson()]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reasonMissing, setReasonMissing] = useState(false);
-  const [links, setLinks] = useState<{ hopId: Id<"hops">; name: string; message: string | null; phone?: string }[]>([]);
-  // Edited share text per hop, so "Text all" sends what the user sees in each card.
-  const [edits, setEdits] = useState<Record<string, string>>({});
-  const prefilled = useRef(false);
+  const [polishing, setPolishing] = useState(false);
+  const [polishError, setPolishError] = useState<string | null>(null);
 
   const needsProfile = !user?.name;
-  const typeInfo = LV_WISH_TYPES.find((t) => t.id === fromApiType[type])!;
-  const picked = people.filter((p) => p.name.trim());
-  const firstTags = picked.map((p) => p.tags[0]);
-  const sameCircle = picked.length >= 2 && firstTags.every((t) => t) && new Set(firstTags as string[]).size === 1;
+  const typeInfo = LV_WISH_TYPES.find((x) => x.id === fromApiType[type])!;
+
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+      setChromeTone("night");
+      return () => {
+        setStatusBarStyle("dark");
+        setChromeTone("light");
+      };
+    }, []),
+  );
 
   async function onPolish() {
     if (!deviceId || !text.trim()) return;
-    setBusy(true);
-    setError(null);
+    setPolishing(true);
+    setPolishError(null);
     try {
       setText(await polish({ deviceId, type, text }));
     } catch (e) {
-      setError(errorMessage(e));
+      setPolishError(errorMessage(e));
     } finally {
-      setBusy(false);
+      setPolishing(false);
     }
-  }
-
-  function onCoachPick(p: CoachPick) {
-    setPeople((prev) => {
-      const filled = prev.filter((x) => x.name.trim());
-      if (filled.some((x) => x.name.trim().toLowerCase() === p.name.toLowerCase())) return prev;
-      const next = { ...emptyPerson(), name: p.name, reason: p.why };
-      const blank = prev.findIndex((x) => !x.name.trim());
-      if (blank >= 0) return prev.map((x, i) => (i === blank ? { ...x, name: p.name, reason: x.reason || p.why } : x));
-      return [...prev, next].slice(0, MAX_PEOPLE);
-    });
-  }
-
-  // First coach answer only: drop its top picks into the slots (up to 3). Later answers are tap-to-add.
-  function onCoachSuggestions(picks: CoachPick[]) {
-    if (prefilled.current || !picks.length) return;
-    prefilled.current = true;
-    setPeople((prev) => prefillPeople(prev, picks, MAX_PEOPLE, emptyPerson));
   }
 
   async function onToss() {
-    if (!deviceId) return;
-    setBusy(true);
-    setError(null);
-    setReasonMissing(false);
-    try {
-      const recipients = picked.map((p) => ({
-        name: p.name,
-        reason: p.reason.trim() || undefined,
-        contact: p.contact.trim() || undefined,
-        tags: p.tags,
-      }));
-      const { hopIds } = await toss({ deviceId, type, text, name, city, mode: "serious", recipients });
-      const created = hopIds.map((hopId, i) => ({
-        hopId,
-        name: recipients[i].name,
-        message: null as string | null,
-        phone: picked[i].phone ?? smsRecipient(picked[i].contact),
-      }));
-      setLinks(created);
-      setStep("share");
-      created.forEach(({ hopId }) => {
-        void draftMessage({ hopId })
-          .then((message) => setLinks((prev) => prev.map((l) => (l.hopId === hopId ? { ...l, message } : l))))
-          .catch(() => setLinks((prev) => prev.map((l) => (l.hopId === hopId ? { ...l, message: "" } : l))));
-      });
-    } catch (e) {
-      const msg = errorMessage(e);
-      if (msg.includes(REASON_REQUIRED)) setReasonMissing(true);
-      else setError(msg);
-    } finally {
-      setBusy(false);
-    }
+    if (await t.submit({ type, text, name, city })) setStep("share");
   }
 
   return (
-    <Screen testID="toss-screen" nativeHeader>
+    <Screen testID="toss-screen" nativeHeader tone="night" backdrop={<NightBackdrop />}>
       {step === "write" ? (
         <>
-          <View style={styles.header}>
-            <Eyebrow>
-              {user
-                ? `${user.wishesLeft} coin${user.wishesLeft === 1 ? "" : "s"} · refunded if it fades`
-                : "Toss a coin"}
-            </Eyebrow>
-            <Text style={styles.h1}>Toss a coin: who do you want to meet?</Text>
-          </View>
+          <NightTitle sub={user ? `${user.wishesLeft} coin${user.wishesLeft === 1 ? "" : "s"}, refunded if it fades` : undefined}>
+            Toss a coin: who do you want to meet?
+          </NightTitle>
           <TypeGrid value={type} onChange={setType} />
-          <LvCard>
-            <Text style={styles.small}>A type of person + what to do + why. Never a specific named person.</Text>
-            <LvField
-              testID="toss-text"
-              multiline
-              value={text}
-              onChangeText={setText}
-              placeholder={`${typeInfo.example[0].toUpperCase()}${typeInfo.example.slice(1)}…`}
-            />
-            <LvButton
-              testID="toss-polish"
-              variant="ghost"
-              title={busy ? "Polishing…" : "✦ Polish with AI"}
-              busy={busy}
-              disabled={!text.trim()}
-              onPress={onPolish}
-            />
-          </LvCard>
+          <Text style={styles.small}>A type of person + what to do + why. Never a specific named person.</Text>
+          <DField
+            testID="toss-text"
+            multiline
+            value={text}
+            onChangeText={setText}
+            placeholder={`${typeInfo.example[0].toUpperCase()}${typeInfo.example.slice(1)}…`}
+          />
+          <DButton
+            testID="toss-polish"
+            variant="ghost"
+            tone="night"
+            title={polishing ? "Polishing…" : "✦ Polish with AI"}
+            busy={polishing}
+            disabled={!text.trim()}
+            onPress={() => void onPolish()}
+          />
           {needsProfile ? (
-            <LvCard>
-              <Eyebrow>About you</Eyebrow>
-              <LvField value={name} onChangeText={setName} testID="toss-name" placeholder="Your name" />
-              <LvField value={city} onChangeText={setCity} testID="toss-city" placeholder="Your city" />
-            </LvCard>
+            <View style={styles.fields}>
+              <DField value={name} onChangeText={setName} testID="toss-name" placeholder="Your name" />
+              <DField value={city} onChangeText={setCity} testID="toss-city" placeholder="Your city" />
+            </View>
           ) : null}
-          {error ? <Text style={styles.err}>{error}</Text> : null}
-          <LvButton
+          {polishError ? <Text style={styles.err}>{polishError}</Text> : null}
+          <DButton
             testID="toss-next"
-            variant="thread"
-            title="Next: where does it start?"
+            variant="gold"
+            size="lg"
+            title="Next: who should it reach first?"
             disabled={!text.trim() || (needsProfile && !name.trim())}
             onPress={() => setStep("people")}
           />
@@ -172,110 +107,37 @@ export default function Toss() {
 
       {step === "people" ? (
         <>
-          <View style={styles.header}>
-            <Eyebrow>{`${typeInfo.emoji} ${typeInfo.label}`}</Eyebrow>
-            <Text style={styles.h1}>Pick 1–3 friends to start from</Text>
-          </View>
-          <LvCard>
-            <Eyebrow>Your coin</Eyebrow>
-            <Text style={styles.wish}>{text}</Text>
-          </LvCard>
-          <CoachPanel deviceId={deviceId} wishText={text} onPick={onCoachPick} onSuggestions={onCoachSuggestions} pickedNames={people.map((p) => p.name)} />
-          <Text style={styles.small}>Pick up to {MAX_PEOPLE} people most likely to know someone — say why in one line.</Text>
-          {people.map((p, i) => (
-            <RecipientCard
-              key={i}
-              index={i}
-              person={p}
-              reasonError={reasonMissing && p.name.trim() && !p.reason.trim() ? REASON_REQUIRED : null}
-              onChange={(np) => setPeople((prev) => prev.map((x, j) => (j === i ? np : x)))}
-              onRemove={people.length > 1 ? () => setPeople((prev) => prev.filter((_, j) => j !== i)) : undefined}
-            />
-          ))}
-          {sameCircle ? (
-            <Glass testID="toss-diversity" variant="thin" radius={lv.radiusMd} style={styles.diversity}>
-              <Text style={styles.diversityText}>Try a friend from a different circle — boats drift farther.</Text>
-            </Glass>
-          ) : null}
-          {people.length < MAX_PEOPLE ? (
-            <LvButton
-              testID="toss-add-person"
-              variant="ghost"
-              title="+ Add someone"
-              onPress={() => setPeople((prev) => [...prev, emptyPerson()])}
-            />
-          ) : null}
-          {error ? <Text style={styles.err}>{error}</Text> : null}
-          <LvButton
-            testID="toss-submit"
-            variant="thread"
-            title="Toss it in"
-            busy={busy}
-            disabled={!people.some((p) => p.name.trim())}
-            onPress={onToss}
-          />
-          <DButton variant="plain" title="Back" onPress={() => setStep("write")} style={styles.back} />
+          <TossPeopleStep t={t} deviceId={deviceId} wishText={text} onSend={() => void onToss()} />
+          <DButton variant="plain" tone="night" title="Back" onPress={() => setStep("write")} style={styles.back} />
         </>
       ) : null}
 
       {step === "share" ? (
         <>
-          <View style={styles.header}>
-            <Eyebrow color={lv.thread}>Your coin is live</Eyebrow>
-            <Text style={styles.h1}>Plop! Your coin is in the pool.</Text>
-          </View>
-          <Well size={200} />
-          <View>
-            <View style={styles.orb} />
-            <Glass variant="dark" radius={30} style={styles.prophecy}>
-              <Text style={styles.prophecyText}>It might ripple toward {typeInfo.label}.</Text>
-              <Text style={styles.prophecySub}>Send each person their own link. Every link carries the trust chain forward.</Text>
-            </Glass>
-          </View>
-          <TextAll
-            targets={links.map((l) => ({
-              hopId: l.hopId,
-              name: l.name,
-              message: l.message === null ? null : (edits[l.hopId] || l.message),
-              to: l.phone,
-            }))}
-          />
-          {links.map((l) => (
-            <ShareLink
-              key={l.hopId}
-              hopId={l.hopId}
-              name={l.name}
-              message={l.message}
-              to={l.phone}
-              onTextChange={(t) => setEdits((prev) => (prev[l.hopId] === t ? prev : { ...prev, [l.hopId]: t }))}
-            />
-          ))}
-          <LvButton title="Back to the pool" testID="toss-done" variant="ink" onPress={() => router.replace("/")} />
+          <NightPool size={200} coins={1} />
+          <TossShareStep t={t} onDone={() => router.replace("/")} />
         </>
       ) : null}
     </Screen>
   );
 }
 
+function NightBackdrop() {
+  return (
+    <View style={[StyleSheet.absoluteFill, styles.night]}>
+      <ImageBackground source={poolImages.fountain} style={StyleSheet.absoluteFill} resizeMode="cover" imageStyle={styles.fountain}>
+        <View style={[StyleSheet.absoluteFill, styles.dim]} />
+      </ImageBackground>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  header: { paddingTop: 4, gap: 6 },
-  h1: { ...type.title1, color: lv.fg },
-  small: { ...type.footnote, color: lv.mutedFg },
-  wish: { ...type.title3, color: lv.fg },
-  err: { ...type.footnote, color: lv.destructive },
-  diversity: { padding: 14, borderColor: lv.gold, borderWidth: 1 },
-  diversityText: { ...type.subheadline, fontWeight: "600", color: lv.fg },
+  small: { ...type.footnote, color: night.mutedFg },
+  err: { ...type.footnote, color: "#FF8A80" },
+  fields: { gap: 10 },
   back: { alignSelf: "center" },
-  orb: {
-    position: "absolute",
-    right: -30,
-    top: -40,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundImage: "radial-gradient(circle, rgba(235,207,138,0.9) 0%, rgba(235,207,138,0) 70%)",
-  },
-  prophecy: { padding: 24, gap: 8 },
-  prophecyText: { ...type.title2, color: "#FFFFFF" },
-  prophecySub: { ...type.subheadline, color: "rgba(255,255,255,0.75)" },
+  night: { backgroundColor: night.deep, pointerEvents: "none" },
+  fountain: { opacity: 0.4, width: "100%", height: "100%" },
+  dim: { backgroundColor: "rgba(7,20,26,0.62)" },
 });

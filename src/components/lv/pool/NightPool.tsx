@@ -187,12 +187,74 @@ export function CopperCoin({ size, variant = 0, style }: { size: number; variant
 
 type TapRipple = { id: number; x: number; y: number };
 
+/** A coin tossed tonight, landing at (x, y) as fractions of the pool (0..1). */
+export type PoolToss = { id: number; x: number; y: number; variant: number };
+
+/**
+ * Katie-Lan's toss: the coin arcs up from below, spinning and shrinking as it falls toward the
+ * floor, then lands with two rings and stays on the bottom. Reduce Motion: it is simply there.
+ */
+function SinkingCoin({ toss, size, still }: { toss: PoolToss; size: number; still: boolean }) {
+  const [t] = useState(() => new Animated.Value(still ? 1 : 0));
+  const [landed, setLanded] = useState(still);
+  useEffect(() => {
+    if (still) return;
+    const anim = Animated.timing(t, { toValue: 1, duration: 820, easing: Easing.bezier(0.25, 0.1, 0.4, 1), useNativeDriver });
+    anim.start(({ finished }) => finished && setLanded(true));
+    return () => anim.stop();
+  }, [t, still]);
+  const coin = size * 0.1;
+  const sx = toss.x * size;
+  const sy = toss.y * size;
+  const startX = size / 2 + (sx - size / 2) * 0.2;
+  const startY = size + coin;
+  const midY = Math.min(startY, sy) - size * 0.2;
+  return (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: -coin / 2,
+          top: -coin / 2,
+          transform: [
+            { translateX: t.interpolate({ inputRange: [0, 0.55, 1], outputRange: [startX, (startX + sx) / 2, sx] }) },
+            { translateY: t.interpolate({ inputRange: [0, 0.55, 1], outputRange: [startY, midY, sy] }) },
+            { scale: t.interpolate({ inputRange: [0, 0.55, 1], outputRange: [3, 1.7, 1] }) },
+            { rotateX: t.interpolate({ inputRange: [0, 1], outputRange: ["0deg", still ? "0deg" : "1080deg"] }) },
+          ],
+        }}
+      >
+        <CopperCoin size={coin} variant={toss.variant} />
+      </Animated.View>
+      {landed ? (
+        <>
+          <Ripple x={sx} y={sy} size={size * 0.32} duration={still ? 300 : 1200} />
+          {still ? null : <Ripple x={sx} y={sy} size={size * 0.6} duration={1800} delay={180} />}
+        </>
+      ) : null}
+    </>
+  );
+}
+
 /**
  * The wishing pool seen from above: the tiled floor under night water, stars twinkling on the surface,
  * your coins resting on the bottom. Touching the water sends out a ripple (decorative only).
  * A native port of the prototype's WebGL pool: same floor and coins, ripples drawn as rings.
  */
-export function NightPool({ size, coins }: { size: number; coins: number }) {
+export function NightPool({
+  size,
+  coins,
+  tosses = [],
+  onWaterTap,
+}: {
+  size: number;
+  coins: number;
+  /** Coins tossed in this session; each one plays the sink animation once, then rests. */
+  tosses?: PoolToss[];
+  /** Tapping the water (fractions of the pool, 0..1); without it a tap is only a ripple. */
+  onWaterTap?: (x: number, y: number) => void;
+}) {
   const still = useReduceMotion();
   const [taps, setTaps] = useState<TapRipple[]>([]);
   const nextId = useRef(0);
@@ -203,6 +265,7 @@ export function NightPool({ size, coins }: { size: number; coins: number }) {
     if (Math.hypot(x - c, y - c) > c * 0.95) return;
     const id = nextId.current++;
     setTaps((list) => [...list.slice(-4), { id, x, y }]);
+    onWaterTap?.(x / size, y / size);
   };
   const drop = (id: number) => setTaps((list) => list.filter((r) => r.id !== id));
 
@@ -212,6 +275,7 @@ export function NightPool({ size, coins }: { size: number; coins: number }) {
       accessible
       accessibilityRole="image"
       accessibilityLabel={coins > 0 ? `The wishing pool, with ${coins} of your coins on the floor` : "The wishing pool"}
+      accessibilityHint={onWaterTap ? "Tap the water to toss a coin" : undefined}
       style={[styles.rim, { width: size + 16, height: size + 16, borderRadius: (size + 16) / 2 }]}
     >
       <View
@@ -251,6 +315,9 @@ export function NightPool({ size, coins }: { size: number; coins: number }) {
         )}
         {STARS.map((s, i) => (
           <Star key={i} x={s.x * size} y={s.y * size} size={s.size} dur={s.dur} delay={s.delay} still={still} />
+        ))}
+        {tosses.slice(-8).map((t) => (
+          <SinkingCoin key={t.id} toss={t} size={size} still={still} />
         ))}
         {taps.map((r) => (
           <TapRing key={r.id} r={r} size={size} onDone={drop} still={still} />

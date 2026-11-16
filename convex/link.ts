@@ -1,15 +1,17 @@
 // Link page API (docs/superpowers/plans/2026-11-15-link-page.md). Skeleton: signatures only.
 // Sections are owned by tasks: T1 core (firstScreen/open/pushOne/finish), T2 claim, T3 drafts/confirm, T4 ending.
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import type { FinishResult, FirstScreen, FirstScreenState } from "../src/lib/linkApi.types";
+import type { EndingView, FinishResult, FirstScreen, FirstScreenState } from "../src/lib/linkApi.types";
 import { stepAt } from "./daily";
 import { personKey } from "./graphShared";
 import {
   BOATS_PER_COIN, LIMITS, MAX_RIPPLES, WISH_LIFETIME_MS, avatarFor, clampText, cleanTags,
   passDetails, recordEdges, requireDeviceId, rippleSummary, userByDevice, wishHops, wishModeOf,
 } from "./lib";
+import { MEET_WINDOW_MS, tierFor, winningBranch } from "./meetings";
+import { hopAction, meetingTier } from "./schema";
 import { checkCode, normalizePhone, smsModeFor } from "./sms";
 
 const linkEvent = v.union(
@@ -372,6 +374,7 @@ export const claim = mutation({
     phone: v.optional(v.string()),
     code: v.optional(v.string()),
   },
+  returns: v.object({ status: v.literal("awaiting_confirmation") }),
   handler: async (ctx, args): Promise<{ status: "awaiting_confirmation" }> => {
     requireDeviceId(args.deviceId);
     const hop = await ctx.db.get("hops", args.hopId);
@@ -382,15 +385,17 @@ export const claim = mutation({
       throw new Error("This wish isn't traveling anymore");
     }
     // A hop bound to another visitor's device (forwarded link) can't be claimed here.
-    if (hop.holderUserId) {
-      const user = await userByDevice(ctx, args.deviceId);
-      if (!user || user._id !== hop.holderUserId) throw new Error("This boat is with someone else");
-    }
+    const user = await userByDevice(ctx, args.deviceId);
+    if (hop.holderUserId && user?._id !== hop.holderUserId) throw new Error("This boat is with someone else");
     const intro = clampText(args.intro, LIMITS.intro);
     if (!intro) throw new Error("Write a one-line intro");
     const now = Date.now();
 
     if (wish.daily) {
+      if (args.proofStorageId && await ctx.db.query("meetingUploads")
+        .withIndex("by_storageId", q => q.eq("storageId", args.proofStorageId)).first()) {
+        throw new Error("Choose a separate photo for this daily boat");
+      }
       await ctx.db.patch("hops", hop._id, {
         itsMeIntro: intro,
         itsMePublic: args.showNameAndCity,
@@ -401,6 +406,7 @@ export const claim = mutation({
       return { status: "awaiting_confirmation" };
     }
 
+    if (user?._id === wish.creatorId) throw new Error("You can't claim your own wish");
     const answers = (args.answers ?? [])
       .map((a) => clampText(a, LIMITS.intro))
       .filter(Boolean)
@@ -414,7 +420,9 @@ export const claim = mutation({
         ? await checkCode(phone, code) // demo: pure comparison, no network
         : hop.claimVerified === true && hop.claimPhone === phone;
     if (!verified) throw new Error(VERIFY_FIRST);
+    const visitor = user ?? await ensureVisitor(ctx, args.deviceId);
     await ctx.db.patch("hops", hop._id, {
+      holderUserId: visitor._id,
       itsMeIntro: intro,
       claimAnswers: answers,
       claimPhone: phone,
@@ -555,10 +563,15 @@ export const confirmClaim = mutation({
     if (hop.action !== "its_me" || !hop.claimVerified || !hop.claimPhone) throw new Error("This claim isn't verified yet");
     const claimerName = t3DisplayName(hop.holderName, "your match");
     const result = { claimerName, claimerPhone: hop.claimPhone };
-    if (wish.status === "found" && wish.winningHopId === hop._id) return result;
-    if (wish.status !== "traveling") throw new Error("This wish isn't open anymore");
+    if ((wish.status === "found" || wish.status === "granted") && wish.winningHopId === hop._id) return result;
+    const now = Date.now();
+    if (wish.status !== "traveling" || wish.expiresAt <= now) throw new Error("This wish isn't open anymore");
 
-    await ctx.db.patch("wishes", wish._id, { status: "found", winningHopId: hop._id });
+    await ctx.db.patch("wishes", wish._id, {
+      status: "found",
+      winningHopId: hop._id,
+      ...(wish.daily ? {} : { meetDeadline: now + MEET_WINDOW_MS }),
+    });
 
     const creatorName = t3DisplayName(user.name, "The wisher");
     const creatorContact = await t3ContactOf(ctx, user);
@@ -658,8 +671,6 @@ export const notifyLanded = t3InternalMutation({
 });
 
 // ===== T4: ending =====
-import type { EndingView } from "../src/lib/linkApi.types";
-
 /** Hop cities in depth order, consecutive duplicates collapsed. */
 export function endingRoute(hops: { depth: number; city?: string; _creationTime: number }[]) {
   const route: string[] = [];
@@ -672,7 +683,7 @@ export function endingRoute(hops: { depth: number; city?: string; _creationTime:
 }
 
 /** Two-sentence template story (no AI). */
-export function endingStory(status: "traveling" | "found" | "granted" | "faded", route: string[], ripples: number) {
+export function endingStory(status: "traveling" | "found" | "granted" | "faded", route: string[], ripples: number, metInPerson?: boolean) {
   const hands = ripples === 1 ? "1 pair of hands" : `${ripples} pairs of hands`;
   const first =
     route.length > 1
@@ -683,37 +694,101 @@ export function endingStory(status: "traveling" | "found" | "granted" | "faded",
   const second = {
     traveling: "It is still out there, looking for the right person.",
     found: "Someone said it's me, and the right person found it.",
-    granted: "It came true when the right person said it's me.",
+    granted: metInPerson === undefined ? "It came true when the right person said it's me." :
+      metInPerson ? "The two made it come true when they met in person." : "The two made it come true when they met on a call.",
     faded: "It faded before anyone claimed it, but every hand that pushed it thought of you.",
   }[status];
   return `${first} ${second}`;
 }
 
+type EndingHolder = {
+  key: string;
+  name: string;
+  city: string | null;
+  depth: number;
+  avatar: string;
+  acted: Infer<typeof hopAction> | null;
+};
+
+type PublicEnding = EndingView & {
+  locked: boolean;
+  thankYou: string;
+  tier: Infer<typeof meetingTier> | null;
+  metInPerson: boolean | null;
+  holders?: EndingHolder[];
+};
+
+async function endingHolders(ctx: QueryCtx, creator: Doc<"users"> | null, hops: Doc<"hops">[]): Promise<EndingHolder[]> {
+  const creatorVisible = creator?.showInLogs !== false;
+  const creatorName = (creatorVisible && creator?.name.trim()) || "The wisher";
+  const root: EndingHolder = { key: "creator", name: creatorName, city: creatorVisible ? creator?.city.trim() || null : null,
+    depth: 0, avatar: creatorVisible && creator?.avatar ? creator.avatar : avatarFor(creatorName), acted: null };
+  const branch = await Promise.all(hops.map(async (hop, index): Promise<EndingHolder> => {
+    const holder = hop.holderUserId ? await ctx.db.get("users", hop.holderUserId) : null;
+    const shown = hop.itsMePublic !== false && holder?.showInLogs !== false;
+    const name = (shown && hop.holderName.trim()) || "Someone";
+    return { key: String(index), name, city: shown ? hop.city?.trim() || null : null, depth: hop.depth,
+      avatar: shown && holder?.avatar ? holder.avatar : avatarFor(name), acted: hop.action ?? null };
+  }));
+  return [root, ...branch];
+}
+
 export const ending = query({
   args: { wishId: v.string() },
-  handler: async (ctx, args) => {
+  returns: v.union(v.null(), v.object({
+    status: v.union(v.literal("traveling"), v.literal("found"), v.literal("granted"), v.literal("faded")),
+    wishText: v.string(),
+    photoUrl: v.union(v.string(), v.null()),
+    locked: v.boolean(),
+    story: v.string(),
+    route: v.array(v.string()),
+    ripples: v.number(),
+    thankYou: v.string(),
+    tier: v.union(meetingTier, v.null()),
+    metInPerson: v.union(v.boolean(), v.null()),
+    holders: v.optional(v.array(v.object({ key: v.string(), name: v.string(), city: v.union(v.string(), v.null()),
+      depth: v.number(), avatar: v.string(), acted: v.union(hopAction, v.null()) }))),
+  })),
+  handler: async (ctx, args): Promise<PublicEnding | null> => {
     const wishId = ctx.db.normalizeId("wishes", args.wishId);
     if (!wishId) return null;
     const wish = await ctx.db.get("wishes", wishId);
     if (!wish) return null;
-    const hops = await ctx.db
-      .query("hops")
-      .withIndex("by_wishId", (q) => q.eq("wishId", wishId))
-      .take(200);
-    const finder =
-      (wish.winningHopId && hops.find((h) => h._id === wish.winningHopId && h.proofStorageId)) ||
-      hops.find((h) => h.action === "its_me" && h.proofStorageId);
-    const proofUrl = finder?.proofStorageId ? await ctx.storage.getUrl(finder.proofStorageId) : null;
-    const route = endingRoute(hops);
-    const ripples = hops.reduce((max, h) => Math.max(max, h.depth), 0);
-    const view: EndingView = {
-      status: wish.status,
-      wishText: wish.text,
-      photoUrl: proofUrl ?? wish.photoUrl ?? null,
-      story: endingStory(wish.status, route, ripples),
-      route,
-      ripples,
+    const base = { status: wish.status, wishText: wish.text };
+    if (!wish.daily && wish.status !== "granted") {
+      const story = {
+        traveling: "This wish is still looking for its person.",
+        found: "The ending unlocks after the participants meet and confirm their photo.",
+        faded: "This wish faded before it was granted.",
+      }[wish.status];
+      return { ...base, locked: true, photoUrl: null, story, route: [], ripples: 0, thankYou: "", tier: null, metInPerson: null };
+    }
+    const winningHop = wish.winningHopId ? await ctx.db.get("hops", wish.winningHopId) : null;
+    const winner = winningHop?.wishId === wish._id ? winningHop : null;
+    if (wish.daily) {
+      const hops = await wishHops(ctx, wish._id);
+      const finder = (winner?.proofStorageId && winner) || hops.find(h => h.action === "its_me" && h.proofStorageId);
+      const proofUrl = finder?.proofStorageId ? await ctx.storage.getUrl(finder.proofStorageId) : null;
+      const route = endingRoute(hops);
+      const { ripples } = rippleSummary(hops);
+      return { ...base, locked: false, photoUrl: proofUrl ?? wish.photoUrl ?? null,
+        route, ripples, story: endingStory(wish.status, route, ripples), thankYou: "", tier: null, metInPerson: null };
+    }
+    // Older granted rows may lack a recorded winner. Prefer their recorded finder when present.
+    const recordedWinner = winner ?? (await wishHops(ctx, wish._id)).find(h => h.action === "its_me");
+    const hops = recordedWinner ? await winningBranch(ctx, recordedWinner) : [];
+    const creator = await ctx.db.get("users", wish.creatorId);
+    const holders = await endingHolders(ctx, creator, hops);
+    const route = endingRoute(holders.map((h, index) => ({ depth: h.depth, city: h.city ?? undefined, _creationTime: index })));
+    const ripples = recordedWinner?.depth ?? 0;
+    const photo = wish.meetingPhoto;
+    return {
+      ...base, locked: false, route, ripples, holders,
+      photoUrl: (photo && await ctx.storage.getUrl(photo.storageId)) ?? wish.photoUrl ?? null,
+      story: wish.endingStory ?? endingStory(wish.status, route, ripples, photo?.metInPerson ?? wish.metInPerson),
+      thankYou: photo?.thankYou ?? "",
+      tier: wish.tier ?? (ripples > 0 ? tierFor(ripples) : null),
+      metInPerson: photo?.metInPerson ?? wish.metInPerson ?? null,
     };
-    return view;
   },
 });

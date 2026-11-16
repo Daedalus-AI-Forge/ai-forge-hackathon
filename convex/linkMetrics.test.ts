@@ -93,9 +93,18 @@ describe("OG HTML", () => {
     expect(escapeHtml(`'&`)).toBe("&#39;&amp;");
   });
 
+  test("clips a long vouch to 50 chars in the title and keeps the brand out", () => {
+    const vouch = "You know every single drummer in the whole East Bay and half of SF too";
+    const html = ogHtml({ hopId: "abc", senderName: "Louise", introVouch: vouch, wishText: "drums" }, undefined);
+    const title = /og:title" content="([^"]*)"/.exec(html)?.[1] ?? "";
+    expect(title.startsWith("Louise: You know every single drummer")).toBe(true);
+    expect(title.length).toBeLessThanOrEqual("Louise: ".length + 50);
+    expect(title).not.toMatch(/wishwell/i);
+  });
+
   test("default title without vouch, no image without APP_WEB_URL", () => {
     const html = ogHtml({ hopId: "abc", senderName: "Ann", introVouch: null, wishText: "hi" }, undefined);
-    expect(html).toContain('og:title" content="Ann: thought of you for this"');
+    expect(html).toContain('og:title" content="Ann thought of you for a wish"');
     expect(html).not.toContain("og:image");
   });
 
@@ -115,9 +124,10 @@ describe("OG HTML", () => {
 describe("ending", () => {
   test("route dedupes consecutive cities in depth order, story is two sentences", async () => {
     const t = setup();
-    const { wishId } = await seedChain(t);
+    const { wishId, h3 } = await seedChain(t);
+    await t.run(ctx => ctx.db.patch("wishes", wishId, { status: "granted", winningHopId: h3 }));
     const view = await t.query(api.link.ending, { wishId });
-    expect(view).toMatchObject({ status: "found", route: ["SF", "Tokyo"], ripples: 3, photoUrl: null });
+    expect(view).toMatchObject({ status: "granted", route: ["SF", "Tokyo"], ripples: 3, photoUrl: null });
     expect(view?.story.split(/(?<=\.)\s/).length).toBe(2);
     expect(await t.query(api.link.ending, { wishId: "nope" })).toBeNull();
   });

@@ -9,6 +9,9 @@ export const wishType = v.union(
   v.literal("same_boat"),
 );
 
+export const meetingRole = v.union(v.literal("creator"), v.literal("match"));
+export const meetingTier = v.union(v.literal("gold"), v.literal("silver"), v.literal("bronze"), v.literal("red"));
+
 export const hopAction = v.union(v.literal("pass"), v.literal("group"), v.literal("its_me"));
 
 export default defineSchema({
@@ -68,9 +71,15 @@ export default defineSchema({
     winningHopId: v.optional(v.id("hops")),
     photoUrl: v.optional(v.string()),
     metInPerson: v.optional(v.boolean()),
-    tier: v.optional(
-      v.union(v.literal("gold"), v.literal("silver"), v.literal("bronze"), v.literal("red")),
-    ),
+    tier: v.optional(meetingTier),
+    meetingPhoto: v.optional(v.object({
+      storageId: v.id("_storage"),
+      uploaderRole: meetingRole,
+      metInPerson: v.boolean(),
+      thankYou: v.string(),
+    })),
+    meetingPhotoRevision: v.optional(v.number()),
+    endingStory: v.optional(v.string()),
     // Set by rewards.grantRewards once a granted wish's wishes and stars are handed out.
     rewardsAppliedAt: v.optional(v.number()),
     // Set on the platform's daily wish (convex/daily.ts). One step per pass:
@@ -84,8 +93,22 @@ export default defineSchema({
     ),
   })
     .index("by_creatorId", ["creatorId"])
+    .index("by_creatorId_and_status", ["creatorId", "status"])
     .index("by_status", ["status"])
     .index("by_daily_date", ["daily.date"]),
+
+  // Upload tickets bind one file to the confirmed participant and their wish.
+  meetingUploads: defineTable({
+    token: v.string(),
+    wishId: v.id("wishes"),
+    uploaderId: v.id("users"),
+    expiresAt: v.number(),
+    photoRevision: v.number(),
+    storageId: v.optional(v.id("_storage")),
+    submitted: v.optional(v.boolean()),
+  })
+    .index("by_token", ["token"])
+    .index("by_storageId", ["storageId"]),
 
   hops: defineTable({
     wishId: v.id("wishes"),
