@@ -1,4 +1,4 @@
-import type { Tabs } from "expo-router";
+import { useRouter, type Tabs } from "expo-router";
 import { useEffect, useState, type ComponentProps } from "react";
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,6 +7,7 @@ import { lv, night } from "@/theme/tokens";
 
 import { useChromeTone } from "./chromeTone";
 import { Glass } from "./Glass";
+import { Icon } from "./Icon";
 import { TAB_BAR_HEIGHT, tabBarBottom } from "./metrics";
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0];
@@ -16,6 +17,7 @@ const PAD = 5;
 
 /** Floating glass tab bar (iOS 26): a capsule above the home indicator with a sliding selection lens. */
 export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabBarProps) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   // Over the night pool the bar turns dark with gold, like the pool's own controls.
   const isNight = useChromeTone() === "night";
@@ -25,6 +27,7 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabB
   const focusedKey = state.routes[state.index]?.key;
   const at = Math.max(0, visible.findIndex((r) => r.key === focusedKey));
   const slot = width > 0 && visible.length > 0 ? width / visible.length : 0;
+  const tossColor = isNight ? night.gold : lv.thread;
   const [x] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.spring(x, { toValue: at * slot, useNativeDriver, damping: 20, stiffness: 240, mass: 0.9 }).start();
@@ -33,7 +36,7 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabB
   return (
     <View style={[styles.wrap, { bottom: tabBarBottom(insets.bottom) }]}>
       <Glass variant={isNight ? "dark" : "chrome"} radius={TAB_BAR_HEIGHT / 2} curve="circular" style={styles.bar}>
-        <View style={styles.row} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+        <View style={[styles.row, { flex: visible.length }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
           {slot > 0 ? <Animated.View style={[styles.lens, isNight && styles.lensNight, { width: slot, transform: [{ translateX: x }] }]} /> : null}
           {visible.map((route) => {
             const { options } = descriptors[route.key]!;
@@ -63,6 +66,16 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabB
             );
           })}
         </View>
+        <Pressable
+          testID="persistent-toss"
+          accessibilityRole="button"
+          accessibilityLabel="Toss a coin"
+          onPress={() => router.push("/toss")}
+          style={({ pressed }) => [styles.item, styles.toss, isNight && styles.tossNight, pressed && styles.pressed]}
+        >
+          <Icon name="sparkles" size={22} color={tossColor} />
+          <Text style={[styles.label, styles.labelOn, { color: tossColor }]}>Toss</Text>
+        </Pressable>
       </Glass>
     </View>
   );
@@ -70,8 +83,8 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabB
 
 const styles = StyleSheet.create({
   wrap: { position: "absolute", left: 0, right: 0, alignItems: "center", paddingHorizontal: 24, pointerEvents: "box-none" },
-  bar: { width: "100%", maxWidth: 400, height: TAB_BAR_HEIGHT, padding: PAD },
-  row: { flex: 1, flexDirection: "row" },
+  bar: { width: "100%", maxWidth: 400, height: TAB_BAR_HEIGHT, padding: PAD, flexDirection: "row" },
+  row: { flexDirection: "row" },
   lens: {
     position: "absolute",
     top: 0,
@@ -82,6 +95,8 @@ const styles = StyleSheet.create({
   },
   lensNight: { backgroundColor: "rgba(255,255,255,0.13)" },
   item: { flex: 1, alignItems: "center", justifyContent: "center", gap: 1 },
+  toss: { borderRadius: TAB_BAR_HEIGHT / 2 - PAD, backgroundColor: lv.threadTint, marginLeft: 4 },
+  tossNight: { backgroundColor: "rgba(233,199,102,0.15)" },
   pressed: { transform: [{ scale: 0.94 }] },
   label: { fontSize: 10, lineHeight: 12, fontWeight: "500" },
   labelOn: { fontWeight: "600" },

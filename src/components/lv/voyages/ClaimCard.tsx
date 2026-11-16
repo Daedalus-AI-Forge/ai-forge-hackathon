@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cleanError } from "@/components/link/claim/errors";
 import { withTimeout } from "@/components/link/push/shareCopy";
+import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
 import { DButton, DCard, DError, DField, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { lv, type } from "@/theme/tokens";
 
@@ -89,21 +90,22 @@ export function ClaimCard({
     return (
       <DCard testID={`claim-sent-${claim.hopId}`}>
         <Eyebrow>Found</Eyebrow>
-        <Text style={s.title}>Sent from your phone — {stage.claimerName} now has your number.</Text>
-        <Sub>Didn’t tap Send? Open Messages again below.</Sub>
+        <Text style={s.title}>Messages opened for {stage.claimerName}</Text>
+        <Sub>Review the text and tap Send in Messages when you’re ready.</Sub>
         <DButton
           title={`Text ${stage.claimerName} again`}
           variant="ghost"
           onPress={() => setStage({ kind: "draft", claimerName: stage.claimerName, phone: stage.phone })}
           testID="claim-reopen"
         />
+        <WishProgressButton wishId={claim.wishId} testID="claim-meeting" />
       </DCard>
     );
   }
 
   return (
     <DCard testID={`claim-card-${claim.hopId}`}>
-      <Eyebrow>Someone says it’s them</Eyebrow>
+      <Eyebrow>{stage.kind === "ask" ? "Someone says it’s them" : "Claim confirmed"}</Eyebrow>
       <Text style={s.title}>{claim.claimerName} says they’re the one</Text>
       <Text style={s.wish} numberOfLines={2}>
         For “{claim.wishText}”
@@ -130,7 +132,8 @@ export function ClaimCard({
             disabled={!draft.trim()}
             testID="claim-text-from-phone"
           />
-          <Sub>Opens your Messages app with this text ready. Nothing is sent until you tap Send.</Sub>
+          <Sub>Review the text and tap Send in Messages when you’re ready.</Sub>
+          <WishProgressButton wishId={claim.wishId} testID="claim-meeting" />
         </View>
       )}
       <DError error={error} />

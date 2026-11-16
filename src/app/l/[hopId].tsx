@@ -166,7 +166,7 @@ export default function LinkPage() {
       ) : null}
 
       {step === "handle" ? (
-        <ClaimStep hopId={hopId} deviceId={deviceId} kind={screen.boat.kind} onDone={() => go("handle")} />
+        <ClaimStep hopId={hopId} wishId={screen.wishId} deviceId={deviceId} kind={screen.boat.kind} onDone={() => go("handle")} />
       ) : null}
 
       {step === "wish" && !freeWishOnly && screen.handled?.action !== "claim" ? (
@@ -207,7 +207,7 @@ export default function LinkPage() {
       ) : null}
 
       {step === "done" && result ? (
-        <DoneStep result={result} wishText={skipped || !wishText.trim() ? null : wishText.trim()} />
+        <DoneStep result={result} boatWishId={screen.wishId} wishText={skipped || !wishText.trim() ? null : wishText.trim()} />
       ) : null}
     </Shell>
   );

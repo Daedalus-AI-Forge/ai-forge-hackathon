@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
+import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
 import { Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
 import type { FinishResult } from "@/lib/linkApi.types";
 import { useDeviceId } from "@/lib/device";
@@ -11,9 +12,9 @@ import { lv, type } from "@/theme/tokens";
 import { GetTheApp } from "./end/GetTheApp";
 import { PROPHECY_FALLBACK, doneTitle, progressDots, pushMoreLine, withFallback } from "./end/logic";
 
-export type DoneStepProps = { result: FinishResult; wishText: string | null };
+export type DoneStepProps = { result: FinishResult; wishText: string | null; boatWishId: string };
 
-export function DoneStep({ result, wishText }: DoneStepProps) {
+export function DoneStep({ result, wishText, boatWishId }: DoneStepProps) {
   const prophecyAction = useAction(api.linkAi.prophecy);
   const deviceId = useDeviceId();
   const sailed = doneTitle(wishText, result) === "Your wish set sail";
@@ -53,6 +54,10 @@ export function DoneStep({ result, wishText }: DoneStepProps) {
         <Text style={styles.more}>{pushMoreLine(result.boatProgress, result.boatsPerCoin)}</Text>
         {result.wishesLeft > 0 ? <Sub>You have {result.wishesLeft} wish{result.wishesLeft === 1 ? "" : "es"} ready.</Sub> : null}
       </Glass>
+      {result.wishId && result.wishId !== boatWishId ? (
+        <WishProgressButton wishId={result.wishId} title="Track your new wish" testID="link-new-wish-progress" />
+      ) : null}
+      <WishProgressButton wishId={boatWishId} title="Check this boat's progress" testID="link-progress-link" />
       <Glass testID="done-get-app">
         <Text style={styles.more}>{sailed ? "Follow your wish in the app" : "Follow this boat in the app"}</Text>
         <Sub>

@@ -4,6 +4,7 @@ import { Share, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { BackButton, GlassCard, Icon, LargeTitle, NavBar, Screen, SectionHeader } from "@/components/ios";
+import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
 import { DAvatar, DButton } from "@/components/lv/passon/kit";
 import { useMe } from "@/lib/device";
 import { lv, shadows, type } from "@/theme/tokens";
@@ -45,7 +46,9 @@ export default function BoatDetail() {
     );
   }
 
-  const found = card.found && (card.status === "landed" || card.status === "granted") ? card.found : null;
+  const real = card.source === "friend";
+  const endingOpen = card.status === "granted" || (!real && card.status === "landed");
+  const found = !real && endingOpen ? card.found : null;
   const source =
     card.source === "daily"
       ? `Today's boat · ${dateLabel(card.pushedAt)}`
@@ -124,14 +127,21 @@ export default function BoatDetail() {
           <Text style={styles.polaroidApart}>{peopleApart(card.hops)}</Text>
           <DButton title="Share" icon="share" testID="boat-share" onPress={() => void share(found)} />
         </View>
-      ) : (
-        <GlassCard style={styles.locked}>
+      ) : !endingOpen ? (
+        <GlassCard style={styles.locked} testID="boat-ending-locked">
           {card.status === "faded" ? null : <Icon name="lock" size={18} color={lv.mutedFg} />}
           <Text style={styles.lockedText}>
-            {card.status === "faded" ? "This boat faded before it found anyone." : "The ending unlocks when someone says “That's me”."}
+            {card.status === "faded" ? "This boat faded before it found anyone."
+              : real ? "The ending unlocks once the wish-maker and their match confirm a photo together."
+              : "The ending unlocks when someone says “That's me”."}
           </Text>
         </GlassCard>
-      )}
+      ) : null}
+      <WishProgressButton
+        wishId={card.wishId}
+        title={endingOpen ? "Open the full ending" : "Check wish progress"}
+        testID={endingOpen ? "boat-full-ending" : "boat-progress-link"}
+      />
     </Screen>
   );
 }
