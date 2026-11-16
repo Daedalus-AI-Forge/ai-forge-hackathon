@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, Image, Platform, StyleSheet, View, type GestureResponderEvent } from "react-native";
 
+import { RIM, boatBounds, circleFrame, type PoolFrame } from "@/lib/well/geometry";
+import { makeBoats } from "@/lib/well/pool-sim";
 import { night, poolImages } from "@/theme/tokens";
 
+import { PaperBoat, boatBox } from "./PaperBoat";
 import { WaterPool, waterSurfaceSupported, type WaterPoolApi } from "./WaterPool";
 
 export type { WaterPoolApi };
@@ -26,12 +29,6 @@ function discPoint(i: number, salt: number, maxR: number) {
   return { x: 0.5 + Math.cos(a) * r * 0.5, y: 0.5 + Math.sin(a) * r * 0.5 };
 }
 
-const STARS = Array.from({ length: 7 }, (_, i) => ({
-  ...discPoint(i, 1, 0.82),
-  size: 3 + Math.round(rand(i, 3) * 3),
-  dur: 1800 + Math.round(rand(i, 4) * 2400),
-  delay: Math.round(rand(i, 5) * 2000),
-}));
 const COIN_SPOTS = Array.from({ length: 3 }, (_, i) => ({
   ...discPoint(i, 21, 0.55),
   variant: i % 2,
@@ -119,47 +116,32 @@ function Ripple({
   );
 }
 
-function Star({ x, y, size, dur, delay, still }: { x: number; y: number; size: number; dur: number; delay: number; still: boolean }) {
-  const [t] = useState(() => new Animated.Value(still ? 1 : 0));
+/** A lantern boat on the fallback water, bobbing and rocking (still under Reduce Motion). */
+function FloatingBoat({ x, y, halfWidth, seed, still }: { x: number; y: number; halfWidth: number; seed: number; still: boolean }) {
+  const [t] = useState(() => new Animated.Value(0));
   useEffect(() => {
-    if (still) {
-      t.setValue(1);
-      return;
-    }
-    const half = (to: number) =>
-      Animated.timing(t, {
-        toValue: to,
-        duration: dur / 2,
-        easing: Easing.inOut(Easing.sin),
-        useNativeDriver,
-      });
-    const anim = Animated.sequence([Animated.delay(delay), Animated.loop(Animated.sequence([half(1), half(0)]))]);
+    if (still) return;
+    const half = (to: number) => Animated.timing(t, { toValue: to, duration: 2200 + seed * 120, easing: Easing.inOut(Easing.sin), useNativeDriver });
+    const anim = Animated.loop(Animated.sequence([half(1), half(0)]));
     anim.start();
     return () => anim.stop();
-  }, [t, dur, delay, still]);
+  }, [t, still, seed]);
+  const box = boatBox(halfWidth);
   return (
     <Animated.View
       pointerEvents="none"
-      style={[
-        styles.star,
-        {
-          left: x - size / 2,
-          top: y - size / 2,
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          opacity: t.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }),
-          transform: [
-            {
-              scale: t.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.6, 1],
-              }),
-            },
-          ],
-        },
-      ]}
-    />
+      style={{
+        position: "absolute",
+        left: x + box.left,
+        top: y + box.top,
+        transform: [
+          { translateY: t.interpolate({ inputRange: [0, 1], outputRange: [-halfWidth * 0.05, halfWidth * 0.05] }) },
+          { rotate: t.interpolate({ inputRange: [0, 1], outputRange: ["-5deg", "5deg"] }) },
+        ],
+      }}
+    >
+      <PaperBoat halfWidth={halfWidth} />
+    </Animated.View>
   );
 }
 
@@ -209,7 +191,7 @@ function SinkingCoin({ toss, size, still }: { toss: PoolToss; size: number; stil
     anim.start(({ finished }) => finished && setLanded(true));
     return () => anim.stop();
   }, [t, still]);
-  const coin = size * 0.1;
+  const coin = Math.min(size * 0.1, 34);
   const sx = toss.x * size;
   const sy = toss.y * size;
   const startX = size / 2 + (sx - size / 2) * 0.2;
@@ -244,19 +226,26 @@ function SinkingCoin({ toss, size, still }: { toss: PoolToss; size: number; stil
 }
 
 /**
- * The wishing pool seen from above: the tiled floor under night water, stars twinkling on the surface,
- * your coins resting on the bottom. Touching the water sends out a ripple (decorative only).
- * The fallback when GL is unavailable or Reduce Motion is on: same floor and coins, ripples drawn as rings.
- * With GL and motion, renders WaterPool (Katie-Lan's WebGL2 water) instead; `onReady` then gets its API.
+ * The wishing pool seen from above: the tiled floor under night water, lantern paper boats drifting on
+ * the surface, your coins resting on the bottom. Touching the water sends out a ripple.
+ * - `size`: the small round pool in a thin glass rim (the toss sheet).
+ * - `frame` (heroFrame): the Pool tab's full-bleed pool, its top running off the screen and the marble
+ *   rim showing only along the bottom; `openTop` is where open water starts below the header.
+ * With GL and motion it renders WaterPool (Katie-Lan's WebGL2 water; `onReady` gets its API). This
+ * Animated version is the fallback when GL is unavailable or Reduce Motion is on.
  */
 export function NightPool({
-  size,
+  size = 200,
+  frame,
+  openTop,
   coins,
   tosses = [],
   onWaterTap,
   onReady,
 }: {
-  size: number;
+  size?: number;
+  frame?: PoolFrame;
+  openTop?: number;
   coins: number;
   /** Coins tossed in this session; each one plays the sink animation once, then rests. */
   tosses?: PoolToss[];
@@ -267,15 +256,16 @@ export function NightPool({
 }) {
   const still = useReduceMotion();
   const [glFailed, setGlFailed] = useState(false);
-  const [taps, setTaps] = useState<TapRipple[]>([]);
-  const nextId = useRef(0);
-  const c = size / 2;
+  const hero = !!frame;
+  const f = useMemo(() => frame ?? circleFrame(size), [frame, size]);
 
   // Katie's real-time water when GL is available and motion is welcome; this Animated pool otherwise.
   if (waterSurfaceSupported && !still && !glFailed) {
     return (
       <WaterPool
-        size={size}
+        frame={f}
+        hero={hero}
+        openTop={openTop}
         coins={coins}
         tosses={tosses}
         onWaterTap={onWaterTap}
@@ -291,6 +281,64 @@ export function NightPool({
     );
   }
 
+  const label = coins > 0 ? `The wishing pool: paper boats drifting, ${coins} of your coins on the floor` : "The wishing pool, with paper boats drifting";
+  const hint = onWaterTap ? "Tap the water to toss a coin" : undefined;
+  const water = <FallbackWater frame={f} openTop={openTop} coins={coins} tosses={tosses} onWaterTap={onWaterTap} still={still} />;
+
+  if (!hero) {
+    const d = f.R * 2;
+    return (
+      <View
+        testID="night-pool"
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={label}
+        accessibilityHint={hint}
+        style={[styles.rim, { width: d + 16, height: d + 16, borderRadius: (d + 16) / 2 }]}
+      >
+        {water}
+      </View>
+    );
+  }
+  // Hero: the marble ring sits behind the water circle; the frame clips its top off.
+  const outer = f.R * (1 + RIM);
+  return (
+    <View
+      testID="night-pool"
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={label}
+      accessibilityHint={hint}
+      style={{ width: f.width, height: f.height, overflow: "hidden", backgroundColor: night.deep }}
+    >
+      <View style={[styles.marble, { left: f.cx - outer, top: f.cy - outer, width: outer * 2, height: outer * 2, borderRadius: outer }]}>{water}</View>
+    </View>
+  );
+}
+
+/** The fallback's water circle (diameter 2R): floor, coins, ripples, boats, sinking coins, tap rings. */
+function FallbackWater({
+  frame: f,
+  openTop,
+  coins,
+  tosses,
+  onWaterTap,
+  still,
+}: {
+  frame: PoolFrame;
+  openTop?: number;
+  coins: number;
+  tosses: PoolToss[];
+  onWaterTap?: (x: number, y: number) => void;
+  still: boolean;
+}) {
+  const [taps, setTaps] = useState<TapRipple[]>([]);
+  const nextId = useRef(0);
+  const size = f.R * 2;
+  const c = f.R;
+  const coin = Math.min(size * 0.1, 34);
+  const boats = useMemo(() => makeBoats(5, boatBounds(f, openTop)), [f, openTop]);
+
   const onTap = (e: GestureResponderEvent) => {
     const { locationX: x, locationY: y } = e.nativeEvent;
     if (Math.hypot(x - c, y - c) > c * 0.95) return;
@@ -301,59 +349,41 @@ export function NightPool({
   const drop = (id: number) => setTaps((list) => list.filter((r) => r.id !== id));
 
   return (
-    <View
-      testID="night-pool"
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={coins > 0 ? `The wishing pool, with ${coins} of your coins on the floor` : "The wishing pool"}
-      accessibilityHint={onWaterTap ? "Tap the water to toss a coin" : undefined}
-      style={[styles.rim, { width: size + 16, height: size + 16, borderRadius: (size + 16) / 2 }]}
-    >
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: c,
-          overflow: "hidden",
-        }}
-        onStartShouldSetResponder={() => true}
-        onResponderRelease={onTap}
-      >
-        <Image source={poolImages.floor} style={{ position: "absolute", left: 0, top: 0, width: size, height: size }} resizeMode="cover" />
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.water]} />
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.depth, { borderRadius: c, borderWidth: size * 0.09 }]} />
+    <View style={{ width: size, height: size, borderRadius: c, overflow: "hidden" }} onStartShouldSetResponder={() => true} onResponderRelease={onTap}>
+      <Image source={poolImages.floor} style={{ position: "absolute", left: 0, top: 0, width: size, height: size }} resizeMode="cover" />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.water]} />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.depth, { borderRadius: c, borderWidth: size * 0.09 }]} />
 
-        {COIN_SPOTS.slice(0, Math.min(coins, COIN_SPOTS.length)).map((s, i) => (
-          <CopperCoin
-            key={i}
-            size={size * 0.1}
-            variant={s.variant}
-            style={{
-              position: "absolute",
-              left: s.x * size - size * 0.05,
-              top: s.y * size - size * 0.05,
-              transform: [{ rotate: `${s.tilt}deg` }],
-            }}
-          />
-        ))}
+      {COIN_SPOTS.slice(0, Math.min(coins, COIN_SPOTS.length)).map((s, i) => (
+        <CopperCoin
+          key={i}
+          size={coin}
+          variant={s.variant}
+          style={{
+            position: "absolute",
+            left: s.x * size - coin / 2,
+            top: s.y * size - coin / 2,
+            transform: [{ rotate: `${s.tilt}deg` }],
+          }}
+        />
+      ))}
 
-        {still ? null : (
-          <>
-            <Ripple x={c} y={c} size={size * 1.1} duration={1600} />
-            <Ripple x={c} y={c} size={size * 0.9} duration={5200} delay={1400} loop />
-            <Ripple x={c} y={c} size={size * 0.9} duration={5200} delay={4000} loop />
-          </>
-        )}
-        {STARS.map((s, i) => (
-          <Star key={i} x={s.x * size} y={s.y * size} size={s.size} dur={s.dur} delay={s.delay} still={still} />
-        ))}
-        {tosses.slice(-8).map((t) => (
-          <SinkingCoin key={t.id} toss={t} size={size} still={still} />
-        ))}
-        {taps.map((r) => (
-          <TapRing key={r.id} r={r} size={size} onDone={drop} still={still} />
-        ))}
-      </View>
+      {still ? null : (
+        <>
+          <Ripple x={c} y={c} size={size * 1.1} duration={1600} />
+          <Ripple x={c} y={c} size={size * 0.9} duration={5200} delay={1400} loop />
+          <Ripple x={c} y={c} size={size * 0.9} duration={5200} delay={4000} loop />
+        </>
+      )}
+      {boats.map((b, i) => (
+        <FloatingBoat key={i} x={c + b.x * c} y={c + b.y * c} halfWidth={b.size * c} seed={i} still={still} />
+      ))}
+      {tosses.slice(-8).map((t) => (
+        <SinkingCoin key={t.id} toss={t} size={size} still={still} />
+      ))}
+      {taps.map((r) => (
+        <TapRing key={r.id} r={r} size={size} onDone={drop} still={still} />
+      ))}
     </View>
   );
 }
@@ -383,13 +413,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "rgba(232,250,248,0.9)",
   },
-  star: {
+  // The fallback's marble lip (the GL water draws its own): only its bottom shows on the hero.
+  marble: {
     position: "absolute",
-    backgroundColor: night.goldBright,
-    shadowColor: night.gold,
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 0 },
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E8E1D3",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.6)",
   },
   coinShadow: {
     shadowColor: "#04121A",

@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery } from "convex/react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, ImageBackground, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
@@ -22,6 +22,7 @@ import { tossToast } from "@/lib/tossWish";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, errorMessage } from "@/components/ui";
 import { useMe } from "@/lib/device";
+import { boatBounds, heroFrame, openWaterCentre } from "@/lib/well/geometry";
 import { layout, night, poolImages, type } from "@/theme/tokens";
 
 const ONBOARDED_KEY = "wishwell.onboarded";
@@ -50,7 +51,10 @@ export default function ThePool() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { width } = useWindowDimensions();
-  const poolSize = Math.min(width, layout.maxWidth) - layout.margin * 2 - 16 - 24;
+  // The pool is the top of the page: full width, its top running off the screen, the marble rim
+  // curving along the bottom. The Fountain pill and title float over the water.
+  const frame = useMemo(() => heroFrame(Math.min(width, layout.maxWidth)), [width]);
+  const [headerH, setHeaderH] = useState(150);
 
   // Katie-Lan's prototype opens on the fountain, then dives into the pool. A dive is remembered for
   // the session (diveMemory), so coming back to the tab lands in the pool until the app restarts.
@@ -66,6 +70,8 @@ export default function ThePool() {
   // Tossing happens in the pool (Katie-Lan's design): the composer shows after a "toss" dive or the
   // pool's own Toss button; a coin sinks, a toast confirms, then the sheet picks who it reaches first.
   const insets = useSafeAreaInsets();
+  const headerTop = insets.top + 8;
+  const openTop = headerTop + headerH + 12;
   const [composing, setComposing] = useState(false);
   const [wish, setWish] = useState("");
   const [tosses, setTosses] = useState<PoolToss[]>([]);
@@ -81,10 +87,15 @@ export default function ThePool() {
     [],
   );
   const tossCoin = (x?: number, y?: number) => {
+    // No tapped spot: land somewhere in the open water below the header.
     const a = Math.random() * Math.PI * 2;
-    const r = Math.random() * 0.35;
+    const r = Math.random() * 0.22;
+    const mid = openWaterCentre(boatBounds(frame, openTop));
     const id = Date.now();
-    setTosses((list) => [...list, { id, x: x ?? 0.5 + Math.cos(a) * r * 0.5, y: y ?? 0.5 + Math.sin(a) * r * 0.5, variant: Math.random() < 0.5 ? 0 : 1 }]);
+    setTosses((list) => [
+      ...list,
+      { id, x: x ?? (mid.x + 1 + Math.cos(a) * r) / 2, y: y ?? (mid.y + 1 + Math.sin(a) * r) / 2, variant: Math.random() < 0.5 ? 0 : 1 },
+    ]);
     const text = wish.trim();
     setToast(tossToast(text));
     clearTimeout(toastTimer.current);
@@ -235,25 +246,41 @@ export default function ThePool() {
         importantForAccessibility={inPool ? "auto" : "no-hide-descendants"}
       >
         <Screen tab testID="well-screen" backdrop={<NightBackdrop />} tone="night">
-          <Glass
-            testID="pool-surface"
-            variant="dark"
-            radius={999}
-            onPress={surface}
-            accessibilityLabel="Fountain"
-            accessibilityHint="Surfaces from the pool back to the fountain"
-            style={styles.surface}
-          >
-            <Icon name="back" size={14} color={night.fg} />
-            <Text style={styles.surfaceText}>Fountain</Text>
-          </Glass>
-          <LargeTitle eyebrowColor={night.mutedFg} eyebrow={eyebrow} title={<Text style={styles.brand}>Wishwell</Text>} right={avatar} />
+          <View style={[styles.hero, { height: frame.height, marginTop: -headerTop, marginHorizontal: -layout.margin }]}>
+            <NightPool
+              frame={frame}
+              openTop={openTop}
+              coins={coins.length}
+              tosses={tosses}
+              onWaterTap={composing ? (x, y) => tossCoin(x, y) : undefined}
+            />
+            <TopScrim height={frame.height * 0.45} />
+            <BottomFade height={frame.height * 0.07} />
+            <View
+              style={[styles.heroHeader, { top: headerTop }]}
+              pointerEvents="box-none"
+              onLayout={(e) => setHeaderH(Math.round(e.nativeEvent.layout.height))}
+            >
+              <Glass
+                testID="pool-surface"
+                variant="dark"
+                radius={999}
+                onPress={surface}
+                accessibilityLabel="Fountain"
+                accessibilityHint="Surfaces from the pool back to the fountain"
+                style={styles.surface}
+              >
+                <Icon name="back" size={14} color={night.fg} />
+                <Text style={styles.surfaceText}>Fountain</Text>
+              </Glass>
+              <LargeTitle eyebrowColor={night.mutedFg} eyebrow={eyebrow} title={<Text style={styles.brand}>Wishwell</Text>} right={avatar} />
+            </View>
+          </View>
 
           {voyageLog && !logDismissed ? (
             <VoyageLogCard log={voyageLog as VoyageLog} onDismiss={() => void AsyncStorage.setItem(LOG_DISMISS_KEY, date).then(() => setLogDismissed(true))} />
           ) : null}
 
-          <NightPool size={poolSize} coins={coins.length} tosses={tosses} onWaterTap={composing ? (x, y) => tossCoin(x, y) : undefined} />
 
           <View style={styles.boats}>
             {friends.map((c) => (
@@ -341,6 +368,30 @@ export default function ThePool() {
   );
 }
 
+/** Night falling over the top of the pool: keeps the header legible and lets the water fade into the dark. */
+function TopScrim({ height }: { height: number }) {
+  const bands = 18;
+  return (
+    <View pointerEvents="none" style={[styles.scrim, { height }]}>
+      {Array.from({ length: bands }, (_, i) => (
+        <View key={i} style={{ flex: 1, backgroundColor: `rgba(7,20,26,${(0.82 * (1 - i / bands) ** 1.6).toFixed(3)})` }} />
+      ))}
+    </View>
+  );
+}
+
+/** The garden strip below the marble rim fades into the page instead of ending in a hard line. */
+function BottomFade({ height }: { height: number }) {
+  const bands = 8;
+  return (
+    <View pointerEvents="none" style={[styles.fade, { height }]}>
+      {Array.from({ length: bands }, (_, i) => (
+        <View key={i} style={{ flex: 1, backgroundColor: `rgba(7,20,26,${(0.9 * ((i + 1) / bands)).toFixed(3)})` }} />
+      ))}
+    </View>
+  );
+}
+
 /** The teammates' night garden behind the pool: the fountain, dimmed so text and glass stay legible. */
 function NightBackdrop() {
   return (
@@ -368,6 +419,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(198,240,238,0.9)",
     boxShadow: "0px 0px 120px 90px rgba(110,190,205,0.7)",
   },
+  hero: { position: "relative" },
+  heroHeader: { position: "absolute", left: layout.margin, right: layout.margin, gap: 16 },
+  scrim: { position: "absolute", top: 0, left: 0, right: 0 },
+  fade: { position: "absolute", bottom: 0, left: 0, right: 0 },
   surface: {
     flexDirection: "row",
     alignItems: "center",

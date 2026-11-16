@@ -1,9 +1,12 @@
 // GLSL for the bird's-eye wishing pool, ported from Katie-Lan's web prototype (waterworks).
 // All positions use "pool space": (0,0) is the pool centre, radius 1 is the water's edge, +y points down.
+// The prototype's floating gold stars are lantern paper boats here (the app's "boat" vocabulary).
 //
 // The height field (height, velocity) lives in a float texture when the GPU can render to one.
 // Otherwise it is packed into RGBA8: height in .rg and velocity in .ba as 16-bit fixed point.
 // Every program reads and writes the field through readHV()/writeHV(), defined by fieldChunk().
+
+import { RIM } from "./geometry";
 
 export function fieldChunk(packed: boolean) {
   return packed
@@ -86,13 +89,13 @@ uniform sampler2D uCoinTex;
 uniform vec4 uRise;      // challenge star: x, y, depth, size
 uniform vec4 uRiseB;     // rotation, glow, alpha, open (0..1)
 uniform int uCoinCount;
-uniform vec4 uStar[8];   // x, y, rotation, size
-uniform int uStarCount;
+uniform vec4 uBoat[8];   // x, y, rock angle, half-width
+uniform int uBoatCount;
 
 out vec4 o;
 
 const float PI = 3.14159265;
-const float RIM = 0.15;
+const float RIM = ${RIM.toFixed(3)};
 const vec3 MOON = normalize(vec3(0.15, -0.19, 1.0));
 const vec3 LAMP = normalize(vec3(-0.21, 0.13, 1.0));
 
@@ -123,6 +126,56 @@ float sdStar5(vec2 p, float r, float rf) {
 }
 
 mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+
+// ---- a paper boat seen from the side, in boat units: half-width 1, +y down, centre on the deck ----
+// Outline: bow tip, sail foot, sail peak, sail foot, stern tip, keel corners.
+float sdBoat(vec2 p) {
+  vec2 v[7] = vec2[7](
+    vec2(-1.0, -0.14), vec2(-0.45, 0.07), vec2(0.0, -0.72), vec2(0.45, 0.07),
+    vec2(1.0, -0.14), vec2(0.62, 0.48), vec2(-0.62, 0.48));
+  float d = dot(p - v[0], p - v[0]);
+  float s = 1.0;
+  for (int i = 0; i < 7; i++) {
+    int j = i == 0 ? 6 : i - 1;
+    vec2 e = v[j] - v[i];
+    vec2 w = p - v[i];
+    vec2 b = w - e * clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
+    d = min(d, dot(b, b));
+    bvec3 c = bvec3(p.y >= v[i].y, p.y < v[j].y, e.x * w.y > e.y * w.x);
+    if (all(c) || all(not(c))) s *= -1.0;
+  }
+  return s * sqrt(d);
+}
+
+float sdSeg(vec2 p, vec2 a, vec2 b) {
+  vec2 pa = p - a, ba = b - a;
+  return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0));
+}
+
+// Folded ivory paper lit from inside: warm at the sail's foot, cooler paper towards the peak,
+// the far faces in shade, thin creases along the folds.
+vec3 boatColor(vec2 q) {
+  vec3 col;
+  float up = smoothstep(0.07, -0.6, q.y);
+  float bevel = 0.4146 * (q.y - 0.07);
+  if (q.y < 0.07 && abs(q.x) < 0.45 * (q.y + 0.72) / 0.79) {
+    col = q.x < 0.0
+      ? mix(vec3(1.0, 0.86, 0.56), vec3(0.98, 0.95, 0.88), up)
+      : mix(vec3(0.93, 0.74, 0.42), vec3(0.83, 0.78, 0.68), up);
+  } else if (q.x < -0.45 - bevel) {
+    col = vec3(0.84, 0.77, 0.64);
+  } else if (q.x > 0.45 + bevel) {
+    col = vec3(0.73, 0.65, 0.51);
+  } else {
+    col = mix(vec3(1.0, 0.92, 0.73), vec3(0.79, 0.72, 0.6), smoothstep(0.07, 0.48, q.y));
+  }
+  float crease = min(min(sdSeg(q, vec2(0.0, -0.72), vec2(0.0, 0.07)), sdSeg(q, vec2(-0.45, 0.07), vec2(0.45, 0.07))),
+                     min(sdSeg(q, vec2(-0.45, 0.07), vec2(-0.62, 0.48)), sdSeg(q, vec2(0.45, 0.07), vec2(0.62, 0.48))));
+  col *= 1.0 - (1.0 - smoothstep(0.012, 0.04, crease)) * 0.2;
+  vec2 g = (q - vec2(0.0, 0.07)) * vec2(1.3, 3.0);
+  col += vec3(1.0, 0.8, 0.45) * exp(-length(g) * 3.0) * 0.3;
+  return col;
+}
 
 // Tileable procedural caustics.
 float caustic(vec2 uv, float t) {
@@ -192,12 +245,12 @@ void main() {
   floorCol = pow(floorCol, vec3(1.15));
 
   float shade = 1.0;
+  // each boat throws a soft oval of shade onto the floor, offset away from the moon
   for (int i = 0; i < 8; i++) {
-    if (i >= uStarCount) break;
-    vec4 s = uStar[i];
-    vec2 lq = rot2(s.z) * (fp - s.xy - vec2(-0.03, 0.04));
-    float d = sdStar5(lq, s.w, 0.5);
-    shade *= mix(0.55, 1.0, smoothstep(-0.01, 0.035, d));
+    if (i >= uBoatCount) break;
+    vec4 b = uBoat[i];
+    vec2 e = (fp - b.xy - vec2(-0.03, 0.06)) / (b.w * vec2(0.95, 0.38));
+    shade *= 1.0 - 0.42 * exp(-dot(e, e) * 1.4);
   }
   for (int i = 0; i < 16; i++) {
     if (i >= uCoinCount) break;
@@ -264,15 +317,19 @@ void main() {
   wc += vec3(1.0) * pow(max(dot(R, MOON), 0.0), 60.0) * smoothstep(0.02, 0.09, length(grad)) * 0.35;
   wc += smoothstep(0.972, 0.996, r) * 0.1;
 
-  // ---- golden stars floating on the surface ----
+  // ---- lantern paper boats floating on the surface ----
   for (int i = 0; i < 8; i++) {
-    if (i >= uStarCount) break;
-    vec4 s = uStar[i];
-    vec2 lq = rot2(s.z) * (p - s.xy - grad * 0.012);
-    float d = sdStar5(lq, s.w, 0.5);
-    wc += vec3(1.0, 0.82, 0.42) * exp(-max(d, 0.0) * 30.0) * 0.22;
+    if (i >= uBoatCount) break;
+    vec4 b = uBoat[i];
+    vec2 rel = p - b.xy - grad * 0.012;
+    // the lantern's light on the water around and just below the hull
+    vec2 e = (rel - vec2(0.0, b.w * 0.3)) / (b.w * vec2(1.7, 0.85));
+    wc += vec3(1.0, 0.78, 0.4) * exp(-dot(e, e) * 1.5) * 0.24;
+    vec2 q = rot2(b.z) * rel / b.w;
+    float d = sdBoat(q) * b.w;
+    wc += vec3(1.0, 0.84, 0.5) * exp(-max(d, 0.0) * 40.0) * 0.12;
     float m = 1.0 - smoothstep(-px, px, d);
-    if (m > 0.0) wc = mix(wc, starColor(lq, s.z, d), m);
+    if (m > 0.0) wc = mix(wc, boatColor(q), m);
   }
 
   // ---- the challenge star opening: a burst of light rays and a ring ----
