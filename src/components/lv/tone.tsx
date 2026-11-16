@@ -1,4 +1,5 @@
-// Surface tone for shared controls: "night" inside the pool's dark sheets, "light" everywhere else.
+// Surface tone for shared controls: "night" inside the pool's dark sheets, "light" (the app default, `lv`)
+// everywhere else. `lv` is the night palette too, so both use gold for accents.
 import { createContext, useContext, type ReactNode } from "react";
 
 import { lv, night } from "@/theme/tokens";
@@ -26,7 +27,7 @@ const LIGHT = {
   fg: lv.fg as string,
   mutedFg: lv.mutedFg as string,
   placeholder: lv.tertiaryFg as string,
-  accent: lv.thread as string,
+  accent: lv.tint as string,
   fill: lv.fill as string,
   chipOn: lv.primary as string,
   chipOnFg: lv.primaryFg as string,

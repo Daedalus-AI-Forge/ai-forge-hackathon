@@ -1,21 +1,22 @@
-// Ending page (from the SMS link): photo, the two-sentence story, the route, share, get the app. No login.
+// Ending page (from the SMS link, or "See the ending" in the app): the photo as a polaroid, the story,
+// the route, share, get the app. No login.
 import { useQuery } from "convex/react";
-import { Stack, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { Screen } from "@/components/ios";
+import { BackButton, Glass, NavBar, Screen } from "@/components/ios";
 import { GetTheApp } from "@/components/link/end/GetTheApp";
 import { routeChain } from "@/components/link/end/logic";
-import { EndingShareButton, GrantedCard } from "@/components/lv/meet/GrantedCard";
+import { EndingShareButton, GrantedCard, usePrintWidth } from "@/components/lv/meet/GrantedCard";
 import { MeetForWish } from "@/components/lv/meet/MeetCard";
 import { DCard, Eyebrow, Sub } from "@/components/lv/passon/kit";
-import { photoSource } from "@/components/lv/world/Polaroid";
+import { Polaroid, tiltFor } from "@/components/lv/world/Polaroid";
 import { WishGlobe } from "@/components/lv/world/WishGlobe";
 import { wishPathStops } from "@/components/lv/world/wishPath";
 import { useDeviceId } from "@/lib/device";
 import type { EndingView } from "@/lib/linkApi.types";
-import { lv, polaroid, shadows, type } from "@/theme/tokens";
+import { layout, lv, night, type } from "@/theme/tokens";
 
 const STATUS: Record<EndingView["status"], string> = {
   traveling: "Still drifting",
@@ -26,11 +27,15 @@ const STATUS: Record<EndingView["status"], string> = {
 
 export default function EndingPage() {
   const { wishId } = useLocalSearchParams<{ wishId: string }>();
+  const router = useRouter();
   const view = useQuery(api.link.ending, wishId ? { wishId } : "skip");
   const deviceId = useDeviceId();
+  const printWidth = usePrintWidth();
   // Real wishes end through the meet-up: locked while found, the GrantedCard reveal once granted.
-  // Daily boats and other states keep the plain polaroid.
+  // Daily boats and other states keep the plain print.
   const meetEnding = !!view && (view.status === "granted" || (view.status === "found" && view.locked));
+  // Opened from inside the app (Voyages, a boat, a claim): a way back. A cold SMS link has nowhere to go back to.
+  const canGoBack = router.canGoBack();
   // Completed wishes show their world path on the globe; the GrantedCard carries its own.
   const done = !!view && (view.status === "found" || view.status === "granted");
   const path = view ? wishPathStops(view.holders, view.route) : [];
@@ -38,6 +43,7 @@ export default function EndingPage() {
   return (
     <Screen maxWidth={560}>
       <Stack.Screen options={{ headerShown: false, title: "How the wish ended" }} />
+      {canGoBack ? <NavBar left={<BackButton testID="ending-back" onPress={() => router.back()} />} /> : null}
       {view === undefined ? (
         <ActivityIndicator color={lv.tint} style={styles.loading} />
       ) : view === null ? (
@@ -47,7 +53,6 @@ export default function EndingPage() {
         </View>
       ) : (
         <>
-          <Eyebrow>{STATUS[view.status] ?? "A paper boat"}</Eyebrow>
           {/* The meet-up step for the two participants while the ending is still locked. */}
           {view.status === "found" && view.locked ? <MeetForWish wishId={wishId} deviceId={deviceId} showEndingLink={false} /> : null}
           {meetEnding ? (
@@ -55,15 +60,33 @@ export default function EndingPage() {
               <GrantedCard ending={view} wishId={wishId} photoTestID="ending-photo" storyTestID="ending-story" shareTestID="ending-share" />
             </View>
           ) : (
-            <View testID="ending-card" style={styles.polaroid}>
-              {view.photoUrl ? (
-                <Image testID="ending-photo" source={photoSource(view.photoUrl)} style={styles.photo} resizeMode="cover" />
-              ) : null}
-              <Text style={styles.wish}>“{view.wishText}”</Text>
-              <Text testID="ending-story" style={styles.story}>{view.story}</Text>
-            </View>
+            <>
+              <Eyebrow style={styles.status}>{STATUS[view.status] ?? "A paper boat"}</Eyebrow>
+              <View testID="ending-card" style={styles.ending}>
+                {view.photoUrl ? (
+                  <View style={styles.print}>
+                    <Polaroid
+                      testID="ending-photo"
+                      photoUrl={view.photoUrl}
+                      caption={view.wishText}
+                      names={["?", "?"]}
+                      date={null}
+                      width={printWidth}
+                      tilt={tiltFor(wishId, 2.2)}
+                      accessibilityLabel={`Photo from the end of the voyage: ${view.wishText}`}
+                    />
+                  </View>
+                ) : null}
+                <Glass variant="dark" style={styles.card}>
+                  {view.photoUrl ? null : <Text style={styles.wish}>“{view.wishText}”</Text>}
+                  <Text testID="ending-story" style={styles.story}>
+                    {view.story}
+                  </Text>
+                </Glass>
+              </View>
+            </>
           )}
-          {view.route.length ? (
+          {view.route.length && !meetEnding ? (
             <DCard testID="ending-route">
               <Eyebrow>Route · {view.ripples} hop{view.ripples === 1 ? "" : "s"}</Eyebrow>
               <Text style={styles.route}>{routeChain(view.route)}</Text>
@@ -71,7 +94,13 @@ export default function EndingPage() {
             </DCard>
           ) : null}
           {!meetEnding ? <EndingShareButton ending={view} wishId={wishId} testID="ending-share" /> : null}
-          <GetTheApp deviceId={deviceId} title="Get the app — see where all your boats drifted" testID="ending-get-app" />
+          {/* Someone reading this in the app already has it. */}
+          {Platform.OS === "web" ? (
+            <View style={styles.getApp}>
+              <Sub style={styles.center}>See where all your boats drifted.</Sub>
+              <GetTheApp deviceId={deviceId} title="Get the app" testID="ending-get-app" />
+            </View>
+          ) : null}
         </>
       )}
     </Screen>
@@ -82,19 +111,13 @@ const styles = StyleSheet.create({
   loading: { marginTop: 80 },
   missing: { gap: 10, marginTop: 40 },
   h1: { ...type.title1, color: lv.fg },
-  // A paper print on the night page: warm paper and dark ink, like the World tab's polaroids.
-  polaroid: {
-    backgroundColor: polaroid.paper,
-    borderRadius: 10,
-    borderCurve: "continuous",
-    padding: 12,
-    paddingBottom: 20,
-    gap: 12,
-    transform: [{ rotate: "-1deg" }],
-    boxShadow: shadows.float,
-  },
-  photo: { width: "100%", aspectRatio: 1, borderRadius: 6, backgroundColor: polaroid.photoBg },
-  wish: { ...type.title3, fontWeight: "700", color: polaroid.ink },
-  story: { ...type.callout, color: polaroid.ink },
+  status: { color: night.gold },
+  ending: { gap: layout.stackGap },
+  print: { alignItems: "center", paddingVertical: 12 },
+  card: { padding: layout.cardPadding, gap: 10 },
+  wish: { fontFamily: night.serif, fontSize: 22, lineHeight: 29, color: night.fg },
+  story: { ...type.callout, color: night.fg },
   route: { ...type.subheadline, color: lv.fg },
+  getApp: { gap: 8, marginTop: 8 },
+  center: { textAlign: "center" },
 });

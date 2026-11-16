@@ -273,6 +273,18 @@ export function DTag({ label, tone = "thread", testID }: { label: string; tone?:
   );
 }
 
+/**
+ * iOS switch colors for `<Switch {...switchColors} />`: a gold track when on, a faint light track when
+ * off, and a white thumb (react-native-web would otherwise paint the "on" thumb teal).
+ */
+export const switchColors = {
+  trackColor: { true: lv.tint, false: lv.fillStrong },
+  thumbColor: "#FFFFFF",
+  ios_backgroundColor: lv.fillStrong,
+  // react-native-web's own prop for the "on" thumb; React Native's types don't declare it.
+  ...({ activeThumbColor: "#FFFFFF" } as object),
+};
+
 export function DError({ error }: { error: string | null }) {
   return error ? (
     <Text style={s.error} accessibilityRole="alert" accessibilityLiveRegion="polite">

@@ -13,7 +13,7 @@ import { ShareLink } from "@/components/ShareLink";
 import { WellHint } from "@/components/WellHint";
 import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
 import { errorMessage } from "@/components/ui";
-import { DAvatar, DButton, DCard, DChips, DError, DField, DTag, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
+import { DAvatar, DButton, DCard, DChips, DError, DField, DTag, Eyebrow, Glass, Sub, switchColors } from "@/components/lv/passon/kit";
 import { useMe } from "@/lib/device";
 import { countdown, useNow } from "@/lib/time";
 import { lv, type } from "@/theme/tokens";
@@ -265,8 +265,7 @@ export default function PassOn() {
                     testID="its-me-show"
                     value={showNameAndCity}
                     onValueChange={setShowNameAndCity}
-                    trackColor={{ true: lv.tint, false: lv.fillStrong }}
-                    ios_backgroundColor={lv.fillStrong}
+                    {...switchColors}
                   />
                 </View>
                 <DError error={error} />
