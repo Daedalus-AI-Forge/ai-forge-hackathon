@@ -49,7 +49,7 @@ describe("pure helpers", () => {
     const scores = new Map(edges.map((e) => [e.edgeId, scoreKeyword(words, e)]));
     const ranked = rankGraph({ edges, senders: [], edgeScores: scores, limit: 5 });
     expect(ranked.map((c) => c.personKey)).toEqual(["amy"]);
-    expect(ranked[0].evidence).toEqual([{ tag: "music", reason: "Plays in a band every weekend" }]);
+    expect(ranked[0].evidence.map(({ tag, reason }) => ({ tag, reason }))).toEqual([{ tag: "music", reason: "Plays in a band every weekend" }]);
   });
 
   test("recency breaks score ties; senders get a boost but never appear without evidence", () => {
@@ -102,7 +102,7 @@ describe("rankForWish", () => {
     const { owner } = await seed(t);
     const ranked = await t.action(internal.graphRank.rankForWish, { ownerUserId: owner, wishText: "jam on drums" });
     expect(ranked.map((c) => c.name)).toEqual(["Amy"]);
-    expect(ranked[0].evidence).toEqual([{ tag: "music", reason: "Plays drums in a band" }]);
+    expect(ranked[0].evidence.map(({ tag, reason }) => ({ tag, reason }))).toEqual([{ tag: "music", reason: "Plays drums in a band" }]);
     expect(JSON.stringify(ranked)).not.toContain("Sam");
   });
 

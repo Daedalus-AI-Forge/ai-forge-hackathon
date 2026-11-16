@@ -45,7 +45,9 @@ export type CoachSuggestion = {
   name: string;
   personKey: string;
   why: string;
-  evidence: { tag: string; reason: string | null }[];
+  evidence: { tag: string; reason: string | null; source?: "pick" | "daily"; at?: number }[];
+  /** e.g. "Katie · Japan · from a daily boat 3 weeks ago" */
+  label?: string;
 };
 
 export type CoachResult =

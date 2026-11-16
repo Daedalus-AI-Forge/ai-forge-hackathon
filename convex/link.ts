@@ -3,7 +3,7 @@
 import { bindBotHolder } from "./bots";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { EndingView, FinishResult, FirstScreen, FirstScreenState } from "../src/lib/linkApi.types";
 import { stepAt } from "./daily";
 import { personKey } from "./graphShared";
@@ -122,6 +122,56 @@ async function ensureVisitor(ctx: MutationCtx, deviceId: string): Promise<Doc<"u
   });
   return (await ctx.db.get("users", id))!;
 }
+
+const TEAM_MEMBER_KEYS = ["darren", "louise", "katie", "dazi"] as const;
+
+/**
+ * Where the holder of `hop` is, for a visitor who never told us (no-app link visitors have no
+ * city). In order: the bound holder's profile, the sender's own graph entry for this person
+ * (a seeded or earlier hop with a city), then a team member profile with the holder's name.
+ */
+async function holderProfilePlace(
+  ctx: QueryCtx,
+  hop: Doc<"hops">,
+  wish: Doc<"wishes">,
+): Promise<{ city: string; lat?: number; lng?: number } | null> {
+  if (hop.holderUserId) {
+    const holder = await ctx.db.get("users", hop.holderUserId);
+    if (holder?.city.trim()) return { city: holder.city.trim() };
+  }
+  const parent = hop.parentHopId ? await ctx.db.get("hops", hop.parentHopId) : null;
+  const senderId = parent ? parent.holderUserId : wish.creatorId;
+  const name = hop.holderName.trim();
+  if (senderId && name) {
+    const edges = await ctx.db
+      .query("edges")
+      .withIndex("by_ownerUserId_and_personName", (q) => q.eq("ownerUserId", senderId).eq("personName", name))
+      .take(20);
+    for (const e of edges) {
+      const known = e.hopId === hop._id ? null : await ctx.db.get("hops", e.hopId);
+      if (known?.city) return { city: known.city, lat: known.lat, lng: known.lng };
+    }
+  }
+  const key = personKey(name);
+  for (const teamKey of TEAM_MEMBER_KEYS) {
+    const members = await ctx.db.query("users").withIndex("by_teamKey", (q) => q.eq("teamKey", teamKey)).take(5);
+    const m = members.find((u) => personKey(u.name) === key && u.city.trim());
+    if (m) return { city: m.city.trim() };
+  }
+  return null;
+}
+
+/** The holder's city for link-page AI copy (FACTS only; null when unknown). */
+export const holderCity = internalQuery({
+  args: { hopId: v.id("hops") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { hopId }) => {
+    const hop = await ctx.db.get("hops", hopId);
+    const wish = hop ? await ctx.db.get("wishes", hop.wishId) : null;
+    if (!hop || !wish) return null;
+    return hop.city ?? (await holderProfilePlace(ctx, hop, wish))?.city ?? null;
+  },
+});
 
 async function hasUsedFreeWish(ctx: QueryCtx, userId: Id<"users">) {
   const rows = await ctx.db
@@ -293,8 +343,18 @@ export const pushOne = mutation({
       relation,
     });
     // Record where the boat was when it was pushed, so ripples and receipts can say "now in <city>".
-    const city = hop.city ?? (user.city.trim() || undefined);
-    await ctx.db.patch("hops", hop._id, { holderUserId: user._id, action: "pass", actedAt: Date.now(), city });
+    const place = hop.city
+      ? { city: hop.city, lat: hop.lat, lng: hop.lng }
+      : user.city.trim()
+        ? { city: user.city.trim() }
+        : await holderProfilePlace(ctx, hop, wish);
+    await ctx.db.patch("hops", hop._id, {
+      holderUserId: user._id,
+      action: "pass",
+      actedAt: Date.now(),
+      city: place?.city,
+      ...(place?.lat !== undefined && place.lng !== undefined ? { lat: place.lat, lng: place.lng } : {}),
+    });
     const progress = (user.boatProgress ?? 0) + 1;
     await ctx.db.patch("users", user._id, {
       name: user.name || hop.holderName,

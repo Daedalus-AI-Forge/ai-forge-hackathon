@@ -21,16 +21,22 @@ export function memoryNamespace(ownerUserId: string): string {
   return `ww_net_${ownerUserId}`;
 }
 
+/** Optional provenance of one evidence edge: where it came from and when (ms). */
+export const evidenceMeta = {
+  source: v.optional(v.union(v.literal("pick"), v.literal("daily"))),
+  at: v.optional(v.number()),
+};
+
 /** One ranked candidate, produced by graphRank.rankForWish, consumed by ai.coach. */
 export const candidateValidator = v.object({
   personKey: v.string(),
   name: v.string(),
   score: v.number(),
-  evidence: v.array(v.object({ tag: v.string(), reason: v.union(v.string(), v.null()) })),
+  evidence: v.array(v.object({ tag: v.string(), reason: v.union(v.string(), v.null()), ...evidenceMeta })),
 });
 export type Candidate = {
   personKey: string;
   name: string;
   score: number;
-  evidence: { tag: string; reason: string | null }[];
+  evidence: { tag: string; reason: string | null; source?: "pick" | "daily"; at?: number }[];
 };

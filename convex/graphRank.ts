@@ -30,7 +30,15 @@ const STOPWORDS = new Set(
   ).split(" "),
 );
 
+/** Demonyms folded into the place name so "Japanese" matches a "japan" tag. */
+const DEMONYMS: Record<string, string> = {
+  japanese: "japan", chinese: "china", korean: "korea", mexican: "mexico", french: "france",
+  italian: "italy", spanish: "spain", german: "germany", brazilian: "brazil", indian: "india",
+  thai: "thailand", vietnamese: "vietnam", british: "uk", portuguese: "portugal",
+};
+
 function stem(word: string) {
+  if (DEMONYMS[word]) return DEMONYMS[word];
   return word.length > 4 && word.endsWith("s") && !word.endsWith("ss") ? word.slice(0, -1) : word;
 }
 
@@ -102,13 +110,19 @@ export function rankGraph(args: {
     if (key === ROOT) return;
     let score = 0;
     let recency = 0;
-    const evidence: { score: number; createdAt: number; tag: string; reason: string | null }[] = [];
+    const evidence: { score: number; createdAt: number; tag: string; reason: string | null; source: "pick" | "daily" }[] = [];
     graph.forEachInEdge(key, (edgeId, e) => {
       recency = Math.max(recency, e.createdAt as number);
       const s = args.edgeScores.get(edgeId) ?? 0;
       if (s <= 0) return;
       score += s;
-      evidence.push({ score: s, createdAt: e.createdAt as number, tag: e.tag as string, reason: (e.reason as string | null) ?? null });
+      evidence.push({
+        score: s,
+        createdAt: e.createdAt as number,
+        tag: e.tag as string,
+        reason: (e.reason as string | null) ?? null,
+        source: e.source as "pick" | "daily",
+      });
     });
     if (score <= 0) return; // grounding: no matching evidence, not a candidate
     if (attrs.sender) score += SENDER_BOOST;
@@ -117,7 +131,7 @@ export function rankGraph(args: {
       personKey: key,
       name: attrs.name as string,
       score: Math.round(score * 1000) / 1000,
-      evidence: evidence.slice(0, EVIDENCE_MAX).map(({ tag, reason }) => ({ tag, reason })),
+      evidence: evidence.slice(0, EVIDENCE_MAX).map(({ tag, reason, source, createdAt }) => ({ tag, reason, source, at: createdAt })),
       recency,
     });
   });
@@ -170,6 +184,14 @@ function keywordScores(wishText: string, edges: RankEdge[]) {
   return new Map(edges.map((e) => [e.edgeId, scoreKeyword(words, e)]));
 }
 
+/** Keyword-first: if any edge matches by keyword, memory only boosts those edges; else memory alone. */
+export function mergeScores(keyword: Map<string, number>, memory: Map<string, number> | null) {
+  const anyKeyword = [...keyword.values()].some((s) => s > 0);
+  if (!memory) return keyword;
+  if (!anyKeyword) return memory;
+  return new Map([...keyword].map(([id, s]) => [id, s > 0 ? s + (memory.get(id) ?? 0) : 0]));
+}
+
 // ---------- data access ----------
 
 async function ownerEdges(ctx: QueryCtx, ownerUserId: Id<"users">) {
@@ -203,7 +225,7 @@ export const graphInput = internalQuery({
       tag: e.tag,
       reason: e.reason ?? null,
       source: e.source,
-      createdAt: e._creationTime,
+      createdAt: e.at ?? e._creationTime,
     }));
     const held = await ctx.db
       .query("hops")
@@ -274,8 +296,10 @@ export const rankForWish = internalAction({
       ownerUserId,
     });
     if (input.edges.length === 0) return [];
+    // Words the owner literally wrote win: when any edge matches the wish by keyword, rank by keyword
+    // (Supermemory only adds to edges that already match). Semantic search alone covers the rest.
+    const keyword = keywordScores(wishText, input.edges);
     const memoryScores = useMemory === false ? null : await supermemoryScores(ownerUserId, wishText, input.edges);
-    const edgeScores = memoryScores ?? keywordScores(wishText, input.edges);
-    return rankGraph({ edges: input.edges, senders: input.senders, edgeScores, limit: max });
+    return rankGraph({ edges: input.edges, senders: input.senders, edgeScores: mergeScores(keyword, memoryScores), limit: max });
   },
 });
