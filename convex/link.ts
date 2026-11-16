@@ -270,7 +270,9 @@ export const pushOne = mutation({
       introVouch: vouch,
       relation,
     });
-    await ctx.db.patch("hops", hop._id, { holderUserId: user._id, action: "pass", actedAt: Date.now() });
+    // Record where the boat was when it was pushed, so ripples and receipts can say "now in <city>".
+    const city = hop.city ?? (user.city.trim() || undefined);
+    await ctx.db.patch("hops", hop._id, { holderUserId: user._id, action: "pass", actedAt: Date.now(), city });
     const progress = (user.boatProgress ?? 0) + 1;
     await ctx.db.patch("users", user._id, {
       name: user.name || hop.holderName,
