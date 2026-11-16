@@ -190,6 +190,29 @@ describe("bots.tick", () => {
   });
 });
 
+test("a wish no bot matches still wanders to a different-city bot", async () => {
+  const t = await seeded();
+  const hopId = await t.run(async (ctx) => {
+    const bot = (await ctx.db.query("users").withIndex("by_isBot", (q) => q.eq("isBot", true)).first())!;
+    const creator = (await ctx.db.query("users").withIndex("by_teamKey", (q) => q.eq("teamKey", "darren")).first())!;
+    const wishId = await ctx.db.insert("wishes", {
+      creatorId: creator._id,
+      type: "do_together",
+      text: "zzqx vvbn",
+      status: "traveling",
+      expiresAt: Date.now() + 3600_000,
+    });
+    return await ctx.db.insert("hops", { wishId, depth: 2, holderName: bot.name, holderUserId: bot._id, recipientTags: [], viaGroup: false });
+  });
+  await t.mutation(internal.bots.tick, { ignoreDwell: true });
+  await t.run(async (ctx) => {
+    const hop = (await ctx.db.get("hops", hopId))!;
+    expect(hop.action).toBe("pass");
+    const [child] = await ctx.db.query("hops").withIndex("by_parentHopId", (q) => q.eq("parentHopId", hopId)).collect();
+    expect((await ctx.db.get("users", child.holderUserId!))!.city).not.toBe(hop.city);
+  });
+});
+
 describe("entry points", () => {
   test("tossing to a bot friend by name binds the hop to that bot", async () => {
     const t = await seeded();
