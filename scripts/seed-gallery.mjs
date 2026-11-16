@@ -3,10 +3,13 @@
 // with real stored files: upload every .jpg/.jpeg/.png in <dir> to Convex file storage, then
 // attach them round-robin as confirmed meet-up photos (teamSeed:attachGalleryPhotos).
 //
-//   node scripts/seed-gallery.mjs <dir> [--prod]
+//   node scripts/seed-gallery.mjs <dir> [--replace] [--prod]
 //
-// Re-running replaces the earlier photos (old files are deleted). teamSeed:run keeps attached
-// photos across reseeds, so this only needs re-running to change the pictures.
+// The files also join the stock pool (convex/gallery.ts) that fills every other blank success
+// story (found voyages, seed.ts stories, bot claims). --replace swaps the whole pool: stories on
+// old pool photos are re-pointed and the old files deleted. Use only generic scene images of
+// groups meeting up (illustrated or non-identifiable people), never real users' photos.
+// teamSeed:run and seed:run keep/refill photos on reseed; re-run this only to change pictures.
 // The CLI must be linked to the target deployment (npx convex dev / CONVEX_DEPLOYMENT).
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -21,6 +24,7 @@ if (!dir) {
   process.exit(1);
 }
 const prod = flags.includes("--prod");
+const replace = flags.includes("--replace");
 
 function run(fn, args) {
   const out = execFileSync("npx", ["convex", "run", ...(prod ? ["--prod"] : []), fn, JSON.stringify(args)], {
@@ -54,6 +58,11 @@ for (const [i, file] of files.entries()) {
   console.log(`uploaded ${file}`);
 }
 
+if (replace) console.log(JSON.stringify(run("gallery:replacePool", { storageIds })));
 const attached = run("teamSeed:attachGalleryPhotos", { storageIds });
 console.log(JSON.stringify({ uploaded: storageIds.length, attached: attached.length, wishIds: attached.map((a) => a.wishId) }));
 if (attached.length === 0) console.warn("No seeded granted voyages found. Run teamSeed:run with global: true first.");
+
+const audit = run("gallery:audit", {});
+const blank = audit.reduce((n, r) => n + r.without.length, 0);
+console.log(JSON.stringify({ stories: audit.reduce((n, r) => n + r.stories, 0), withoutPhoto: blank }));

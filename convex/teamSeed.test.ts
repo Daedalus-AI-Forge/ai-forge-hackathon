@@ -234,10 +234,15 @@ describe("teamSeed.run", () => {
     expect(ending?.photoUrl).not.toContain("picsum");
     expect(ending?.thankYou).toBe(granted.find((vg) => vg.text === attached[0].text)?.thankYou);
 
-    // Re-attaching replaces (and deletes) the old files.
+    // Replacing the pool re-points every story and deletes the old files.
     const fresh = await t.run(async (ctx) => [await ctx.storage.store(new Blob(["c"], { type: "image/jpeg" }))]);
-    await t.mutation(internal.teamSeed.attachGalleryPhotos, { storageIds: fresh });
+    await t.mutation(internal.gallery.replacePool, { storageIds: fresh });
     expect(await t.run(async (ctx) => await ctx.storage.getUrl(ids[0]))).toBeNull();
+    // Every success story on a member's World tab has a photo, the found voyage included.
+    const audit = await t.query(internal.gallery.audit, {});
+    expect(audit.length).toBeGreaterThan(0);
+    for (const row of audit) expect(row.without).toEqual([]);
+    expect(audit.some((row) => row.stories > 0)).toBe(true);
 
     // A reseed keeps the photos on the reinserted voyages.
     await t.mutation(internal.teamSeed.run, { members: MEMBERS, global: true });
@@ -245,8 +250,5 @@ describe("teamSeed.run", () => {
       (await ctx.db.query("wishes").collect()).filter((w) => w.meetingPhoto).map((w) => w.meetingPhoto!.storageId),
     );
     expect(photos).toEqual(granted.map(() => fresh[0]));
-    // Dropping global removes the voyages and their files.
-    await t.mutation(internal.teamSeed.run, { members: MEMBERS });
-    expect(await t.run(async (ctx) => await ctx.storage.getUrl(fresh[0]))).toBeNull();
   });
 });

@@ -47,7 +47,13 @@ async function chainPhotoUrl(ctx: QueryCtx, wish: Doc<"wishes">, finder: Hop) {
     const proof = finder.proofStorageId ? await ctx.storage.getUrl(finder.proofStorageId) : null;
     return proof ?? wish.photoUrl ?? null;
   }
-  if (wish.status !== "granted") return null;
+  // A found wish stays "developing" until both confirm, unless its finder carries a stock scene
+  // photo from the gallery pool (demo/bot stories, convex/gallery.ts). Real uploads never show early.
+  if (wish.status !== "granted") {
+    const stock = finder.proofStorageId && await ctx.db.query("galleryPool")
+      .withIndex("by_storageId", (q) => q.eq("storageId", finder.proofStorageId!)).first();
+    return stock ? await ctx.storage.getUrl(stock.storageId) : null;
+  }
   const met = wish.meetingPhoto ? await ctx.storage.getUrl(wish.meetingPhoto.storageId) : null;
   return met ?? wish.photoUrl ?? null;
 }
@@ -91,6 +97,13 @@ export const mine = query({
   handler: async (ctx, { deviceId }) => {
     const me = await userByDevice(ctx, deviceId);
     if (!me) return [];
+    return await chainsFor(ctx, me);
+  },
+});
+
+/** The chains that came true and passed through `me` (the World tab's polaroids). */
+export async function chainsFor(ctx: QueryCtx, me: Doc<"users">): Promise<Chain[]> {
+  {
 
     const [created, landed, passed, grouped] = await Promise.all([
       ctx.db.query("wishes").withIndex("by_creatorId", (q) => q.eq("creatorId", me._id)).order("desc").take(READ_LIMIT),
@@ -175,5 +188,5 @@ export const mine = query({
       });
     }
     return chains.sort((a, b) => b.endedAt - a.endedAt).slice(0, CHAIN_LIMIT);
-  },
-});
+  }
+}

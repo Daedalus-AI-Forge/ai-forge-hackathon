@@ -10,6 +10,7 @@
 import { v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
+import { poolPhoto } from "./gallery";
 import { internalMutation, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { REASON_MAX, personKey } from "./graphShared";
 import { scoreKeyword, tokenize } from "./graphRank";
@@ -107,6 +108,8 @@ export async function actOnHop(ctx: MutationCtx, hop: Doc<"hops">, bots: Doc<"us
       actedAt: now,
       itsMeIntro: clampText(`That's me! ${holder.botProfile?.persona ?? ""}`.trim(), LIMITS.intro),
       itsMePublic: true,
+      // A stock scene photo so the story isn't blank on the World tab (convex/gallery.ts).
+      proofStorageId: await poolPhoto(ctx, hop._id),
     });
     return { hopId: hop._id, action: "its_me" as const, from: holder.name, to: null, toCity: holder.city };
   };

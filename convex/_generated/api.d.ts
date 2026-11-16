@@ -20,6 +20,7 @@ import type * as chains from "../chains.js";
 import type * as crons from "../crons.js";
 import type * as daily from "../daily.js";
 import type * as edges from "../edges.js";
+import type * as gallery from "../gallery.js";
 import type * as graph from "../graph.js";
 import type * as graphRank from "../graphRank.js";
 import type * as graphShared from "../graphShared.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   daily: typeof daily;
   edges: typeof edges;
+  gallery: typeof gallery;
   graph: typeof graph;
   graphRank: typeof graphRank;
   graphShared: typeof graphShared;
