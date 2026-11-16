@@ -110,6 +110,7 @@ export function WaterPool({ size, coins, onReady, onError }: WaterPoolProps) {
     let raf = 0;
     let last = 0;
     let dripAt = time.current + 0.4;
+    let warmup = 3;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       if (last && now - last < FRAME_MS - 2) return;
@@ -127,6 +128,10 @@ export function WaterPool({ size, coins, onReady, onError }: WaterPoolProps) {
       stepStars(stars.current, dt, t);
       try {
         renderer.frame(t, [...resting.current, ...tossed.current], stars.current, null);
+        if (warmup > 0) {
+          warmup--;
+          renderer.sync(); // see WaterRenderer.sync: iOS expo-gl stays blank without it
+        }
       } catch (err) {
         cancelAnimationFrame(raf);
         cbs.current.onError?.(err);

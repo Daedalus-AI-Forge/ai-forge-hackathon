@@ -291,6 +291,15 @@ export class WaterRenderer {
     this.present();
   }
 
+  /**
+   * A synchronous round-trip to the GL thread (expo-gl queues calls until a sync call or endFrameEXP).
+   * On iOS expo-gl, without this during the first frames the GLView stayed blank (observed on the
+   * iOS Simulator, iOS 26); the cause inside expo-gl is not pinned down.
+   */
+  sync() {
+    return this.gl.getError();
+  }
+
   dispose() {
     const gl = this.gl;
     this.tex.forEach((t) => gl.deleteTexture(t));
