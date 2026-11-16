@@ -23,15 +23,15 @@ import { tabClearance } from "./metrics";
 const useNativeDriver = Platform.OS !== "web";
 
 /** Frosted strip under the status bar that fades in once content scrolls beneath it (iOS scroll edge). */
-function ScrollEdge({ height, visible }: { height: number; visible: boolean }) {
+function ScrollEdge({ height, visible, isNight }: { height: number; visible: boolean; isNight: boolean }) {
   const [t] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.timing(t, { toValue: visible ? 1 : 0, duration: 180, useNativeDriver }).start();
   }, [t, visible]);
   return (
     <Animated.View style={[styles.edge, { height, opacity: t }]}>
-      <GlassFill variant="chrome" liquid={false} />
-      <View style={styles.edgeLine} />
+      <GlassFill variant={isNight ? "dark" : "chrome"} liquid={false} />
+      <View style={[styles.edgeLine, isNight && styles.edgeLineNight]} />
     </Animated.View>
   );
 }
@@ -47,13 +47,15 @@ export type ScreenProps = {
   contentStyle?: StyleProp<ViewStyle>;
   /** Replaces the ambient backdrop (e.g. the Pool tab's night scene). */
   backdrop?: ReactNode;
+  /** "night" for dark scenes: the frosted strip under the status bar turns dark too. */
+  tone?: "light" | "night";
 };
 
 /**
  * Page scaffold shared by every screen: ambient backdrop, safe areas, page margins, a centered
  * readable column and the frosted scroll edge. Children stack with the standard gap.
  */
-export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.maxWidth, contentStyle, backdrop }: ScreenProps) {
+export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.maxWidth, contentStyle, backdrop, tone = "light" }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const [scrolled, setScrolled] = useState(false);
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => setScrolled(e.nativeEvent.contentOffset.y > 6);
@@ -73,17 +75,27 @@ export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.
       >
         {children}
       </ScrollView>
-      {!nativeHeader && insets.top > 0 ? <ScrollEdge height={insets.top} visible={scrolled} /> : null}
+      {!nativeHeader && insets.top > 0 ? <ScrollEdge height={insets.top} visible={scrolled} isNight={tone === "night"} /> : null}
     </View>
   );
 }
 
 /** Full-screen centered state (loading, missing) on the same backdrop. */
-export function CenterScreen({ children, testID }: { children?: ReactNode; testID?: string }) {
+export function CenterScreen({
+  children,
+  testID,
+  backdrop,
+  spinnerColor = lv.thread,
+}: {
+  children?: ReactNode;
+  testID?: string;
+  backdrop?: ReactNode;
+  spinnerColor?: string;
+}) {
   return (
     <View testID={testID} style={[styles.root, styles.center]}>
-      <Backdrop />
-      {children ?? <ActivityIndicator color={lv.thread} />}
+      {backdrop ?? <Backdrop />}
+      {children ?? <ActivityIndicator color={spinnerColor} />}
     </View>
   );
 }
@@ -95,4 +107,5 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center", gap: 10, padding: layout.margin * 1.5 },
   edge: { position: "absolute", top: 0, left: 0, right: 0, pointerEvents: "none" },
   edgeLine: { position: "absolute", left: 0, right: 0, bottom: 0, height: StyleSheet.hairlineWidth, backgroundColor: lv.separator },
+  edgeLineNight: { backgroundColor: "rgba(255,255,255,0.12)" },
 });

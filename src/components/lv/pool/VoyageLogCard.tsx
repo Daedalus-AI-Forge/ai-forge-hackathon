@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Glass, Icon } from "@/components/ios";
-import { layout, lv, type } from "@/theme/tokens";
+import { layout, night, type } from "@/theme/tokens";
 
 export type VoyageLog = {
   hopId: string;
@@ -14,7 +14,7 @@ export type VoyageLog = {
   fastest: number | null;
 };
 
-/** The morning card: where yesterday's boat drifted and who found it. */
+/** The morning card (night-pool style): where yesterday's boat drifted and who found it. */
 export function VoyageLogCard({ log, onDismiss }: { log: VoyageLog; onDismiss: () => void }) {
   const router = useRouter();
   const route = log.cities.filter((c): c is string => !!c);
@@ -22,12 +22,13 @@ export function VoyageLogCard({ log, onDismiss }: { log: VoyageLog; onDismiss: (
   return (
     <Glass
       testID="voyage-log"
+      variant="dark"
       onPress={() => router.push({ pathname: "/boat/[hopId]", params: { hopId: log.hopId } })}
       style={styles.card}
     >
       <View style={styles.head}>
         <View style={styles.eyebrowRow}>
-          <Icon name="boat" size={13} color={lv.thread} />
+          <Icon name="boat" size={13} color={night.gold} />
           <Text style={styles.eyebrow}>Voyage log</Text>
         </View>
         <Pressable
@@ -38,7 +39,7 @@ export function VoyageLogCard({ log, onDismiss }: { log: VoyageLog; onDismiss: (
           onPress={onDismiss}
           style={({ pressed }) => [styles.dismiss, pressed && { opacity: 0.6 }]}
         >
-          <Icon name="close" size={11} color={lv.mutedFg} weight="bold" />
+          <Icon name="close" size={11} color={night.mutedFg} weight="bold" />
         </Pressable>
       </View>
       <Text style={styles.body}>
@@ -61,10 +62,10 @@ export function VoyageLogCard({ log, onDismiss }: { log: VoyageLog; onDismiss: (
             It found <Text style={styles.bold}>{log.found.name}</Text>
             {log.found.city ? ` in ${log.found.city}` : ""}: “{log.found.story}”
           </Text>
-          <Text style={styles.meta}>You're only {people} apart.</Text>
+          <Text style={styles.meta}>You’re only {people} apart.</Text>
         </View>
       ) : (
-        <Text style={styles.meta}>It's still drifting.</Text>
+        <Text style={styles.meta}>It’s still drifting.</Text>
       )}
       {log.fastest != null ? <Text style={styles.meta}>Fastest line today: {log.fastest} hops</Text> : null}
     </Glass>
@@ -75,15 +76,15 @@ const styles = StyleSheet.create({
   card: { padding: layout.cardPadding, gap: 8 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   eyebrowRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  eyebrow: { ...type.eyebrow, color: lv.thread },
-  dismiss: { width: 26, height: 26, borderRadius: 13, backgroundColor: lv.fill, alignItems: "center", justifyContent: "center" },
-  body: { ...type.subheadline, color: lv.fg },
-  bold: { fontWeight: "600" },
+  eyebrow: { ...type.eyebrow, color: night.gold },
+  dismiss: { width: 26, height: 26, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" },
+  body: { ...type.subheadline, color: night.fg },
+  bold: { fontWeight: "600", color: night.goldBright },
   route: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", rowGap: 6 },
   routeStep: { flexDirection: "row", alignItems: "center" },
-  dash: { width: 14, height: 2, backgroundColor: lv.thread, borderRadius: 1, marginHorizontal: 6 },
-  routeCity: { ...type.footnote, color: lv.mutedFg },
-  routeLast: { color: lv.fg, fontWeight: "600" },
+  dash: { width: 14, height: 2, backgroundColor: night.gold, borderRadius: 1, marginHorizontal: 6 },
+  routeCity: { ...type.footnote, color: night.mutedFg },
+  routeLast: { color: night.fg, fontWeight: "600" },
   found: { gap: 4 },
-  meta: { ...type.footnote, color: lv.mutedFg },
+  meta: { ...type.footnote, color: night.mutedFg },
 });

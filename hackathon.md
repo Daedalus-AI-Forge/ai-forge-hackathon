@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth (Google, native Apple, phone OTP, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-15T23:39:30Z
+- **Last updated:** 2026-11-16T00:01:46Z
 
 ## Log
 
@@ -195,3 +195,14 @@ connections. SVG labels use the system font on web (they fell back to serif).
 All testIDs kept (`src/components/lv/me/MeNetwork.tsx`, `EgoGraph.tsx`).
 Typecheck, 227 tests and ESLint (no new errors) pass; verified in iPhone-sized
 Chrome with sample network data, including a selected connection.
+
+### 2026-11-15 - claude/night-pool-polish — one night scene on the Pool
+After #36 (iOS glass) and #37 (night-garden pool) met on the Pool tab, the voyage log,
+friends' wish cards and the tab bar were still in the light style inside the night
+scene. Following #37's style and interactions while keeping #36's UX: those cards now
+use #37's dark glass, serif wish titles and gold actions; the floating tab bar turns
+dark with a gold active tab while the Pool is focused (a small chrome-tone store the
+Pool sets on focus, next to its status-bar switch); the status-bar scroll strip and
+the loading screen are night too. Other tabs keep the light glass. Typecheck, 229
+tests and ESLint (no new errors) pass; checked in iPhone-sized Chrome, including
+switching tabs back and forth.

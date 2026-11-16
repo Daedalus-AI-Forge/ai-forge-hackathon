@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing, ImageBackground, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { CenterScreen, Glass, Icon, LargeTitle, Screen } from "@/components/ios";
+import { CenterScreen, Glass, Icon, LargeTitle, Screen, setChromeTone } from "@/components/ios";
 import { FountainScene } from "@/components/lv/fountain/FountainScene";
 import { DIVE_MS, diveMemory } from "@/components/lv/fountain/logic";
 import { DButton } from "@/components/lv/passon/kit";
@@ -89,11 +89,16 @@ export default function ThePool() {
     Animated.parallel([tween(zoom, 0, still ? 0 : 1100, DIVE_EASE), tween(ui, 1, 500), tween(poolIn, 0, 300)]).start();
   };
 
-  // The pool is a night scene: light status bar while it is on screen, the app default elsewhere.
+  // The pool is a night scene: light status bar and a dark tab bar while it is on screen,
+  // the app defaults elsewhere.
   useFocusEffect(
     useCallback(() => {
       setStatusBarStyle("light");
-      return () => setStatusBarStyle("dark");
+      setChromeTone("night");
+      return () => {
+        setStatusBarStyle("dark");
+        setChromeTone("light");
+      };
     }, []),
   );
 
@@ -127,7 +132,7 @@ export default function ThePool() {
     };
   }, [date]);
 
-  if (!home || !deviceId) return <CenterScreen />;
+  if (!home || !deviceId) return <CenterScreen backdrop={<NightBackdrop />} spinnerColor={night.gold} />;
 
   const user = home.user;
   const wishesLeft = user.wishesLeft;
@@ -191,7 +196,7 @@ export default function ThePool() {
         accessibilityElementsHidden={!inPool}
         importantForAccessibility={inPool ? "auto" : "no-hide-descendants"}
       >
-        <Screen tab testID="well-screen" backdrop={<NightBackdrop />}>
+        <Screen tab testID="well-screen" backdrop={<NightBackdrop />} tone="night">
           <Glass
             testID="pool-surface"
             variant="dark"
@@ -241,6 +246,7 @@ export default function ThePool() {
               testID="use-demo-profile"
               title="Try it with demo wishes"
               variant="plain"
+              tone="night"
               size="sm"
               style={styles.demo}
               onPress={() => void claimDemo({ deviceId })}
