@@ -1,6 +1,7 @@
-// Plain-TS motion for tossed coins, floating stars and the rising challenge star. No React, no WebGL.
-// Ported from Katie-Lan's web prototype (waterworks src/well/pool-sim.ts); floorCoins() is ours.
-import type { RenderCoin, RenderRise, RenderStar } from "./water-renderer";
+// Plain-TS motion for tossed coins, floating paper boats and the rising challenge star. No React, no WebGL.
+// Ported from Katie-Lan's web prototype (waterworks src/well/pool-sim.ts); floorCoins() and the boats are ours.
+import { OPEN_WATER, type BoatBounds } from "./geometry";
+import type { RenderBoat, RenderCoin, RenderRise } from "./water-renderer";
 
 export type CoinPhase = "sinking" | "resting" | "fading";
 
@@ -105,54 +106,83 @@ export function stepChallengeStar(s: RisingStar, dt: number): boolean {
   return false;
 }
 
-export interface FloatStar extends RenderStar {
+// ---- paper boats drifting on the surface (they took the prototype's floating stars' place) ----
+
+export interface FloatBoat extends RenderBoat {
   vx: number;
   vy: number;
-  spin: number;
+  seed: number;
 }
 
-export function makeStars(count: number): FloatStar[] {
-  const out: FloatStar[] = [];
+/** Boats spread across the open water, at stable spots. `size` is a boat's half-width in pool units. */
+export function makeBoats(count: number, bounds: BoatBounds = OPEN_WATER): FloatBoat[] {
+  const out: FloatBoat[] = [];
+  const top = Math.max(bounds.minY + 0.16, -bounds.maxR * 0.8);
+  const bottom = bounds.maxR * 0.78;
   for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2 + 0.4;
-    const rr = 0.35 + ((i * 37) % 10) / 20;
-    out.push({
-      x: Math.cos(a) * rr, y: Math.sin(a) * rr, rot: i * 1.3, size: 0.05 + (i % 3) * 0.012,
-      vx: 0, vy: 0, spin: (i % 2 ? 1 : -1) * 0.05,
-    });
+    const size = 0.085 + rand(i, 33) * 0.03;
+    const y = top + (bottom - top) * (count === 1 ? 0.5 : (i % 2 ? 0.25 : 0.7) + (rand(i, 31) - 0.5) * 0.3);
+    const chord = Math.sqrt(Math.max(0, bounds.maxR ** 2 - y ** 2));
+    const half = Math.max(0, Math.min(chord, bounds.maxX) - size);
+    const x = (((i + 0.5) / count) * 2 - 1) * half;
+    out.push({ x, y, rot: 0, size, vx: 0, vy: 0, seed: rand(i, 34) * 10 });
   }
   return out;
 }
 
-/** Slow circulation, push-away from splashes, soft wall at the rim. */
-export function stepStars(stars: FloatStar[], dt: number, time: number) {
-  for (const s of stars) {
-    const r = Math.hypot(s.x, s.y) || 1e-4;
-    const swirl = 0.025;
-    s.vx += (-s.y / r) * swirl * dt + Math.sin(time * 0.3 + s.rot) * 0.004 * dt;
-    s.vy += (s.x / r) * swirl * dt + Math.cos(time * 0.27 + s.rot) * 0.004 * dt;
-    if (r > 0.82) {
-      s.vx -= (s.x / r) * (r - 0.82) * 2 * dt;
-      s.vy -= (s.y / r) * (r - 0.82) * 2 * dt;
+/** A slow wander, soft walls (the rim, the visible width, the top of the open water), no overlaps, and a rock. */
+export function stepBoats(boats: FloatBoat[], dt: number, time: number, bounds: BoatBounds = OPEN_WATER) {
+  for (const b of boats) {
+    b.vx += Math.sin(time * 0.23 + b.seed) * 0.012 * dt;
+    b.vy += Math.cos(time * 0.19 + b.seed * 1.7) * 0.008 * dt;
+    const r = Math.hypot(b.x, b.y) || 1e-4;
+    if (r > bounds.maxR) {
+      b.vx -= (b.x / r) * (r - bounds.maxR) * 2 * dt;
+      b.vy -= (b.y / r) * (r - bounds.maxR) * 2 * dt;
     }
-    const damp = Math.exp(-0.9 * dt);
-    s.vx *= damp;
-    s.vy *= damp;
-    s.x += s.vx * dt;
-    s.y += s.vy * dt;
-    s.rot += (s.spin + Math.hypot(s.vx, s.vy) * 2) * dt;
+    const side = bounds.maxX - b.size;
+    if (Math.abs(b.x) > side) b.vx -= Math.sign(b.x) * (Math.abs(b.x) - side) * 2 * dt;
+    // the sail tip rises 0.72 half-widths above the boat's centre: keep it under the line
+    const top = bounds.minY + b.size;
+    if (b.y < top) b.vy += (top - b.y) * 2 * dt;
+  }
+  for (let i = 0; i < boats.length; i++) {
+    for (let j = i + 1; j < boats.length; j++) {
+      const a = boats[i]!;
+      const c = boats[j]!;
+      const dx = c.x - a.x;
+      const dy = c.y - a.y;
+      const d = Math.hypot(dx, dy);
+      const min = (a.size + c.size) * 1.2;
+      if (d < min && d > 1e-4) {
+        const f = ((min - d) * 0.8 * dt) / d;
+        a.vx -= dx * f;
+        a.vy -= dy * f;
+        c.vx += dx * f;
+        c.vy += dy * f;
+      }
+    }
+  }
+  const damp = Math.exp(-0.9 * dt);
+  for (const b of boats) {
+    b.vx *= damp;
+    b.vy *= damp;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    // rock on the swell and lean into the drift; a boat never capsizes
+    b.rot = 0.1 * Math.sin(time * 1.15 + b.seed * 2) + Math.max(-0.25, Math.min(0.25, b.vx * 3));
   }
 }
 
-export function pushStars(stars: FloatStar[], x: number, y: number, power: number) {
-  for (const s of stars) {
-    const dx = s.x - x;
-    const dy = s.y - y;
+export function pushBoats(boats: FloatBoat[], x: number, y: number, power: number) {
+  for (const b of boats) {
+    const dx = b.x - x;
+    const dy = b.y - y;
     const d = Math.hypot(dx, dy);
     if (d < 0.4 && d > 1e-4) {
       const f = (power * (0.4 - d)) / 0.4 / d;
-      s.vx += dx * f;
-      s.vy += dy * f;
+      b.vx += dx * f;
+      b.vy += dy * f;
     }
   }
 }
