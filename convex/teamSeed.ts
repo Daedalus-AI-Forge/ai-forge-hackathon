@@ -19,6 +19,7 @@ import { LIMITS, avatarFor, clampText, cleanTags, recordEdges } from "./lib";
 import { REASON_MAX, personKey } from "./graphShared";
 import { bestBot, botVouch } from "./bots";
 import { THANK_YOU_MAX } from "./meetings";
+import { addToPool, fillMissingPhotos } from "./gallery";
 
 export const TEAM_KEYS = ["darren", "louise", "katie", "dazi"] as const;
 export type TeamKey = (typeof TEAM_KEYS)[number];
@@ -444,16 +445,6 @@ export const VOYAGES: Voyage[] = [
 
 const HOUR = 60 * 60 * 1000;
 
-/**
- * Delete the files of gallery photos no reinserted wish reattached. Photos are dealt
- * round-robin, so several wishes may share one file: keep any file still in use.
- */
-async function deletePhotoFiles(ctx: MutationCtx, photos: Map<string, GalleryPhoto>, reattached = new Set<string>()) {
-  const inUse = new Set([...reattached].map((text) => photos.get(text)?.storageId));
-  const stale = new Set([...photos.values()].map((p) => p.storageId).filter((id) => !inUse.has(id)));
-  for (const id of stale) await ctx.storage.delete(id);
-}
-
 function takePhoto(photos: Map<string, GalleryPhoto>, reattached: Set<string>, text: string) {
   const meetingPhoto = photos.get(text);
   if (!meetingPhoto) return {};
@@ -715,7 +706,8 @@ export const run = internalMutation({
     }
     const reattached = new Set<string>();
     const voyages = global ? await writeVoyages(ctx, resolved, now, previous.photos, reattached) : 0;
-    await deletePhotoFiles(ctx, previous.photos, reattached);
+    // Fill the found voyage and any other blank success story from the stock pool.
+    await fillMissingPhotos(ctx);
     const bots = global ? await writeBots(ctx, resolved) : [];
     const botWishes = global ? await writeBotWishes(ctx, resolved, bots, now) : 0;
     console.log(
@@ -733,8 +725,7 @@ export const clear = internalMutation({
   args: { deleteTestUsers: v.optional(v.boolean()) },
   returns: v.object({ wishes: v.number(), deletedUsers: v.number() }),
   handler: async (ctx, { deleteTestUsers }) => {
-    const { users, wishes, photos } = await clearSeedData(ctx);
-    await deletePhotoFiles(ctx, photos);
+    const { users, wishes } = await clearSeedData(ctx);
     let deletedUsers = 0;
     for (const u of users) {
       if (deleteTestUsers && u.phone?.startsWith("+1555")) {
@@ -847,18 +838,16 @@ export const galleryUploadUrls = internalMutation({
 /**
  * Give every seeded granted voyage a confirmed meet-up photo, as meetings.submitPhoto (by the
  * finder) + confirmPhoto (by the wisher) would leave it: `meetingPhoto` with the voyage's
- * thank-you line. Photos are dealt round-robin. Re-running replaces earlier gallery photos and
- * deletes their files; teamSeed.run keeps them across reseeds.
+ * thank-you line. Photos are dealt round-robin and join the stock pool (convex/gallery.ts), which
+ * then fills every other blank success story. Re-running replaces earlier gallery photos (their
+ * files stay in the pool); teamSeed.run keeps them across reseeds.
  */
 export const attachGalleryPhotos = internalMutation({
   args: { storageIds: v.array(v.id("_storage")) },
   returns: v.array(v.object({ wishId: v.id("wishes"), text: v.string(), storageId: v.id("_storage") })),
   handler: async (ctx, { storageIds }) => {
     if (storageIds.length === 0) throw new Error("Pass at least one storageId");
-    for (const id of storageIds) {
-      if (!(await ctx.db.system.get("_storage", id))) throw new Error(`No stored file ${id}`);
-    }
-    const incoming = new Set<string>(storageIds);
+    await addToPool(ctx, storageIds);
     const granted: Doc<"wishes">[] = [];
     for (const u of await teamUsers(ctx)) {
       const own = await ctx.db
@@ -869,11 +858,9 @@ export const attachGalleryPhotos = internalMutation({
     }
     granted.sort((a, b) => a._creationTime - b._creationTime);
     const out = [];
-    const replaced = new Set<Id<"_storage">>();
     for (const [i, wish] of granted.entries()) {
       const storageId = storageIds[i % storageIds.length];
       const voyage = VOYAGES.find((vg) => vg.text === wish.text);
-      const old = wish.meetingPhoto?.storageId;
       await ctx.db.patch("wishes", wish._id, {
         meetingPhotoRevision: (wish.meetingPhotoRevision ?? 0) + 1,
         meetingPhoto: {
@@ -883,10 +870,9 @@ export const attachGalleryPhotos = internalMutation({
           thankYou: clampText(voyage?.thankYou ?? "", THANK_YOU_MAX),
         },
       });
-      if (old && !incoming.has(old)) replaced.add(old);
       out.push({ wishId: wish._id, text: wish.text, storageId });
     }
-    for (const id of replaced) await ctx.storage.delete(id);
+    await fillMissingPhotos(ctx);
     console.log(JSON.stringify({ event: "team_seed.gallery", photos: storageIds.length, wishes: out.length }));
     return out;
   },

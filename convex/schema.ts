@@ -102,6 +102,9 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_daily_date", ["daily.date"]),
 
+  // Stock meet-up photos for demo success stories (convex/gallery.ts). Operator-uploaded only.
+  galleryPool: defineTable({ storageId: v.id("_storage") }).index("by_storageId", ["storageId"]),
+
   // Upload tickets bind one file to the confirmed participant and their wish.
   meetingUploads: defineTable({
     token: v.string(),
