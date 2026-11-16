@@ -1,8 +1,8 @@
 // Special-case first screens for a link (PRD "special cases" table). The free wish stays reachable.
 import type { ReactNode } from "react";
-import { useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
+import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
 import { DButton, DCard, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import type { FirstScreen } from "@/lib/linkApi.types";
 import { lv, type } from "@/theme/tokens";
@@ -25,7 +25,6 @@ function BoatCard({ screen }: { screen: FirstScreen }) {
 }
 
 export function SpecialCase({ screen, onFreeWish }: SpecialCaseProps) {
-  const router = useRouter();
   const cta = screen.freeWishAvailable ? (
     <DButton testID="special-free-wish" size="lg" title="Claim your free wish" onPress={onFreeWish} />
   ) : (
@@ -41,7 +40,7 @@ export function SpecialCase({ screen, onFreeWish }: SpecialCaseProps) {
       title = "This boat already found its person";
       body = "Someone said \"it's me\" before you got here.";
       extra = screen.wishId ? (
-        <DButton testID="special-ending" variant="glass" title="See how it ended" onPress={() => router.push(`/e/${screen.wishId}`)} />
+        <WishProgressButton wishId={screen.wishId} testID="special-ending" />
       ) : null;
       break;
     case "expired":
@@ -87,6 +86,9 @@ export function SpecialCase({ screen, onFreeWish }: SpecialCaseProps) {
       {body ? <Sub>{body}</Sub> : null}
       <BoatCard screen={screen} />
       {extra}
+      {screen.state === "handled" && screen.wishId ? (
+        <WishProgressButton wishId={screen.wishId} testID="link-progress-link" />
+      ) : null}
       {screen.state === "handled" ? null : cta}
     </View>
   );

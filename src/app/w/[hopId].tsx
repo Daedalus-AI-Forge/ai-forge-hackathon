@@ -8,11 +8,13 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { ContactPickButton } from "@/components/ContactPickButton";
 import { ContactSuggestions } from "@/components/ContactSuggestions";
 import { BackButton, CenterScreen, Glass as Surface, NavBar, Screen } from "@/components/ios";
+import { ClaimStep } from "@/components/link/ClaimStep";
 import { ShareLink } from "@/components/ShareLink";
 import { WellHint } from "@/components/WellHint";
+import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
 import { errorMessage } from "@/components/ui";
 import { DAvatar, DButton, DCard, DChips, DError, DField, DTag, Eyebrow, Glass, Sub } from "@/components/lv/passon/kit";
-import { useDeviceId, useMe } from "@/lib/device";
+import { useMe } from "@/lib/device";
 import { countdown, useNow } from "@/lib/time";
 import { lv, type } from "@/theme/tokens";
 
@@ -40,8 +42,7 @@ function Header({ eyebrow, title, sub, onBack }: { eyebrow?: string; title: stri
 export default function PassOn() {
   const { hopId, start } = useLocalSearchParams<{ hopId: string; start?: string }>();
   const data = useQuery(api.hops.page, { hopId });
-  const deviceId = useDeviceId();
-  const { user } = useMe();
+  const { deviceId, user } = useMe();
   const claim = useMutation(api.hops.claim);
   const ensure = useMutation(api.users.ensure);
   const act = useMutation(api.hops.act);
@@ -140,6 +141,7 @@ export default function PassOn() {
   const progress = user?.boatProgress ?? 0;
   const firstTag = lastTags[0] ?? "someone unexpected";
   const doneKind = actedAs ?? (hop.action === "its_me" ? "its_me" : null);
+  const showProgress = !open || mode === "done" || (mode === "pass" && data.children.length > 0);
 
   return (
     <Screen testID="pass-on-screen">
@@ -244,9 +246,8 @@ export default function PassOn() {
             sub={wish.text}
             onBack={() => go("view")}
           />
-          <DCard>
-            {wish.daily ? (
-              <>
+          {wish.daily ? (
+            <DCard>
                 <DField
                   placeholder="Tell us the proof in one line — e.g. 12 of my own oil paintings hang at home"
                   value={intro}
@@ -284,45 +285,19 @@ export default function PassOn() {
                     })
                   }
                 />
-              </>
-            ) : (
-              <>
-                <DField
-                  placeholder="One line about you — I've drummed in a band for 8 years…"
-                  value={intro}
-                  onChangeText={setIntro}
-                  multiline
-                  testID="its-me-intro"
-                />
-                <DField
-                  placeholder="One contact (phone, WeChat or Instagram)"
-                  value={contact}
-                  onChangeText={setContact}
-                  testID="its-me-contact"
-                />
-                <View style={styles.pair}>
-                  <DField grow placeholder="Your name" value={name} onChangeText={setName} testID="its-me-name" />
-                  <DField grow placeholder="Your city" value={city} onChangeText={setCity} testID="its-me-city" />
-                </View>
-                <DError error={error} />
-                <DButton
-                  testID="its-me-submit"
-                  title={`Send to ${wish.creatorName}`}
-                  size="lg"
-                  busy={busy}
-                  disabled={!intro.trim()}
-                  onPress={() =>
-                    run(async () => {
-                      await itsMe({ hopId: id, name, city, intro, contact });
-                      setContactSaved(!!contact.trim());
-                      setActedAs("its_me");
-                      setMode("done");
-                    })
-                  }
-                />
-              </>
-            )}
-          </DCard>
+            </DCard>
+          ) : deviceId ? (
+            <ClaimStep
+              hopId={hopId}
+              wishId={wish._id}
+              deviceId={deviceId}
+              kind="real"
+              onDone={() => {
+                setActedAs("its_me");
+                go("done");
+              }}
+            />
+          ) : null}
         </>
       ) : null}
 
@@ -521,13 +496,14 @@ export default function PassOn() {
             <Eyebrow>{wish.daily ? "That's me" : "Sent"}</Eyebrow>
             <DCard testID="pass-on-done">
               <Text style={styles.cardTitle}>
-                {wish.daily ? "⛵︎ Landed." : `Waiting for ${wish.creatorName} to confirm.`}
+                {wish.daily ? "⛵︎ Landed."
+                  : wish.status === "granted" ? "Wish granted"
+                  : wish.status === "found" ? "This wish found its person"
+                  : wish.status === "faded" ? "This wish faded"
+                  : `Waiting for ${wish.creatorName} to confirm.`}
               </Text>
-              <Sub>
-                {wish.daily
-                  ? "Whoever pushed it will see you in tomorrow's voyage log."
-                  : "If it's you, you'll swap contacts and we'll remind you to share a photo together."}
-              </Sub>
+              {wish.daily ? <Sub>Whoever pushed it will see you in tomorrow’s voyage log.</Sub>
+                : open ? <Sub>The wish-maker can review your claim and reach out if they confirm you.</Sub> : null}
             </DCard>
           </View>
         ) : (
@@ -578,6 +554,13 @@ export default function PassOn() {
             ) : null}
           </View>
         )
+      ) : null}
+      {showProgress ? (
+        <WishProgressButton
+          wishId={wish._id}
+          title={wish.status === "granted" ? "Open the ending" : "Check wish progress"}
+          testID="pass-progress-link"
+        />
       ) : null}
     </Screen>
   );

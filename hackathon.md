@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth (Google, native Apple, phone OTP, anonymous), off by default via EXPO_PUBLIC_AUTH_ENABLED; pass-on links work without an account
 - **AI models:** OpenAI gpt-5-mini via Responses API from Convex actions
 - **Started:** 2026-11-15T18:08:17Z
-- **Last updated:** 2026-11-16T00:24:43Z
+- **Last updated:** 2026-11-16T00:54:16Z
 
 ## Log
 
@@ -232,3 +232,19 @@ this boat today"; friends' wish cards in the pool read "✦ Oliver's real wish �
 you" (the header wraps instead of truncating); and the header counters read
 "1 coin · 2 boats to next coin". Copy follows the shared vocabulary (boat / push /
 Today's boat). Typecheck, 258 tests and ESLint pass; checked in iPhone-sized Chrome.
+
+### 2026-11-16 - a46aa19 — meeting journey connected to existing screens
+Kept the night fountain, glass styling and three tabs; added a permanent Toss action
+and compact links from Pool, Voyages, claims, wish details and helper boats into the
+existing ending page. Real legacy-link claims now use the verified phone flow.
+Participants preview and explicitly submit a complete photo, reject or replace it,
+and confirm the current image before the public photo, note, story, route and tier
+unlock. Contact, meeting mode and thank-you survive refresh through existing Convex
+queries/mutations and Storage; native photos are normalized to JPEG.
+After merging current main, all 277 tests across 30 files, root/Convex TypeScript,
+20 Expo Doctor checks, and Web/iOS/Android JS exports passed. Local Convex browser
+checks exercised the claim-to-grant journey, invalid photos, cancellation, revisions,
+privacy, expiry, both helper branches and 320–1024px layouts; a storage audit confirmed
+the saved photo and granted state. Independent review approved the implementation.
+No cloud deployment or live-user messages. Native photo/Message-app behavior still
+needs device verification after rebuilding the development client.

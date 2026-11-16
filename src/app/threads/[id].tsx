@@ -4,7 +4,8 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { BackButton, GlassCard, LargeTitle, NavBar, Screen, SectionHeader } from "@/components/ios";
-import { DAvatar, DTag } from "@/components/lv/passon/kit";
+import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
+import { DAvatar, DButton, DTag } from "@/components/lv/passon/kit";
 import { ThreadMap } from "@/components/lv/threads/ThreadMap";
 import { STATUS_LABEL, TIER_LABEL, actionLabel, badgesFor, totalKm } from "@/components/lv/threads/threadData";
 import { useMe } from "@/lib/device";
@@ -22,6 +23,8 @@ export default function ThreadDetail() {
   const wishes = useQuery(api.wishes.mine, deviceId ? { deviceId } : "skip");
   const now = useNow(1000);
   const w = wishes?.find((x) => x._id === id);
+  const claims = useQuery(api.link.pendingClaims, deviceId && w?.status === "traveling" ? { deviceId } : "skip");
+  const hasClaim = claims?.some((claim) => claim.wishId === id);
 
   const nav = (
     <NavBar
@@ -71,14 +74,16 @@ export default function ThreadDetail() {
         </View>
       </GlassCard>
 
-      {w.status === "found" ? (
+      {hasClaim ? (
         <GlassCard style={styles.center}>
           <Text style={[styles.cardTitle, styles.centerText]}>Someone says they're who you're looking for</Text>
           <Text style={[styles.muted, styles.centerText]}>
-            Confirming them comes next — you'll see their intro and the vouch chain here.
+            Read their intro and answers in Voyages before you confirm.
           </Text>
+          <DButton title="Review the claim" variant="ghost" size="sm" onPress={() => router.push("/voyages")} testID="thread-claim" />
         </GlassCard>
       ) : null}
+      {w.status === "found" ? <WishProgressButton wishId={id} title="Open meeting progress" testID="thread-meeting" /> : null}
 
       {w.status === "faded" ? (
         <GlassCard>
@@ -102,6 +107,7 @@ export default function ThreadDetail() {
               ))}
             </View>
           ) : null}
+          <WishProgressButton wishId={id} title="Open the ending" testID="thread-full-ending" />
         </View>
       ) : null}
 

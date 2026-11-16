@@ -2,13 +2,14 @@ import { useAction } from "convex/react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { useCallback, useState } from "react";
-import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ImageBackground, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
 import { Screen, setChromeTone } from "@/components/ios";
 import { errorMessage } from "@/components/ui";
 import { DButton, DField } from "@/components/lv/passon/kit";
 import { NightPool } from "@/components/lv/pool/NightPool";
+import { ProgressDots } from "@/components/lv/pool/ProgressDots";
 import { NightTitle, TossPeopleStep, TossShareStep } from "@/components/lv/toss/TossSteps";
 import { TypeGrid } from "@/components/lv/toss/TypeGrid";
 import { useTossWish } from "@/components/lv/toss/useTossWish";
@@ -20,7 +21,7 @@ import { night, poolImages, type } from "@/theme/tokens";
 /** Toss a coin (any entry point other than the pool): write one line, pick 1–3 friends, share. Night look. */
 export default function Toss() {
   const router = useRouter();
-  const { deviceId, user } = useMe();
+  const { deviceId, user, loading } = useMe();
   const polish = useAction(api.ai.polishWish);
   const t = useTossWish(deviceId);
 
@@ -67,7 +68,20 @@ export default function Toss() {
   return (
     <ToneProvider tone="night">
       <Screen testID="toss-screen" nativeHeader tone="night" backdrop={<NightBackdrop />}>
-      {step === "write" ? (
+      {step === "write" && loading ? (
+        <ActivityIndicator color={night.gold} />
+      ) : null}
+
+      {step === "write" && !loading && !user?.wishesLeft ? (
+        <View style={styles.earn} testID="toss-no-coins">
+          <NightTitle>You’re out of coins</NightTitle>
+          <Text style={styles.small}>Push boats from the Pool to earn more coins.</Text>
+          <ProgressDots progress={user?.boatProgress ?? 0} wishesLeft={0} />
+          <DButton title="Go to the Pool" variant="gold" size="lg" onPress={() => router.dismissTo("/")} testID="toss-earn" />
+        </View>
+      ) : null}
+
+      {step === "write" && !loading && !!user?.wishesLeft ? (
         <>
           <NightTitle sub={user ? `${user.wishesLeft} coin${user.wishesLeft === 1 ? "" : "s"}, refunded if it fades` : undefined}>
             Toss a coin: who do you want to meet?
@@ -137,6 +151,7 @@ function NightBackdrop() {
 }
 
 const styles = StyleSheet.create({
+  earn: { gap: 16 },
   small: { ...type.footnote, color: night.mutedFg },
   err: { ...type.footnote, color: "#FF8A80" },
   fields: { gap: 10 },
