@@ -1,4 +1,4 @@
-import { useRouter, type Tabs } from "expo-router";
+import { type Tabs } from "expo-router";
 import { useEffect, useState, type ComponentProps } from "react";
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { lv } from "@/theme/tokens";
 
 import { Glass } from "./Glass";
-import { Icon } from "./Icon";
 import { TAB_BAR_HEIGHT, tabBarBottom } from "./metrics";
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0];
@@ -16,12 +15,10 @@ const PAD = 5;
 
 /**
  * Floating glass tab bar (iOS 26): a capsule above the home indicator with a sliding selection lens.
- * Dark glass with a gold selection, like the Well tab's own controls, on every screen. Tossing a coin
- * is an action, not a place, so it floats as its own round glass button beside the tabs (like iOS 26's
- * detached search button) instead of looking like a fifth, already-selected tab.
+ * Dark glass with a gold selection, like the Well tab's own controls, on every screen. Tossing a wish
+ * starts from the Well tab's fountain, so the bar holds only the four tabs.
  */
 export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabBarProps) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
   // `href: null` tabs arrive as hidden routes; they get no button.
@@ -69,18 +66,6 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabB
             })}
           </View>
         </Glass>
-        <Glass
-          variant="dark"
-          radius={TAB_BAR_HEIGHT / 2}
-          curve="circular"
-          testID="persistent-toss"
-          accessibilityLabel="Toss a coin"
-          onPress={() => router.push("/toss")}
-          style={styles.toss}
-        >
-          <Icon name="plus" size={22} color={lv.tint} />
-          <Text style={[styles.label, styles.labelOn, { color: lv.tint }]}>Toss</Text>
-        </Glass>
       </View>
     </View>
   );
@@ -100,15 +85,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.13)",
   },
   item: { flex: 1, alignItems: "center", justifyContent: "center", gap: 1 },
-  // A round puck the bar's height, with a faint gold rim so it reads as the one action beside the tabs.
-  toss: {
-    width: TAB_BAR_HEIGHT,
-    height: TAB_BAR_HEIGHT,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 1,
-    borderColor: "rgba(233,199,102,0.45)",
-  },
   pressed: { transform: [{ scale: 0.94 }] },
   label: { fontSize: 10, lineHeight: 12, fontWeight: "500" },
   labelOn: { fontWeight: "600" },
