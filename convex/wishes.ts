@@ -1,3 +1,4 @@
+import { bindBotHolder } from "./bots";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
@@ -160,6 +161,8 @@ export const toss = mutation({
         viaGroup: false,
       });
       hopIds.push(hopId);
+      // A friend who is a wish bot (convex/bots.ts) holds the boat and starts moving it.
+      await bindBotHolder(ctx, user._id, hopId, r.name);
       await recordEdges(ctx, {
         owner: { userId: user._id, name: clampText(args.name, LIMITS.name) || user.name },
         personName: r.name,

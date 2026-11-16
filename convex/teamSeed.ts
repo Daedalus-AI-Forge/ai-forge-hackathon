@@ -16,6 +16,7 @@ import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from
 import { deleteUserAndAuthData } from "./authUsers";
 import { LIMITS, avatarFor, clampText, cleanTags, recordEdges } from "./lib";
 import { REASON_MAX, personKey } from "./graphShared";
+import { bestBot, botVouch } from "./bots";
 
 export const TEAM_KEYS = ["darren", "louise", "katie", "dazi"] as const;
 export type TeamKey = (typeof TEAM_KEYS)[number];
@@ -503,6 +504,104 @@ async function writeVoyages(ctx: MutationCtx, members: { key: TeamKey; name: str
   return written;
 }
 
+// ---------- wish bots (`global: true`, convex/bots.ts) ----------
+
+export const BOTS_PER_MEMBER = 5;
+export const botTeamKey = (key: TeamKey) => `bot:${key}`;
+
+/** The bots for one member: their first BOTS_PER_MEMBER global friends (deterministic). */
+export function botFriends(key: TeamKey, reserved: string[]) {
+  return generateFriends(key, reserved, { global: true })
+    .filter((f) => f.lat !== undefined)
+    .slice(0, BOTS_PER_MEMBER);
+}
+
+/** Upsert bot users (no phone, no contact, no deviceId); drop this member's stale bots. */
+async function writeBots(ctx: MutationCtx, members: { key: TeamKey; name: string }[]) {
+  const seen = new Set<string>();
+  const bots: Doc<"users">[] = [];
+  for (const m of members) {
+    const existing = await ctx.db.query("users").withIndex("by_teamKey", (q) => q.eq("teamKey", botTeamKey(m.key))).take(50);
+    const keep = new Set<Id<"users">>();
+    for (const f of botFriends(m.key, members.map((x) => x.name))) {
+      if (seen.has(personKey(f.name))) continue;
+      seen.add(personKey(f.name));
+      const fields = {
+        name: f.name,
+        avatar: avatarFor(f.name),
+        city: f.city,
+        wishesLeft: 0,
+        stars: 0,
+        isBot: true,
+        teamKey: botTeamKey(m.key),
+        botProfile: { tags: f.tags, persona: f.reason, lat: f.lat!, lng: f.lng!, country: f.country ?? "" },
+      };
+      const row = existing.find((u) => personKey(u.name) === personKey(f.name));
+      const id = row ? (await ctx.db.patch("users", row._id, fields), row._id) : await ctx.db.insert("users", fields);
+      keep.add(id);
+      bots.push((await ctx.db.get("users", id))!);
+    }
+    for (const u of existing) if (!keep.has(u._id) && u.isBot) await ctx.db.delete("users", u._id);
+  }
+  return bots;
+}
+
+/** Fresh traveling wishes already in a bot's hands, so the map moves right after seeding. */
+export const BOT_WISHES: { creator: TeamKey; text: string }[] = [
+  { creator: "darren", text: "A climbing partner for a bouldering trip abroad" },
+  { creator: "louise", text: "Someone to bake sourdough with while I travel" },
+  { creator: "katie", text: "A hiking buddy for a mountain trail weekend" },
+];
+
+async function writeBotWishes(
+  ctx: MutationCtx,
+  members: { key: TeamKey; name: string; userId: Id<"users"> }[],
+  bots: Doc<"users">[],
+  now: number,
+) {
+  let written = 0;
+  for (const bw of BOT_WISHES) {
+    const creator = members.find((m) => m.key === bw.creator);
+    const first = bestBot(bw.text, bots)?.bot ?? bots[written % Math.max(bots.length, 1)];
+    if (!creator || !first) continue;
+    const wishId = await ctx.db.insert("wishes", {
+      creatorId: creator.userId,
+      type: "do_together",
+      mode: "serious",
+      text: bw.text,
+      status: "traveling",
+      expiresAt: now + 48 * HOUR,
+      teamKey: bw.creator,
+    });
+    const city = MEMBER_CITY[creator.key];
+    const root = await ctx.db.insert("hops", {
+      wishId,
+      depth: 1,
+      holderName: creator.name,
+      holderUserId: creator.userId,
+      city,
+      ...BAY_COORDS[city],
+      recipientTags: [],
+      viaGroup: false,
+      passMessage: `${first.name.split(" ")[0]} came to mind first`,
+      action: "pass",
+      actedAt: now - 10 * 60 * 1000,
+    });
+    await ctx.db.insert("hops", {
+      wishId,
+      parentHopId: root,
+      depth: 2,
+      holderName: first.name,
+      holderUserId: first._id,
+      recipientTags: first.botProfile?.tags ?? [],
+      viaGroup: false,
+      introVouch: botVouch(first),
+    });
+    written++;
+  }
+  return written;
+}
+
 const memberValidator = v.object({
   key: v.union(v.literal("darren"), v.literal("louise"), v.literal("katie"), v.literal("dazi")),
   name: v.string(),
@@ -581,7 +680,11 @@ export const run = internalMutation({
       out.push({ key: me.key, userId: me.userId, created: me.created, edges, deviceId: bindDevices ? teamDeviceId(me.key) : null });
     }
     const voyages = global ? await writeVoyages(ctx, resolved, now) : 0;
-    console.log(JSON.stringify({ event: "team_seed.run", members: out.length, replacedWishes: previous.wishes, global: !!global, voyages }));
+    const bots = global ? await writeBots(ctx, resolved) : [];
+    const botWishes = global ? await writeBotWishes(ctx, resolved, bots, now) : 0;
+    console.log(
+      JSON.stringify({ event: "team_seed.run", members: out.length, replacedWishes: previous.wishes, global: !!global, voyages, bots: bots.length, botWishes }),
+    );
     return out;
   },
 });

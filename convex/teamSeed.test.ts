@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
-import { DEMO_WISH_TEXT, GLOBAL_CITIES, TEAM_KEYS, VOYAGES, generateFriends, teamDeviceId } from "./teamSeed";
+import { BOT_WISHES, DEMO_WISH_TEXT, GLOBAL_CITIES, TEAM_KEYS, VOYAGES, generateFriends, teamDeviceId } from "./teamSeed";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -184,10 +184,10 @@ describe("teamSeed.run", () => {
     const once = await counts(t);
     await t.mutation(internal.teamSeed.run, { members: MEMBERS, bindDevices: true, global: true });
     expect(await counts(t)).toEqual(once);
-    expect(once.wishes).toBe(4 + VOYAGES.length);
+    expect(once.wishes).toBe(4 + VOYAGES.length + BOT_WISHES.length);
 
     const summary = await t.query(internal.teamSeed.globalSummary, {});
-    expect(summary.voyages).toHaveLength(VOYAGES.length);
+    expect(summary.voyages).toHaveLength(VOYAGES.length + BOT_WISHES.length);
     expect(new Set(summary.voyages.map((v) => v.status))).toEqual(new Set(["traveling", "found", "granted"]));
     expect(summary.countries).toBeGreaterThanOrEqual(10);
     expect(summary.friendCities).toBeGreaterThanOrEqual(5);
