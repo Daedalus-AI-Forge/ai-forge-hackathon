@@ -9,7 +9,7 @@ export default function TabsLayout() {
       tabBar={(props) => <GlassTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: lv.thread,
+        tabBarActiveTintColor: lv.tint,
         tabBarInactiveTintColor: lv.fg,
         sceneStyle: { backgroundColor: lv.bg },
       }}
@@ -17,9 +17,17 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Pool",
+          title: "Well",
           tabBarButtonTestID: "tab-pool",
-          tabBarIcon: ({ color, focused }) => <Icon name={focused ? "poolFill" : "pool"} size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Icon name="sparkles" size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="world"
+        options={{
+          title: "World",
+          tabBarButtonTestID: "tab-world",
+          tabBarIcon: ({ color, focused }) => <Icon name={focused ? "worldFill" : "world"} size={22} color={color} />,
         }}
       />
       <Tabs.Screen

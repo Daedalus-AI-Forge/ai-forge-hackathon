@@ -48,14 +48,15 @@ describe("wishLine", () => {
     ...over,
   });
 
-  test("shows the newest traveling wish with its ripple and time left", () => {
+  test("shows the newest traveling wish with its hops and time left", () => {
     expect(wishLine([wish({})], now)).toEqual({
       text: "find a Tokyo local",
-      meta: "Ripple 2 · 19:59:56 left",
+      meta: "2 hops · 19:59:56 left",
     });
   });
-  test("a wish with no ripples yet is still in the well", () => {
-    expect(wishLine([wish({ ripples: 0 })], now)?.meta).toBe("In the well · 19:59:56 left");
+  test("a wish nobody has pushed yet has just set sail, and one hop is singular", () => {
+    expect(wishLine([wish({ ripples: 0 })], now)?.meta).toBe("Just set sail · 19:59:56 left");
+    expect(wishLine([wish({ ripples: 1 })], now)?.meta).toBe("1 hop · 19:59:56 left");
   });
   test("skips wishes that are no longer traveling, and returns null when none are", () => {
     expect(wishLine([wish({ status: "expired" }), wish({ text: "second" })], now)?.text).toBe("second");

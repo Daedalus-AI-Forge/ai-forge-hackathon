@@ -1,4 +1,4 @@
-// Screen 4: leave a phone number or email (required) so we can tell the visitor when their wish lands.
+// Screen 4: leave a phone number or email (required) so we can tell the visitor when their boat lands.
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -75,7 +75,7 @@ export function ContactStep({ hopId, deviceId, wishText, onDone }: ContactStepPr
         <DError error={error} />
         <DButton testID="contact-submit" size="lg" title="Set my wish sailing" onPress={submit} busy={busy} disabled={!value.trim()} />
         {value.trim() ? null : <DHint>{kind === "phone" ? "Add your phone number to continue." : "Add your email to continue."}</DHint>}
-        <Text style={styles.fine}>We only use this to tell you when your boat or wish lands. No spam.</Text>
+        <Text style={styles.fine}>We only use this to tell you when your boat lands. No spam.</Text>
       </Glass>
     </View>
   );

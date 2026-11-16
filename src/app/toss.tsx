@@ -1,11 +1,10 @@
 import { useAction } from "convex/react";
-import { useFocusEffect, useRouter } from "expo-router";
-import { setStatusBarStyle } from "expo-status-bar";
-import { useCallback, useState } from "react";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import { ActivityIndicator, ImageBackground, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { Screen, setChromeTone } from "@/components/ios";
+import { Screen } from "@/components/ios";
 import { errorMessage } from "@/components/ui";
 import { DButton, DField } from "@/components/lv/passon/kit";
 import { NightPool } from "@/components/lv/pool/NightPool";
@@ -35,17 +34,6 @@ export default function Toss() {
 
   const needsProfile = !user?.name;
   const typeInfo = LV_WISH_TYPES.find((x) => x.id === fromApiType[type])!;
-
-  useFocusEffect(
-    useCallback(() => {
-      setStatusBarStyle("light");
-      setChromeTone("night");
-      return () => {
-        setStatusBarStyle("dark");
-        setChromeTone("light");
-      };
-    }, []),
-  );
 
   async function onPolish() {
     if (!deviceId || !text.trim()) return;

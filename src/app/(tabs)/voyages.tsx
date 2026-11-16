@@ -13,7 +13,7 @@ import { MeetCard } from "@/components/lv/meet/MeetCard";
 import { MiniRoute } from "@/components/lv/voyages/MiniRoute";
 import { VOYAGE_STATUS } from "@/components/lv/voyages/voyageData";
 import { useMe } from "@/lib/device";
-import { rippleLine, useNow } from "@/lib/time";
+import { hopLine, useNow } from "@/lib/time";
 import { layout, lv, type } from "@/theme/tokens";
 
 type Tab = "boats" | "coins";
@@ -91,7 +91,7 @@ export default function VoyagesScreen() {
               </Text>
             </Glass>
           ))}
-          {boats && boats.length === 0 ? <Text style={styles.empty}>No boats yet. Push today's boat from the Pool.</Text> : null}
+          {boats && boats.length === 0 ? <Text style={styles.empty}>No boats yet. Push today's boat from the Well.</Text> : null}
         </>
       ) : (
         <>
@@ -115,7 +115,7 @@ export default function VoyagesScreen() {
                     </Text>
                   </View>
                   <Text style={styles.text}>{w.text}</Text>
-                  <Text style={styles.meta}>{rippleLine(w.ripples, w.holding, w.expiresAt, now)}</Text>
+                  <Text style={styles.meta}>{hopLine(w.ripples, w.holding, w.expiresAt, now)}</Text>
                   <View style={styles.chain}>
                     {path.map((h, i) => (
                       <View key={h.key} style={styles.chainItem}>

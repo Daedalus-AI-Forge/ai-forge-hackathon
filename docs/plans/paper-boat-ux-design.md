@@ -15,6 +15,14 @@ with one loop the user can remember in a sentence: **push one paper boat a day, 
 | It's me | **That's me** | `hops.itsMe` |
 | Each pass | hop | `depth` |
 | Status | Drifting / Landed / Granted / Faded | `traveling` / its_me found / `granted` / `faded` |
+| Where boats come from; the AI's voice | **the well** ("Ask the well", "straight from the well") | `ai.*`, the daily wish |
+
+One word, one job:
+- **wish** is only the sentence someone wrote ("Mia's real wish", "Is this wish about you?"). The thing that travels is a **boat**.
+- **coin** is only the in-app allowance. Exception: the web pass-on page says "free wish", because "claim your free coin" in a text message reads like a scam.
+- Count hops one way everywhere: "Just set sail", "1 hop", "2 hops" (`hopCount` in `src/lib/time.ts`). Ordinals only for where a friend's boat reached you ("2nd hop").
+- **ripple** is visual only (rings on the water), never a word in the UI. The backend field is still `ripples`.
+- **Today's boat** is the only name for the daily one (not "challenge", not "today's wish").
 
 ## Rules
 - The water always has at least one boat: Today's boat. Friends' boats are extra and sort **before** it.

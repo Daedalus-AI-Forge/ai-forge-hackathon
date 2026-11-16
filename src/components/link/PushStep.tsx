@@ -115,7 +115,7 @@ export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps)
   return (
     <DCard testID="push-step">
       <Eyebrow>Who should get this boat next?</Eyebrow>
-      {hint ? <Text style={styles.hint}>{hint}</Text> : <ActivityIndicator color={lv.thread} />}
+      {hint ? <Text style={styles.hint}>{hint}</Text> : <ActivityIndicator color={lv.tint} />}
 
       <DField
         label="Their name"
@@ -177,7 +177,7 @@ export function PushStep({ hopId, deviceId, wishText, onPassed }: PushStepProps)
           testIDPrefix="push-reason"
         />
       ) : (
-        <ActivityIndicator color={lv.thread} />
+        <ActivityIndicator color={lv.tint} />
       )}
       {picked === OTHER ? (
         <DField

@@ -45,17 +45,29 @@ export type ScreenProps = {
   nativeHeader?: boolean;
   maxWidth?: number;
   contentStyle?: StyleProp<ViewStyle>;
-  /** Replaces the ambient backdrop (e.g. the Pool tab's night scene). */
+  /** Replaces the ambient backdrop (e.g. the Well tab's sharp night fountain). */
   backdrop?: ReactNode;
   /** "night" for dark scenes: the frosted strip under the status bar turns dark too. */
   tone?: "light" | "night";
+  /** Off while a gesture owns the touch (e.g. turning the World globe), so the page doesn't scroll. */
+  scrollEnabled?: boolean;
 };
 
 /**
  * Page scaffold shared by every screen: ambient backdrop, safe areas, page margins, a centered
  * readable column and the frosted scroll edge. Children stack with the standard gap.
  */
-export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.maxWidth, contentStyle, backdrop, tone = "light" }: ScreenProps) {
+export function Screen({
+  children,
+  testID,
+  tab,
+  nativeHeader,
+  maxWidth = layout.maxWidth,
+  contentStyle,
+  backdrop,
+  tone = "light",
+  scrollEnabled = true,
+}: ScreenProps) {
   const insets = useSafeAreaInsets();
   const [scrolled, setScrolled] = useState(false);
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => setScrolled(e.nativeEvent.contentOffset.y > 6);
@@ -69,6 +81,7 @@ export function Screen({ children, testID, tab, nativeHeader, maxWidth = layout.
         style={styles.scroll}
         contentContainerStyle={[styles.content, { maxWidth, paddingTop: top, paddingBottom: bottom }, contentStyle]}
         {...formScrollProps}
+        scrollEnabled={scrollEnabled}
         contentInsetAdjustmentBehavior={nativeHeader ? "automatic" : "never"}
         scrollEventThrottle={32}
         onScroll={nativeHeader ? undefined : onScroll}
@@ -85,7 +98,7 @@ export function CenterScreen({
   children,
   testID,
   backdrop,
-  spinnerColor = lv.thread,
+  spinnerColor = lv.tint,
 }: {
   children?: ReactNode;
   testID?: string;

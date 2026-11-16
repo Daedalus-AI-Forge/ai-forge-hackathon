@@ -1,12 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery } from "convex/react";
-import { useFocusEffect, useRouter } from "expo-router";
-import { setStatusBarStyle } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, ImageBackground, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { api } from "@/convex/_generated/api";
-import { CenterScreen, Glass, Icon, LargeTitle, Screen, TAB_BAR_HEIGHT, setChromeTone, tabBarBottom } from "@/components/ios";
+import { CenterScreen, Glass, Icon, LargeTitle, Screen, TAB_BAR_HEIGHT, tabBarBottom } from "@/components/ios";
 import { FountainScene } from "@/components/lv/fountain/FountainScene";
 import { DIVE_MS, diveMemory } from "@/components/lv/fountain/logic";
 import { WishProgressButton } from "@/components/lv/meet/WishProgressButton";
@@ -140,19 +139,6 @@ export default function ThePool() {
     if (still) zoom.setValue(0);
     Animated.parallel([tween(zoom, 0, still ? 0 : 1100, DIVE_EASE), tween(ui, 1, 500), tween(poolIn, 0, 300)]).start();
   };
-
-  // The pool is a night scene: light status bar and a dark tab bar while it is on screen,
-  // the app defaults elsewhere.
-  useFocusEffect(
-    useCallback(() => {
-      setStatusBarStyle("light");
-      setChromeTone("night");
-      return () => {
-        setStatusBarStyle("dark");
-        setChromeTone("light");
-      };
-    }, []),
-  );
 
   useEffect(() => {
     let cancelled = false;

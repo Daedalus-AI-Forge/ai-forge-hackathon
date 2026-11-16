@@ -120,7 +120,7 @@ const s = StyleSheet.create({
   chip: { minHeight: 34, justifyContent: "center", paddingHorizontal: 14, borderRadius: 999, backgroundColor: lv.fill, maxWidth: "100%" },
   chipText: { ...type.subheadline, fontWeight: "500", color: lv.fg },
   allow: { backgroundColor: lv.threadTint },
-  allowText: { color: lv.thread, fontWeight: "600" },
+  allowText: { color: lv.tint, fontWeight: "600" },
   ask: { gap: 8 },
   askText: { ...type.footnote, color: lv.mutedFg, paddingHorizontal: 4 },
   plain: { paddingHorizontal: 8, minHeight: 34, justifyContent: "center" },

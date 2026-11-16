@@ -114,7 +114,7 @@ export function TodayBoatView({ title, hint, players, open, pushed, busy, error,
           <View style={[styles.body, !open && styles.dim]}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.hint}>Clue: {hint}</Text>
-            {/* The whole card opens the boat; the Pool keeps a single primary button. */}
+            {/* The whole card opens the boat; the Well keeps a single primary button. */}
             <View style={styles.footer}>
               <Text style={styles.players}>{busy ? "Opening…" : `${players} pushing today`}</Text>
               {open && !busy ? (

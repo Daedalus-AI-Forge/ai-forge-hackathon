@@ -7,9 +7,11 @@ import { Image, Platform, StyleSheet, Text, View } from "react-native";
 
 import { endingShareText } from "@/components/link/end/logic";
 import { DAvatar, DButton, DError, DTag, Eyebrow, Sub } from "@/components/lv/passon/kit";
+import { photoSource } from "@/components/lv/world/Polaroid";
 import type { EndingView } from "@/lib/linkApi.types";
 import { shareLink } from "@/lib/links";
-import { lv, shadows, type } from "@/theme/tokens";
+import { hopCount } from "@/lib/time";
+import { lv, polaroid, shadows, type } from "@/theme/tokens";
 
 import { grantedStops } from "./meetLogic";
 
@@ -51,7 +53,7 @@ export function GrantedCard({
       {ending.photoUrl ? (
         <Image
           testID={photoTestID}
-          source={{ uri: ending.photoUrl }}
+          source={photoSource(ending.photoUrl)}
           style={styles.photo}
           resizeMode="contain"
           accessibilityLabel="Their meet-up photo"
@@ -92,7 +94,7 @@ export function GrantedCard({
         </View>
       ) : null}
       <Text style={styles.meta}>
-        {ending.ripples} {ending.ripples === 1 ? "ripple" : "ripples"}
+        {hopCount(ending.ripples)}
         {ending.metInPerson === true ? " · met in person" : ending.metInPerson === false ? " · met on a call" : ""}
       </Text>
       <EndingShareButton ending={ending} wishId={wishId} testID={shareTestID} />
@@ -135,7 +137,7 @@ const styles = StyleSheet.create({
   locked: { gap: 6, paddingVertical: 8 },
   lockedTitle: { ...type.title3, fontWeight: "700", color: lv.fg },
   polaroid: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: polaroid.paper,
     borderRadius: 10,
     borderCurve: "continuous",
     padding: 12,
@@ -144,19 +146,19 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-1deg" }],
     boxShadow: shadows.float,
   },
-  photo: { width: "100%", aspectRatio: 1, borderRadius: 6, backgroundColor: lv.muted },
+  photo: { width: "100%", aspectRatio: 1, borderRadius: 6, backgroundColor: polaroid.photoBg },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   granted: { ...type.title3, fontWeight: "800", color: lv.thread },
-  wish: { ...type.headline, color: lv.fg },
-  thanks: { ...type.callout, color: lv.fg, fontStyle: "italic" },
-  story: { ...type.callout, color: lv.fg },
+  wish: { ...type.headline, color: polaroid.ink },
+  thanks: { ...type.callout, color: polaroid.ink, fontStyle: "italic" },
+  story: { ...type.callout, color: polaroid.ink },
   route: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", rowGap: 8 },
   stopRow: { flexDirection: "row", alignItems: "flex-start" },
   line: { width: 14, height: 2, backgroundColor: lv.thread, opacity: 0.6, marginTop: 13, borderRadius: 1 },
   stop: { alignItems: "center", width: 64, gap: 2 },
-  stopName: { ...type.caption1, fontWeight: "700", color: lv.fg },
-  stopCity: { ...type.caption2, color: lv.mutedFg },
+  stopName: { ...type.caption1, fontWeight: "700", color: polaroid.ink },
+  stopCity: { ...type.caption2, color: polaroid.inkMuted },
   star: { ...type.caption2, fontWeight: "700", color: "#9A7A1F" },
-  meta: { ...type.footnote, color: lv.mutedFg },
+  meta: { ...type.footnote, color: polaroid.inkMuted },
   share: { gap: 6 },
 });

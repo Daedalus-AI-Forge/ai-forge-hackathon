@@ -37,8 +37,8 @@ export function WellHint({
 }
 
 const styles = StyleSheet.create({
-  label: { ...type.eyebrow, color: lv.thread },
+  label: { ...type.eyebrow, color: lv.tint },
   hint: { ...type.headline, color: lv.fg },
-  why: { ...type.subheadline, fontWeight: "600", color: lv.thread },
+  why: { ...type.subheadline, fontWeight: "600", color: lv.tint },
   body: { ...type.footnote, color: lv.mutedFg },
 });

@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { GlassCard } from "@/components/ios";
 import { DTag, Eyebrow } from "@/components/lv/passon/kit";
 import type { FirstScreen as FirstScreenData } from "@/lib/linkApi.types";
-import { ordinal, timeLeft, useNow } from "@/lib/time";
+import { hopCount, timeLeft, useNow } from "@/lib/time";
 import { lv, type } from "@/theme/tokens";
 
 export type FirstScreenProps = { screen: FirstScreenData; children?: ReactNode };
@@ -42,7 +42,7 @@ export function FirstScreen({ screen, children }: FirstScreenProps) {
         </Text>
         <View style={styles.tagRow}>
           <Text style={styles.meta} testID="link-ripples">
-            {screen.ripples === 0 ? "Just set sail" : `${ordinal(screen.ripples)} ripple`}
+            {hopCount(screen.ripples)}
           </Text>
           {chain.length > 0 ? (
             <Pressable
@@ -53,7 +53,7 @@ export function FirstScreen({ screen, children }: FirstScreenProps) {
               testID="link-chain-toggle"
             >
               <Text style={styles.link}>
-                {chainOpen ? "Hide" : "See"} who passed it ({chain.length}) {chainOpen ? "▴" : "▾"}
+                {chainOpen ? "Hide" : "See"} who pushed it ({chain.length}) {chainOpen ? "▴" : "▾"}
               </Text>
             </Pressable>
           ) : null}
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   wish: { ...type.title2, color: lv.fg },
   meta: { ...type.footnote, color: lv.mutedFg },
-  link: { ...type.footnote, color: lv.thread, fontWeight: "600" },
+  link: { ...type.footnote, color: lv.tint, fontWeight: "600" },
   chain: { gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: lv.separator, paddingTop: 12 },
   chainItem: { gap: 2 },
   chainName: { ...type.subheadline, fontWeight: "600", color: lv.fg },

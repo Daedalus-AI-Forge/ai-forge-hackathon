@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Animated, Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { layout, lv, type } from "@/theme/tokens";
+import { layout, lv, night, type } from "@/theme/tokens";
 
 import { Glass } from "./Glass";
 import { Icon } from "./Icon";
@@ -38,7 +38,8 @@ export function NavBar({ left, center, right }: { left?: ReactNode; center?: Rea
 }
 
 /**
- * Screen title. `large` is the 34-pt tab-root title; `title` the 28-pt title of a pushed screen.
+ * Screen title. `large` is the 34-pt tab-root title; `title` the 28-pt title of a pushed screen. Both are set
+ * in the night garden's serif.
  * Sits on the page margin, like iOS large titles.
  */
 export function LargeTitle({
@@ -150,7 +151,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", paddingHorizontal: 8 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 4 },
   titleCol: { flex: 1, minWidth: 0, gap: 2 },
-  title: { color: lv.fg },
+  // Serif titles, like the Well tab's "Wishwell".
+  title: { color: lv.fg, fontFamily: night.serif, fontWeight: "400" },
   subtitle: { color: lv.mutedFg, marginTop: 4 },
   titleRight: { alignItems: "flex-end", justifyContent: "center" },
   section: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, minHeight: 28, marginBottom: -6 },
@@ -165,8 +167,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
-    boxShadow: "0px 3px 8px rgba(0,0,0,0.12), 0px 1px 1px rgba(0,0,0,0.04)",
+    backgroundColor: "rgba(255,255,255,0.16)",
+    boxShadow: "0px 3px 8px rgba(0,0,0,0.25), 0px 1px 1px rgba(0,0,0,0.1)",
   },
   segmentBtn: { flex: 1, height: 34, alignItems: "center", justifyContent: "center" },
   segmentText: { ...type.subheadline, fontWeight: "500", color: lv.mutedFg },

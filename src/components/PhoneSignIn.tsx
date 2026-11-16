@@ -200,6 +200,6 @@ const styles = StyleSheet.create({
   hint: { ...type.footnote },
   codeInput: { letterSpacing: 6, textAlign: "center", fontSize: 22 },
   links: { flexDirection: "row", justifyContent: "space-between" },
-  link: { ...type.subheadline, color: lv.thread, fontWeight: "600" },
+  link: { ...type.subheadline, color: lv.tint, fontWeight: "600" },
   linkOff: { color: lv.mutedFg, opacity: 0.6 },
 });

@@ -1,24 +1,32 @@
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { Image, StyleSheet, View, type ViewStyle } from "react-native";
 
-import { lv } from "@/theme/tokens";
+import { lv, poolImages } from "@/theme/tokens";
 
 // Fades end in the same hue at alpha 0 (not `transparent`) so no platform interpolates through grey.
-const GLOWS = [
-  "radial-gradient(circle at 90% 4%, rgba(229,72,63,0.22) 0%, rgba(229,72,63,0) 42%)",
-  "radial-gradient(circle at 4% 16%, rgba(235,207,138,0.50) 0%, rgba(235,207,138,0) 46%)",
-  "radial-gradient(circle at 14% 94%, rgba(63,107,120,0.28) 0%, rgba(63,107,120,0) 52%)",
-  "radial-gradient(circle at 98% 68%, rgba(122,170,196,0.26) 0%, rgba(122,170,196,0) 44%)",
-  "linear-gradient(180deg, #FBF6EF 0%, #F4EFE8 46%, #E6EDEF 100%)",
+// Darker at the top (titles sit there) and at the very bottom (the tab bar), with the fountain's
+// lantern-gold and pool-aqua glowing through in between.
+const WASH = [
+  "radial-gradient(circle at 88% 6%, rgba(233,199,102,0.14) 0%, rgba(233,199,102,0) 40%)",
+  "radial-gradient(circle at 10% 92%, rgba(127,211,209,0.14) 0%, rgba(127,211,209,0) 48%)",
+  "linear-gradient(180deg, rgba(14,34,41,0.82) 0%, rgba(14,34,41,0.55) 38%, rgba(10,26,32,0.6) 72%, rgba(7,20,26,0.88) 100%)",
 ].join(", ");
 
 /**
- * The ambient wallpaper behind every screen: warm paper at the top, well-water at the bottom and a few
- * soft glows. It stays put while content scrolls, and gives the frosted glass something to pick up.
+ * The ambient wallpaper behind every screen: the Well tab's night fountain, blurred and dimmed, so
+ * the whole app sits in the same night garden. It stays put while content scrolls, and gives the
+ * frosted glass something to pick up.
  */
 export function Backdrop({ style }: { style?: ViewStyle }) {
-  return <View style={[StyleSheet.absoluteFill, styles.base, style]} />;
+  return (
+    <View style={[StyleSheet.absoluteFill, styles.base, style]}>
+      <Image source={poolImages.ambient} style={styles.image} resizeMode="cover" />
+      <View style={[StyleSheet.absoluteFill, styles.wash]} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  base: { backgroundColor: lv.bg, backgroundImage: GLOWS, pointerEvents: "none" },
+  base: { backgroundColor: lv.bg, pointerEvents: "none", overflow: "hidden" },
+  image: { width: "100%", height: "100%", opacity: 0.9 },
+  wash: { backgroundImage: WASH },
 });

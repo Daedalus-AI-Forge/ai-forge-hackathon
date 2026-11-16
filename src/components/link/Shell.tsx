@@ -75,6 +75,6 @@ const styles = StyleSheet.create({
   column: { gap: 18 },
   dots: { flexDirection: "row", alignItems: "center", gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: lv.fillStrong },
-  dotDone: { backgroundColor: lv.thread },
+  dotDone: { backgroundColor: lv.tint },
   dotNow: { width: 18 },
 });

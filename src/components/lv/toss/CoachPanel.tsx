@@ -118,7 +118,7 @@ export function CoachPanel({
             </>
           ) : (
             <>
-              <Text style={[s.hint, { color: c.mutedFg }]}>The well knows who you've passed wishes to. Ask it who should get this one first.</Text>
+              <Text style={[s.hint, { color: c.mutedFg }]}>The well knows who you’ve pushed boats to. Ask it who should get this one first.</Text>
               <LvButton
                 testID="ask-the-well-button"
                 compact
@@ -166,6 +166,6 @@ const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6, minHeight: 52 },
   name: { ...type.subheadline, fontWeight: "600", color: lv.fg },
   why: { ...type.caption1, color: lv.mutedFg, marginTop: 2 },
-  add: { ...type.subheadline, fontWeight: "600", color: lv.thread },
+  add: { ...type.subheadline, fontWeight: "600", color: lv.tint },
   err: { ...type.footnote, color: lv.destructive },
 });

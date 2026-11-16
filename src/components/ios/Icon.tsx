@@ -7,10 +7,11 @@ type SFName = Extract<SymbolViewProps["name"], string>;
 
 /** App icons: an SF Symbol on iOS, a text glyph (or a drawn chevron) everywhere else. */
 const ICONS = {
-  pool: { sf: "water.waves", glyph: "≋", scale: 1.35 },
-  poolFill: { sf: "water.waves", glyph: "≋", scale: 1.35 },
   voyages: { sf: "sailboat", glyph: "⛵︎" },
   voyagesFill: { sf: "sailboat.fill", glyph: "⛵︎" },
+  world: { sf: "globe.americas", glyph: "⊕", scale: 1.1 },
+  worldFill: { sf: "globe.americas.fill", glyph: "⊕", scale: 1.1 },
+  camera: { sf: "camera.fill", glyph: "◉" },
   me: { sf: "person.crop.circle", glyph: "◯" },
   meFill: { sf: "person.crop.circle.fill", glyph: "◉" },
   back: { sf: "chevron.left", glyph: "chevron-left" },

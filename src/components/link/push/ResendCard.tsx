@@ -97,7 +97,7 @@ export function ResendCard({ childHopId, childName, vouch, wishText }: ResendCar
       <Text style={styles.title}>{`Didn't send it yet? Send it to ${name}`}</Text>
       {message === null ? (
         <View style={styles.row}>
-          <ActivityIndicator color={lv.thread} />
+          <ActivityIndicator color={lv.tint} />
           <Sub>Writing your message…</Sub>
         </View>
       ) : (
