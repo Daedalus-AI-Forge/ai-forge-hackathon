@@ -3,6 +3,12 @@ import { AccessibilityInfo, Animated, Easing, Image, Platform, StyleSheet, View,
 
 import { night, poolImages } from "@/theme/tokens";
 
+import { WaterPool, waterSurfaceSupported, type WaterPoolApi } from "./WaterPool";
+
+export type { WaterPoolApi };
+
+let warnedGl = false;
+
 const useNativeDriver = Platform.OS !== "web";
 
 /** Deterministic layout hash (from the prototype): same positions on every render and platform. */
@@ -240,13 +246,15 @@ function SinkingCoin({ toss, size, still }: { toss: PoolToss; size: number; stil
 /**
  * The wishing pool seen from above: the tiled floor under night water, stars twinkling on the surface,
  * your coins resting on the bottom. Touching the water sends out a ripple (decorative only).
- * A native port of the prototype's WebGL pool: same floor and coins, ripples drawn as rings.
+ * The fallback when GL is unavailable or Reduce Motion is on: same floor and coins, ripples drawn as rings.
+ * With GL and motion, renders WaterPool (Katie-Lan's WebGL2 water) instead; `onReady` then gets its API.
  */
 export function NightPool({
   size,
   coins,
   tosses = [],
   onWaterTap,
+  onReady,
 }: {
   size: number;
   coins: number;
@@ -254,11 +262,34 @@ export function NightPool({
   tosses?: PoolToss[];
   /** Tapping the water (fractions of the pool, 0..1); without it a tap is only a ripple. */
   onWaterTap?: (x: number, y: number) => void;
+  /** With the GL water: its imperative API (drop / tossCoin in pool space). */
+  onReady?: (api: WaterPoolApi) => void;
 }) {
   const still = useReduceMotion();
+  const [glFailed, setGlFailed] = useState(false);
   const [taps, setTaps] = useState<TapRipple[]>([]);
   const nextId = useRef(0);
   const c = size / 2;
+
+  // Katie's real-time water when GL is available and motion is welcome; this Animated pool otherwise.
+  if (waterSurfaceSupported && !still && !glFailed) {
+    return (
+      <WaterPool
+        size={size}
+        coins={coins}
+        tosses={tosses}
+        onWaterTap={onWaterTap}
+        onReady={onReady}
+        onError={(err) => {
+          if (!warnedGl) {
+            warnedGl = true;
+            console.warn("[NightPool] water effect unavailable, using the static pool", err);
+          }
+          setGlFailed(true);
+        }}
+      />
+    );
+  }
 
   const onTap = (e: GestureResponderEvent) => {
     const { locationX: x, locationY: y } = e.nativeEvent;
