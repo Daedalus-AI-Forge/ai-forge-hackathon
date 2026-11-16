@@ -5,6 +5,7 @@ import { StyleSheet, Text } from "react-native";
 import { DButton } from "@/components/lv/passon/kit";
 import { choosePhone, toE164 } from "@/lib/contactPick";
 import { lv, type } from "@/theme/tokens";
+import { useToneColors } from "@/components/lv/tone";
 
 export type PickedContact = { name: string; phone: string | null };
 
@@ -41,6 +42,7 @@ async function rereadPhone(c: Contact): Promise<string | null> {
 export function ContactPickButton({ onPick, testID = "contact-pick" }: { onPick: (c: PickedContact) => void; testID?: string }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const tc = useToneColors();
 
   async function onPress() {
     setBusy(true);
@@ -73,7 +75,7 @@ export function ContactPickButton({ onPick, testID = "contact-pick" }: { onPick:
     <>
       <DButton title="Pick from contacts" icon="contact" variant="ghost" size="sm" busy={busy} onPress={onPress} testID={testID} />
       {note ? (
-        <Text style={s.note} testID={`${testID}-note`}>
+        <Text style={[s.note, { color: tc.mutedFg }]} testID={`${testID}-note`}>
           {note}
         </Text>
       ) : null}

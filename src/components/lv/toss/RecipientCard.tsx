@@ -6,6 +6,7 @@ import { ContactSuggestions } from "@/components/ContactSuggestions";
 import { Icon } from "@/components/ios";
 import { lv, type } from "@/theme/tokens";
 
+import { useToneColors } from "../tone";
 import { LvAvatar, LvCard, LvField } from "./parts";
 
 export const TAGS = ["music", "travel", "food", "sports", "tech", "outdoors", "art", "knows everyone"] as const;
@@ -31,6 +32,7 @@ export function RecipientCard({
   reasonError: string | null;
 }) {
   const [nameFocused, setNameFocused] = useState(false);
+  const c = useToneColors();
   const toggle = (tag: string) =>
     onChange({
       ...person,
@@ -57,9 +59,9 @@ export function RecipientCard({
             accessibilityLabel="Remove"
             onPress={onRemove}
             hitSlop={10}
-            style={({ pressed }) => [s.remove, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [s.remove, { backgroundColor: c.fill }, pressed && { opacity: 0.6 }]}
           >
-            <Icon name="close" size={12} color={lv.mutedFg} weight="bold" />
+            <Icon name="close" size={12} color={c.mutedFg} weight="bold" />
           </Pressable>
         ) : null}
       </View>
@@ -80,7 +82,7 @@ export function RecipientCard({
         onChangeText={(reason) => onChange({ ...person, reason })}
       />
       {reasonError ? (
-        <Text testID={`toss-reason-error-${index}`} style={s.err}>
+        <Text testID={`toss-reason-error-${index}`} style={[s.err, { color: c.accent }]}>
           {reasonError}
         </Text>
       ) : null}
@@ -100,9 +102,9 @@ export function RecipientCard({
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               onPress={() => toggle(tag)}
-              style={[s.tag, on && s.tagOn]}
+              style={[s.tag, { backgroundColor: on ? c.chipOn : c.fill }]}
             >
-              <Text style={[s.tagText, on && { color: lv.primaryFg }]}>{tag}</Text>
+              <Text style={[s.tagText, { color: on ? c.chipOnFg : c.fg }]}>{tag}</Text>
             </Pressable>
           );
         })}

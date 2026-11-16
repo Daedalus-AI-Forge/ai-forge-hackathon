@@ -12,6 +12,7 @@ import { NightPool } from "@/components/lv/pool/NightPool";
 import { NightTitle, TossPeopleStep, TossShareStep } from "@/components/lv/toss/TossSteps";
 import { TypeGrid } from "@/components/lv/toss/TypeGrid";
 import { useTossWish } from "@/components/lv/toss/useTossWish";
+import { ToneProvider } from "@/components/lv/tone";
 import { useMe } from "@/lib/device";
 import { LV_WISH_TYPES, fromApiType, type ApiWishType } from "@/lib/lvWishTypes";
 import { night, poolImages, type } from "@/theme/tokens";
@@ -62,8 +63,10 @@ export default function Toss() {
     if (await t.submit({ type, text, name, city })) setStep("share");
   }
 
+  // ToneProvider: every card, field and chip in this flow takes the night palette.
   return (
-    <Screen testID="toss-screen" nativeHeader tone="night" backdrop={<NightBackdrop />}>
+    <ToneProvider tone="night">
+      <Screen testID="toss-screen" nativeHeader tone="night" backdrop={<NightBackdrop />}>
       {step === "write" ? (
         <>
           <NightTitle sub={user ? `${user.wishesLeft} coin${user.wishesLeft === 1 ? "" : "s"}, refunded if it fades` : undefined}>
@@ -118,7 +121,8 @@ export default function Toss() {
           <TossShareStep t={t} onDone={() => router.replace("/")} />
         </>
       ) : null}
-    </Screen>
+      </Screen>
+    </ToneProvider>
   );
 }
 

@@ -4,7 +4,9 @@ import { Text, View, type TextInputProps, type ViewStyle } from "react-native";
 
 import { GlassCard } from "@/components/ios";
 import { DButton, DField, Eyebrow as KitEyebrow } from "@/components/lv/passon/kit";
-import { lv } from "@/theme/tokens";
+import { lv, night } from "@/theme/tokens";
+
+import { useSurfaceTone } from "../tone";
 
 const TONES = ["#F1E2D3", "#DCE8DC", "#DCE3EE", "#F3DCD8", "#E6E0D2"];
 
@@ -29,15 +31,19 @@ export function LvAvatar({ name, size = 36 }: { name: string; size?: number }) {
 }
 
 export function LvCard({ children, style, testID }: { children: ReactNode; style?: ViewStyle; testID?: string }) {
+  const isNight = useSurfaceTone() === "night";
   return (
-    <GlassCard testID={testID} style={style}>
+    <GlassCard variant={isNight ? "dark" : undefined} testID={testID} style={[isNight && NIGHT_CARD, style]}>
       {children}
     </GlassCard>
   );
 }
 
-export function Eyebrow({ children, color = lv.mutedFg }: { children: ReactNode; color?: string }) {
-  return <KitEyebrow style={{ color }}>{children}</KitEyebrow>;
+const NIGHT_CARD: ViewStyle = { backgroundColor: "rgba(7,20,26,0.55)", borderColor: "rgba(233,199,102,0.28)", borderWidth: 1 };
+
+export function Eyebrow({ children, color }: { children: ReactNode; color?: string }) {
+  const isNight = useSurfaceTone() === "night";
+  return <KitEyebrow style={{ color: color ?? (isNight ? night.mutedFg : lv.mutedFg) }}>{children}</KitEyebrow>;
 }
 
 export function LvField(props: TextInputProps) {

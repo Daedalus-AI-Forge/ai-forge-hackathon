@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState, StyleSheet, Text } from "react-native";
 
+import { useToneColors } from "@/components/lv/tone";
 import { DButton, DCard } from "@/components/lv/passon/kit";
 import { hopUrl, smsLink } from "@/lib/links";
 import { textAllLabel } from "@/lib/tossPeople";
@@ -18,6 +19,7 @@ const RETURN_FALLBACK_MS = 4000;
  */
 export function TextAll({ targets }: { targets: TextAllTarget[] }) {
   const [opened, setOpened] = useState(0);
+  const c = useToneColors();
   const [away, setAway] = useState(false);
   const left = useRef(false);
 
@@ -52,15 +54,15 @@ export function TextAll({ targets }: { targets: TextAllTarget[] }) {
   return (
     <DCard testID="share-text-all-card">
       {opened > 0 ? (
-        <Text style={styles.progress} testID="share-text-all-progress">
+        <Text style={[styles.progress, { color: c.fg }]} testID="share-text-all-progress">
           {opened} of {targets.length} opened
         </Text>
       ) : (
-        <Text style={styles.hint}>Each person gets their own message and link. You tap Send in Messages.</Text>
+        <Text style={[styles.hint, { color: c.mutedFg }]}>Each person gets their own message and link. You tap Send in Messages.</Text>
       )}
       {label ? (
         away ? (
-          <Text style={styles.hint}>Send it in Messages, then come back here for {current?.name}.</Text>
+          <Text style={[styles.hint, { color: c.mutedFg }]}>Send it in Messages, then come back here for {current?.name}.</Text>
         ) : (
           <DButton
             testID="share-text-all"
@@ -72,7 +74,7 @@ export function TextAll({ targets }: { targets: TextAllTarget[] }) {
           />
         )
       ) : (
-        <Text style={styles.progress}>All {targets.length} opened. Nice.</Text>
+        <Text style={[styles.progress, { color: c.fg }]}>All {targets.length} opened. Nice.</Text>
       )}
     </DCard>
   );
