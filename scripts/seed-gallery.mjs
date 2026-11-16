@@ -9,6 +9,8 @@
 // story (found voyages, seed.ts stories, bot claims). --replace swaps the whole pool: stories on
 // old pool photos are re-pointed and the old files deleted. Use only generic scene images of
 // groups meeting up (illustrated or non-identifiable people), never real users' photos.
+// Photorealistic scenes of fictional people come from galleryAi:generatePhotos + gallery:usePhotoreal
+// and are preferred over these files, which stay as the fallback.
 // teamSeed:run and seed:run keep/refill photos on reseed; re-run this only to change pictures.
 // The CLI must be linked to the target deployment (npx convex dev / CONVEX_DEPLOYMENT).
 import { execFileSync } from "node:child_process";

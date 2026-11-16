@@ -34,7 +34,7 @@ lived-abroad, traditional-arts-adjacent, reason "Spent two years in Osaka") and 
 
 ## Fallbacks
 - **Live chain breaks before the ending:** open the pre-completed copy of the same story (granted, meet-up photo, Dazi's claim):
-  https://gallant-seal-635.convex.site/e/jn7fj07bhp4j56qdrseg3g3gfd8jbjzf
+  https://gallant-seal-635.convex.site/e/jn72jhcrt9geza5qs4vk47w5eh8jaae8
   (the wish id changes after every `teamSeed:run`; get the current one with `npx convex run teamSeed:teaStory`).
 - **Coach or OpenAI is slow:** ranking is keyword-first from Louise's own edges, so Katie still comes first with the same line.
 - **Link page AI is slow:** the Japan question and "Makes ceramics in Kyoto" are deterministic for tea/Japan wishes; no model call.
