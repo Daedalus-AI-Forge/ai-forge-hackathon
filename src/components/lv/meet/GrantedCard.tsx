@@ -8,10 +8,12 @@ import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import { endingShareText } from "@/components/link/end/logic";
 import { DAvatar, DButton, DError, DTag, Eyebrow, Sub } from "@/components/lv/passon/kit";
 import { photoSource } from "@/components/lv/world/Polaroid";
+import { WishGlobe } from "@/components/lv/world/WishGlobe";
+import { wishPathStops } from "@/components/lv/world/wishPath";
 import type { EndingView } from "@/lib/linkApi.types";
 import { shareLink } from "@/lib/links";
 import { hopCount } from "@/lib/time";
-import { lv, polaroid, shadows, type } from "@/theme/tokens";
+import { lv, night, polaroid, shadows, type } from "@/theme/tokens";
 
 import { grantedStops } from "./meetLogic";
 
@@ -47,6 +49,7 @@ export function GrantedCard({
     );
   }
   const stops = grantedStops(ending.holders);
+  const path = wishPathStops(ending.holders, ending.route);
   const tier = ending.tier ? TIER[ending.tier] : null;
   return (
     <View testID={testID} style={styles.polaroid}>
@@ -93,6 +96,11 @@ export function GrantedCard({
           ))}
         </View>
       ) : null}
+      {path.length > 1 ? (
+        <View style={styles.globe}>
+          <WishGlobe path={path} height={280} />
+        </View>
+      ) : null}
       <Text style={styles.meta}>
         {hopCount(ending.ripples)}
         {ending.metInPerson === true ? " · met in person" : ending.metInPerson === false ? " · met on a call" : ""}
@@ -134,6 +142,8 @@ export function EndingShareButton({ ending, wishId, testID }: { ending: EndingVi
 }
 
 const styles = StyleSheet.create({
+  // The world path sits in a night-sky inset on the paper print, the same globe as the World tab.
+  globe: { backgroundColor: night.deep, borderRadius: 8, borderCurve: "continuous", padding: 10 },
   locked: { gap: 6, paddingVertical: 8 },
   lockedTitle: { ...type.title3, fontWeight: "700", color: lv.fg },
   polaroid: {
