@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { requireDeviceId, userByDevice } from "./lib";
+import { senderDisplayName, vouchForHolder } from "./link";
 
 const linkEventValidator = v.union(
   v.literal("open"), v.literal("wish_written"), v.literal("skip_wish"), v.literal("claim"),
@@ -102,6 +103,7 @@ export const ogHop = internalQuery({
     const wish = await ctx.db.get("wishes", hop.wishId);
     if (!wish) return null;
     let senderName: string | undefined;
+    const introVouch = await vouchForHolder(ctx, hop, wish);
     if (hop.parentHopId) {
       const parent = await ctx.db.get("hops", hop.parentHopId);
       senderName = parent?.holderName;
@@ -111,8 +113,8 @@ export const ogHop = internalQuery({
     }
     return {
       hopId,
-      senderName: senderName?.trim() || "A friend",
-      introVouch: hop.introVouch?.trim() || null,
+      senderName: senderDisplayName(senderName),
+      introVouch,
       wishText: wish.text,
     };
   },

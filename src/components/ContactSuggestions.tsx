@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { PickedContact } from "@/components/ContactPickButton";
 import { toSuggestions, type ContactSuggestion } from "@/lib/contactPick";
 import { lv, type } from "@/theme/tokens";
+import { useToneColors } from "@/components/lv/tone";
 
 const MIN_CHARS = 2;
 const FIELDS = [ContactField.FULL_NAME, ContactField.PHONES] as const;
@@ -33,6 +34,7 @@ export function ContactSuggestions({
   testID?: string;
 }) {
   const [access, setAccess] = useState<Access>(sessionAccess);
+  const tc = useToneColors();
   const [items, setItems] = useState<ContactSuggestion[]>([]);
   const [chosen, setChosen] = useState<string | null>(null);
 
@@ -67,21 +69,21 @@ export function ContactSuggestions({
   if (access === "ask" && focused) {
     return (
       <View style={s.ask} testID={`${testID}-ask`}>
-        <Text style={s.askText}>Suggest names from your Contacts? They stay on this phone.</Text>
+        <Text style={[s.askText, { color: tc.mutedFg }]}>Suggest names from your Contacts? They stay on this phone.</Text>
         <View style={s.row}>
           <Pressable
             testID={`${testID}-allow`}
-            style={[s.chip, s.allow]}
+            style={[s.chip, s.allow, tc.isNight && { backgroundColor: tc.chipOn }]}
             onPress={() =>
               requestPermissionsAsync()
                 .then((p) => update(p.granted ? "granted" : "off"))
                 .catch(() => update("off"))
             }
           >
-            <Text style={[s.chipText, s.allowText]}>Allow</Text>
+            <Text style={[s.chipText, s.allowText, tc.isNight && { color: tc.chipOnFg }]}>Allow</Text>
           </Pressable>
           <Pressable testID={`${testID}-no`} style={s.plain} onPress={() => update("off")}>
-            <Text style={s.plainText}>Not now</Text>
+            <Text style={[s.plainText, { color: tc.mutedFg }]}>Not now</Text>
           </Pressable>
         </View>
       </View>
@@ -95,7 +97,7 @@ export function ContactSuggestions({
         <Pressable
           key={it.key}
           testID={`${testID}-${i}`}
-          style={s.chip}
+          style={[s.chip, { backgroundColor: tc.fill }]}
           accessibilityRole="button"
           accessibilityLabel={`Use ${it.name}, ${it.label}`}
           onPress={() => {
@@ -104,7 +106,7 @@ export function ContactSuggestions({
             onPick({ name: it.name, phone: it.phone });
           }}
         >
-          <Text style={s.chipText} numberOfLines={1}>
+          <Text style={[s.chipText, { color: tc.fg }]} numberOfLines={1}>
             {it.name} · {it.label}
           </Text>
         </Pressable>

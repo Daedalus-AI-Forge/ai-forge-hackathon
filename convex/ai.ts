@@ -356,11 +356,15 @@ type PassFacts = {
   chain: string[];
 };
 
-/** Deterministic pass-on text: the wish, the sender's own reason, then a question. */
+/**
+ * Deterministic pass-on text: the wish (quoted, so any wish type or verb-first text reads
+ * naturally), the sender's own reason, then a question. FACTS only, no countdown.
+ */
 export function passFallback(c: PassFacts) {
   const vouch = c.introVouch?.trim().replace(/[.!?]+$/, "");
-  const why = vouch ? ` I thought of you: ${vouch}.` : "";
-  return `${firstName(c.wisherName) || "Someone"} is looking for ${wishGist(c.wishText)}.${why} Is it you, or someone you know?`;
+  const gist = wishGist(c.wishText).replace(/"/g, "'");
+  const ask = vouch ? ` I thought of you: ${vouch}. Is it you, or someone you know?` : " I thought of you — is it you, or someone you know?";
+  return `${firstName(c.wisherName) || "Someone"} is looking for: "${gist}".${ask}`;
 }
 
 /** The FACTS block for a pass-on draft. Only fields allowed to reach the holder (no tags, no phones). */

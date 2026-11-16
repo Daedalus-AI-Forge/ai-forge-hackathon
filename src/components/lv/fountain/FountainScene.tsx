@@ -47,6 +47,8 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
   const now = useNow(1000);
   const wish = wishLine(wishes, now);
   const left = countdown(nextUtcMidnight(now), now);
+  // Say whose wish the card is; with several in flight it shows the newest.
+  const traveling = wishes?.filter((w) => w.status === "traveling").length ?? 0;
   const [breath] = useState(() => new Animated.Value(0));
   useEffect(() => {
     if (still) return;
@@ -133,6 +135,7 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
         <View style={styles.bottom}>
           {wish ? (
             <Glass variant="dark" radius={20} style={styles.wish}>
+              <Text style={styles.wishLabel}>{traveling > 1 ? `Your wish · 1 of ${traveling}` : "Your wish"}</Text>
               <Text style={styles.wishText} numberOfLines={2}>
                 {wish.text}
               </Text>
@@ -169,6 +172,8 @@ export function FountainScene({ zoom, ui, still, leaving, eyebrow, avatar, wishe
               <Text style={styles.challengeTitle} numberOfLines={1}>
                 {challenge?.title ?? " "}
               </Text>
+              {/* Not anyone's wish: the well sends the same boat to everyone each day. */}
+              {challenge && !challenge.done ? <Text style={styles.challengeNote}>Everyone gets this boat today</Text> : null}
             </View>
             <Icon name="forward" size={14} color={night.mutedFg} />
           </Glass>
@@ -361,6 +366,15 @@ const styles = StyleSheet.create({
     color: night.fg,
     textAlign: "center",
   },
+  wishLabel: {
+    marginBottom: 2,
+    fontFamily: serif,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    color: night.gold,
+  },
   wishMeta: {
     marginTop: 2,
     fontFamily: serif,
@@ -423,6 +437,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: night.mutedFg,
     fontVariant: ["tabular-nums"],
+  },
+  challengeNote: {
+    fontFamily: serif,
+    fontSize: 13,
+    lineHeight: 18,
+    color: night.mutedFg,
   },
   challengeTitle: {
     fontFamily: serif,

@@ -224,7 +224,9 @@ export default function ThePool() {
       <Avatar name={user.name} color={user.avatar} size={40} />
     </Pressable>
   );
-  const eyebrow = `${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${progress}/5 boats`;
+  // What the two counters mean: coins you can toss now, and pushed boats still needed for the next coin.
+  const toNext = Math.max(1, 5 - progress);
+  const eyebrow = `${wishesLeft} coin${wishesLeft === 1 ? "" : "s"} · ${toNext} boat${toNext === 1 ? "" : "s"} to next coin`;
   const inPool = phase === "pool";
 
   return (

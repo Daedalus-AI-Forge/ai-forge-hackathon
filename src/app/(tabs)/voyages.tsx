@@ -11,6 +11,7 @@ import { DTag } from "@/components/lv/passon/kit";
 import { ThreadMap } from "@/components/lv/threads/ThreadMap";
 import { STATUS_LABEL, TIER_LABEL, pathHolders } from "@/components/lv/threads/threadData";
 import { ClaimCard, type PendingClaim } from "@/components/lv/voyages/ClaimCard";
+import { MeetCard } from "@/components/lv/meet/MeetCard";
 import { MiniRoute } from "@/components/lv/voyages/MiniRoute";
 import { VOYAGE_STATUS } from "@/components/lv/voyages/voyageData";
 import { useMe } from "@/lib/device";
@@ -24,6 +25,7 @@ const TABS = [
   { key: "coins", label: "Coins", testID: "voyages-tab-coins" },
 ] as const;
 
+const MAX_GRANTED = 2;
 const INSET = 8; // map inset inside a coin card; the map's radius stays concentric with the card
 
 /** Boats I pushed and coins I tossed: where they drifted and how they ended. */
@@ -41,6 +43,10 @@ export default function VoyagesScreen() {
     ...(claims ?? []),
   ].filter((c) => !hidden.has(c.hopId));
   const now = useNow(30000);
+  // Found wishes I'm in (as wisher or confirmed match): meet up, then the granted reveal.
+  const meetings = useQuery(api.meetings.list, deviceId ? { deviceId, now } : "skip");
+  // Open meet-ups first (the API sorts them that way), then only the latest few granted reveals.
+  const meetCards = (meetings ?? []).filter((m, i, all) => m.stage !== "granted" || all.slice(0, i).filter((x) => x.stage === "granted").length < MAX_GRANTED);
   const router = useRouter();
 
   return (
@@ -58,6 +64,8 @@ export default function VoyagesScreen() {
             />
           ))
         : null}
+
+      {deviceId ? meetCards.map((m) => <MeetCard key={m.wishId} meeting={m} deviceId={deviceId} />) : null}
 
       <Segmented options={TABS} value={tab} onChange={setTab} />
 

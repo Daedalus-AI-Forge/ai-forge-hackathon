@@ -260,7 +260,7 @@ describe("AI actions", () => {
     const t = setup();
     const ben = await taggedBen(t);
     expect(await t.action(api.ai.draftPassMessage, { hopId: ben })).toBe(
-      "Louise is looking for someone to jam on drums with. I thought of you: you drum with a Berkeley collective. Is it you, or someone you know?",
+      'Louise is looking for: "someone to jam on drums with". I thought of you: you drum with a Berkeley collective. Is it you, or someone you know?',
     );
   });
 
@@ -268,7 +268,7 @@ describe("AI actions", () => {
     const t = setup();
     const { ben } = await seededTree(t);
     const out = await t.action(api.ai.draftPassMessage, { hopId: ben });
-    expect(out).toBe("Louise is looking for someone to jam on drums with. Is it you, or someone you know?");
+    expect(out).toBe('Louise is looking for: "someone to jam on drums with". I thought of you — is it you, or someone you know?');
   });
 });
 
@@ -379,5 +379,21 @@ describe("daily-wish API hardening", () => {
     const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
     expect(body.max_output_tokens).toBe(400);
     expect(body.input.length).toBeLessThan(1000);
+  });
+});
+
+describe("passFallback", () => {
+  test.each([
+    ["do_together", "Meet someone to play tennis with on weekends.", 'Louise is looking for: "meet someone to play tennis with on weekends".'],
+    ["local", "Find a quiet cafe to work from.", 'Louise is looking for: "find a quiet cafe to work from".'],
+    ["been_there", "Talk to someone who moved abroad.", 'Louise is looking for: "talk to someone who moved abroad".'],
+    ["same_boat", "Someone who's hiring.", 'Louise is looking for: "someone who\'s hiring".'],
+  ])("reads naturally for a %s wish", async (_type, wishText, opening) => {
+    const { passFallback } = await import("./ai");
+    const out = passFallback({ senderName: "Mia", holderName: "Ben", wisherName: "Louise Chen", wishText, introVouch: null, chain: ["Mia", "Ben"] });
+    expect(out).toBe(`${opening} I thought of you — is it you, or someone you know?`);
+    expect(out).not.toMatch(/looking for (meet|find|talk)\b/i);
+    expect(out).not.toMatch(/\d+h\b|left|expires/);
+    expect(out.endsWith("?")).toBe(true);
   });
 });
