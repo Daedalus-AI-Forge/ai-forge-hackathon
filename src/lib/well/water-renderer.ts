@@ -1,11 +1,11 @@
 // WebGL2 / GLES 3.0 wishing-pool renderer, ported from Katie-Lan's web prototype (waterworks).
-// A ping-pong height-field ripple sim, rendered as refraction of the pool-floor photo with coins and stars.
+// A ping-pong height-field ripple sim, rendered as refraction of the pool-floor photo with coins and paper boats.
 // It only needs a WebGL2-shaped context, so the same class runs on a DOM <canvas> (web) and on an
 // expo-gl GLView context (iOS/Android): the caller owns the surface and passes `present` (endFrameEXP).
 import { RENDER, SIM_DROP, SIM_UPDATE, VERT } from "./shaders";
 
 export const MAX_COINS = 16;
-export const MAX_STARS = 8;
+export const MAX_BOATS = 8;
 const SIM_SIZE = 256;
 
 export interface RenderCoin {
@@ -31,7 +31,8 @@ export interface RenderRise {
   open: number;
 }
 
-export interface RenderStar {
+/** A lantern paper boat on the surface: centre, rock angle (radians) and half-width, in pool units. */
+export interface RenderBoat {
   x: number;
   y: number;
   rot: number;
@@ -148,7 +149,7 @@ export class WaterRenderer {
   private drops: { x: number; y: number; r: number; s: number }[] = [];
   private coinA = new Float32Array(MAX_COINS * 4);
   private coinB = new Float32Array(MAX_COINS * 4);
-  private starBuf = new Float32Array(MAX_STARS * 4);
+  private boatBuf = new Float32Array(MAX_BOATS * 4);
 
   constructor(gl: WebGL2RenderingContext, opts: WaterRendererOptions = {}) {
     this.gl = gl;
@@ -167,7 +168,7 @@ export class WaterRenderer {
     this.drop = makeProgram(gl, SIM_DROP(this.packed), ["uTex", "uCenter", "uRadius", "uStrength"]);
     this.render = makeProgram(gl, RENDER(this.packed), [
       "uHeight", "uFloor", "uRes", "uCenter", "uR", "uTime",
-      "uCoinA", "uCoinB", "uCoinCount", "uStar", "uStarCount", "uCoinTex", "uRise", "uRiseB",
+      "uCoinA", "uCoinB", "uCoinCount", "uBoat", "uBoatCount", "uCoinTex", "uRise", "uRiseB",
     ]);
     this.vao = typeof gl.createVertexArray === "function" ? gl.createVertexArray() : null;
 
@@ -231,7 +232,7 @@ export class WaterRenderer {
     this.cur = next;
   }
 
-  frame(time: number, coins: RenderCoin[], stars: RenderStar[], rise: RenderRise | null, steps = 2) {
+  frame(time: number, coins: RenderCoin[], boats: RenderBoat[], rise: RenderRise | null, steps = 2) {
     const gl = this.gl;
     if (this.vao) gl.bindVertexArray(this.vao);
 
@@ -252,10 +253,10 @@ export class WaterRenderer {
       this.coinA.set([c.x, c.y, c.depth, c.size], i * 4);
       this.coinB.set([c.tilt, c.angle, c.variant, c.alpha], i * 4);
     }
-    const ns = Math.min(stars.length, MAX_STARS);
-    for (let i = 0; i < ns; i++) {
-      const s = stars[i]!;
-      this.starBuf.set([s.x, s.y, s.rot, s.size], i * 4);
+    const nb = Math.min(boats.length, MAX_BOATS);
+    for (let i = 0; i < nb; i++) {
+      const b = boats[i]!;
+      this.boatBuf.set([b.x, b.y, b.rot, b.size], i * 4);
     }
 
     const u = this.render.u;
@@ -276,8 +277,8 @@ export class WaterRenderer {
     gl.uniform4fv(u("uCoinA"), this.coinA);
     gl.uniform4fv(u("uCoinB"), this.coinB);
     gl.uniform1i(u("uCoinCount"), nc);
-    gl.uniform4fv(u("uStar"), this.starBuf);
-    gl.uniform1i(u("uStarCount"), ns);
+    gl.uniform4fv(u("uBoat"), this.boatBuf);
+    gl.uniform1i(u("uBoatCount"), nb);
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, this.coinTex);
     gl.uniform1i(u("uCoinTex"), 2);
